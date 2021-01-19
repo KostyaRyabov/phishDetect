@@ -1,14 +1,14 @@
-from langdetect import detect
+import threading
+import concurrent.futures
 from googletrans import Translator
 from console_progressbar import ProgressBar
 from datetime import date
 import pandas
 import tldextract
 import requests
-import json
-import csv
 import os
 import re
+from random import randint
 
 from urllib.parse import urlparse, urlsplit
 from bs4 import BeautifulSoup
@@ -28,30 +28,32 @@ def load_phishHints():
         hints = {'en': [
             'login',
             'logon',
+            'account',
             'authorization',
             'registration',
             'user',
             'password',
+            'pay',
             'name',
-            'nickname',
             'profile',
-            'key',
-            'phone',
             'mail',
-            'bank',
-            'card',
-            'pincode',
-            'enter',
-            'visa',
-            'cvv',
-            'cvp',
-            'cvc',
-            'ccv',
             'pass',
             'reg',
             'log',
             'auth',
-            'psw'
+            'psw',
+            'nickname',
+            'enter',
+            'bank',
+            'card',
+            'pincode',
+            'phone',
+            'key',
+            'visa',
+            'cvv',
+            'cvp',
+            'cvc',
+            'ccv'
         ]
         }
 
@@ -78,17 +80,17 @@ def check_Language(text):
     return language
 
 
-def is_URL_accessible(url):
+def is_URL_accessible(url, time_out=5):
     page = None
     try:
-        page = requests.get(url, timeout=5)
+        page = requests.get(url, timeout=time_out)
     except:
         parsed = urlparse(url)
         url = parsed.scheme + '://' + parsed.netloc
         if not parsed.netloc.startswith('www'):
             url = parsed.scheme + '://www.' + parsed.netloc
             try:
-                page = requests.get(url, timeout=5)
+                page = requests.get(url, timeout=time_out)
             except:
                 page = None
                 pass
@@ -327,6 +329,46 @@ def extract_data_from_URL(hostname, content, domain, Href, Link, Anchor, Media, 
     return Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title, Text
 
 
+def find_duplicates(list):
+    class Dictlist(dict):
+        def __setitem__(self, key, value):
+            try:
+                self[key]
+            except KeyError:
+                super(Dictlist, self).__setitem__(key, [])
+            self[key].append(value)
+
+    dom_urls = Dictlist()
+
+    pb = ProgressBar(total=len(list), prefix='find duplicates', decimals=2, length=50, fill='█',
+                     zfill='-')
+    i = 0
+    for url in list:
+        dom_urls[urlparse(url).netloc] = url
+        i += 1
+        pb.print_progress_bar(i)
+
+    list = []
+
+    pb = ProgressBar(total=len(dom_urls), prefix='removing duplicates', decimals=2, length=50, fill='█',
+                     zfill='-')
+    i=0
+
+    for item in dom_urls.values():
+        list.append(item[randint(0, len(item)-1)])
+
+        i += 1
+        pb.print_progress_bar(i)
+
+    return list
+
+
+def filter_url_list(url_list):
+    return [url for url in url_list if
+            not re.search('"|javascript:|void(0)|((\.js|\.png|\.css|\.ico|\.jpg|\.json|\.csv|\.xml|/#)$)|{|}', url) and
+            not re.search('(\.js|\.png|\.css|\.ico|\.jpg|\.json|\.csv|\.xml|/#)$', urlparse(url).path)]
+
+
 def generate_legitimate_urls(N):
     pb = ProgressBar(total=N, prefix='generate legitimate urls', decimals=2, length=50, fill='█',
                      zfill='-')
@@ -335,17 +377,28 @@ def generate_legitimate_urls(N):
                                   header=None)[1].tolist()
 
     url_list = []
+    search_1 = re.compile('"|javascript:|void(0)|((\.js|\.png|\.css|\.ico|\.jpg|\.json|\.csv|\.xml|/#)$)').search
+    search_2 = re.compile('(\.js|\.png|\.css|\.ico|\.jpg|\.json|\.csv|\.xml|/#)$').search
 
-    for domain in domain_list:
+    def url_thread(domain):
+        if len(url_list) >= N:
+            return
+
         url = search_for_vulnerable_URLs(domain)
 
-        if url:
+        if url and not search_1(url) and not search_2(urlparse(url).path):
             url_list.append(url)
             pb.print_progress_bar(len(url_list))
 
-            if len(url_list) >= N:
-                break
+            if len(url_list) % 10 == 0:
+                pandas.DataFrame(url_list).to_csv(
+                    "data/urls/legitimate/{0}.csv".format(date.today().strftime("%d-%m-%Y")), index=False,
+                    header=False)
 
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        executor.map(url_thread, domain_list)
+
+    url_list = find_duplicates(filter_url_list(url_list))
     pandas.DataFrame(url_list).to_csv("data/urls/legitimate/{0}.csv".format(date.today().strftime("%d-%m-%Y")), index=False, header=False)
 
 
@@ -362,7 +415,7 @@ def search_for_vulnerable_URLs(domain):
     IFrame = {'visible': [], 'invisible': [], 'null': []}
     Title = ''
     Text = ''
-    state, url, page = is_URL_accessible(url)
+    state, url, page = is_URL_accessible(url, 1)
 
     if state:
         content = page.content
@@ -375,24 +428,16 @@ def search_for_vulnerable_URLs(domain):
                                                                                                    Anchor, Media, Form,
                                                                                                    CSS, Favicon, IFrame,
                                                                                                    Title, Text)
+        lst = Href['internals'] + Link['internals']
+        lst = ['http://'+lnk for lnk in lst] + Href['externals'] + Link['externals']
 
-        for hint in phish_hints['en']:
-            for aURL in Href['internals'] + Link['internals']:
-                if hint in aURL.lower():
-                    state, aaURL, page = is_URL_accessible('http://'+aURL)
-                    if state:
-                        return aaURL
+        if lst:
+            url = lst[randint(1, len(lst))]
+            state, url, page = is_URL_accessible(url, 1)
+            if state:
+                return url
 
-            for aURL in Href['externals'] + Link['externals']:
-                if hint in aURL.lower():
-                    state, aaURL, page = is_URL_accessible(aURL)
-                    if state:
-                        return aaURL
-
-    else:
-        url = None
-
-    return url
+    return None
 
 
 def extract_features(url):

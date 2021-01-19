@@ -1,7 +1,6 @@
 import requests
 import pandas
 import io
-import os
 
 import feature_extractor as fe
 
@@ -16,9 +15,7 @@ def loadRawData():
     brand_list = pandas.read_csv("data/brands/brandirectory-ranking-data-global-2020.csv", usecols=['Brand'])[
         "Brand"].tolist()
 
-    leg_urls_path = "data/urls/legitimate/"
-    legitimate_url_list = pandas.read_csv(leg_urls_path+os.listdir(leg_urls_path)[0],
-                                          header=None)[0].tolist()
+    legitimate_url_list = pandas.read_csv("data/urls/legitimate/18-01-2021.csv", header=None)[0].tolist()
 
     # try:
     #     http_request = requests.get('http://data.phishtank.com/data/online-valid.csv')
@@ -31,8 +28,5 @@ def loadRawData():
 
 
 if __name__ == "__main__":
-    fe.generate_legitimate_urls(15000)
-
+    # fe.generate_legitimate_urls(10000)
     loadRawData()
-
-    print(legitimate_url_list)
