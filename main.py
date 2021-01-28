@@ -6,14 +6,10 @@ import feature_extractor as fe
 
 legitimate_url_list = []
 phish_url_list = []
-brand_list = []
 
 
 def loadRawData():
     global brand_list, legitimate_url_list, phish_url_list
-
-    brand_list = pandas.read_csv("data/brands/brandirectory-ranking-data-global-2020.csv", usecols=['Brand'])[
-        "Brand"].tolist()
 
     legitimate_url_list = pandas.read_csv("data/urls/legitimate/18-01-2021.csv", header=None)[0].tolist()
 
@@ -30,3 +26,5 @@ def loadRawData():
 if __name__ == "__main__":
     # fe.generate_legitimate_urls(10000)
     loadRawData()
+
+    fe.URLs_analyser(legitimate_url_list)

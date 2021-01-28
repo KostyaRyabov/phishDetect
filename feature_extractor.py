@@ -1,4 +1,3 @@
-import threading
 import concurrent.futures
 from googletrans import Translator
 from console_progressbar import ProgressBar
@@ -9,9 +8,14 @@ import requests
 import os
 import re
 from random import randint
+from tools import benchmark, tokenize, segment
 
 from urllib.parse import urlparse, urlsplit
 from bs4 import BeautifulSoup
+
+import url_features as uf
+import external_features as ef
+
 
 key = open("OPR_key.txt").read()
 
@@ -66,7 +70,7 @@ def load_phishHints():
 
 phish_hints = load_phishHints()
 
-
+@benchmark
 def check_Language(text):
     language = translator.detect(text).lang
 
@@ -80,6 +84,7 @@ def check_Language(text):
     return language
 
 
+@benchmark
 def is_URL_accessible(url, time_out=5):
     page = None
     try:
@@ -96,20 +101,30 @@ def is_URL_accessible(url, time_out=5):
                 pass
 
     if page and page.status_code == 200 and page.content not in ["b''", "b' '"]:
-        return True, url, page
+        return True, page
     else:
-        return False, None, None
+        return False, None
 
 
 def get_domain(url):
     o = urlsplit(url)
     return o.hostname, tldextract.extract(url).domain, o.path
 
-
-def extract_data_from_URL(hostname, content, domain, Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title,
-                          Text):
+@benchmark
+def extract_data_from_URL(hostname, content, domain):
     Null_format = ["", "#", "#nothing", "#doesnotexist", "#null", "#void", "#whatever",
                    "#content", "javascript::void(0)", "javascript::void(0);", "javascript::;", "javascript"]
+
+    Href = {'internals': [], 'externals': [], 'null': []}
+    Link = {'internals': [], 'externals': [], 'null': []}
+    Anchor = {'safe': [], 'unsafe': [], 'null': []}
+    Media = {'internals': [], 'externals': [], 'null': []}
+    Form = {'internals': [], 'externals': [], 'null': []}
+    CSS = {'internals': [], 'externals': [], 'null': []}
+    Favicon = {'internals': [], 'externals': [], 'null': []}
+    IFrame = {'visible': [], 'invisible': [], 'null': []}
+    Title = ''
+    Text = ''
 
     soup = BeautifulSoup(content, 'html.parser', from_encoding='iso-8859-1')
 
@@ -405,29 +420,18 @@ def generate_legitimate_urls(N):
 def search_for_vulnerable_URLs(domain):
     url = 'http://' + domain
 
-    Href = {'internals': [], 'externals': [], 'null': []}
-    Link = {'internals': [], 'externals': [], 'null': []}
-    Anchor = {'safe': [], 'unsafe': [], 'null': []}
-    Media = {'internals': [], 'externals': [], 'null': []}
-    Form = {'internals': [], 'externals': [], 'null': []}
-    CSS = {'internals': [], 'externals': [], 'null': []}
-    Favicon = {'internals': [], 'externals': [], 'null': []}
-    IFrame = {'visible': [], 'invisible': [], 'null': []}
-    Title = ''
-    Text = ''
-    state, url, page = is_URL_accessible(url, 1)
+    state, request = is_URL_accessible(url, 1)
 
     if state:
-        content = page.content
-        hostname, domain, path = get_domain(url)
-        extracted_domain = tldextract.extract(url)
+        r_url = request.url
+        content = request.content
+        hostname, domain, path = get_domain(r_url)
+        extracted_domain = tldextract.extract(r_url)
         domain = extracted_domain.domain + '.' + extracted_domain.suffix
 
-        Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title, Text = extract_data_from_URL(hostname, content,
-                                                                                                   domain, Href, Link,
-                                                                                                   Anchor, Media, Form,
-                                                                                                   CSS, Favicon, IFrame,
-                                                                                                   Title, Text)
+        (Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title, Text), time_extraction = extract_data_from_URL(
+            hostname, content,
+            domain)
         lst = Href['internals'] + Link['internals']
         lst = ['http://'+lnk for lnk in lst] + Href['externals'] + Link['externals']
 
@@ -440,54 +444,148 @@ def search_for_vulnerable_URLs(domain):
     return None
 
 
-def extract_features(url):
+def extract_features(url, status):
     def words_raw_extraction(domain, subdomain, path):
         w_domain = re.split("\-|\.|\/|\?|\=|\@|\&|\%|\:|\_", domain.lower())
         w_subdomain = re.split("\-|\.|\/|\?|\=|\@|\&|\%|\:|\_", subdomain.lower())
         w_path = re.split("\-|\.|\/|\?|\=|\@|\&|\%|\:|\_", path.lower())
         raw_words = w_domain + w_path + w_subdomain
         w_host = w_domain + w_subdomain
-        raw_words = list(filter(None, raw_words))
-        return raw_words, list(filter(None, w_host)), list(filter(None, w_path))
+        return segment(list(filter(None, raw_words))), \
+               segment(list(filter(None, w_host))), \
+               segment(list(filter(None, w_path)))
 
-    Href = {'internals': [], 'externals': [], 'null': []}
-    Link = {'internals': [], 'externals': [], 'null': []}
-    Anchor = {'safe': [], 'unsafe': [], 'null': []}
-    Media = {'internals': [], 'externals': [], 'null': []}
-    Form = {'internals': [], 'externals': [], 'null': []}
-    CSS = {'internals': [], 'externals': [], 'null': []}
-    Favicon = {'internals': [], 'externals': [], 'null': []}
-    IFrame = {'visible': [], 'invisible': [], 'null': []}
-    Title = ''
-    Text = ''
-    state, url, page = is_URL_accessible(url)
+    state, request = is_URL_accessible(url)
+
     if state:
-        content = page.content
-        hostname, domain, path = get_domain(url)
-        extracted_domain = tldextract.extract(url)
+        r_url = request.url
+        content = request.content
+        hostname, domain, path = get_domain(r_url)
+        extracted_domain = tldextract.extract(r_url)
         domain = extracted_domain.domain + '.' + extracted_domain.suffix
         subdomain = extracted_domain.subdomain
-        tmp = url[url.find(extracted_domain.suffix):len(url)]
+        tmp = r_url[r_url.find(extracted_domain.suffix):len(r_url)]
         pth = tmp.partition("/")
         path = pth[1] + pth[2]
         words_raw, words_raw_host, words_raw_path = words_raw_extraction(extracted_domain.domain, subdomain, pth[2])
         tld = extracted_domain.suffix
-        parsed = urlparse(url)
+        parsed = urlparse(r_url)
         scheme = parsed.scheme
 
-        Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title, Text = extract_data_from_URL(hostname, content,
-                                                                                                   domain, Href, Link,
-                                                                                                   Anchor, Media, Form,
-                                                                                                   CSS, Favicon, IFrame,
-                                                                                                   Title, Text)
+        (Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title, Text), time_extraction = extract_data_from_URL(
+            hostname, content,
+            domain)
 
-        for hint in phish_hints['en']:
-            for href in Href['internals'] + Href['externals']:
-                if hint in href.lower():
-                    print(href, hint)
+        row = [
+            [url, time_extraction],
 
-            for lnk in Link['internals'] + Link['externals']:
-                if hint in lnk.lower():
-                    print(lnk, hint)
+            uf.having_ip_address(url),
+            uf.shortening_service(url),
 
+            uf.url_length(r_url),
+
+            uf.count_at(r_url),
+            uf.count_exclamation(r_url),
+            uf.count_plust(r_url),
+            uf.count_sBrackets(r_url),
+            uf.count_rBrackets(r_url),
+            uf.count_comma(r_url),
+            uf.count_dollar(r_url),
+            uf.count_semicolumn(r_url),
+            uf.count_space(r_url),
+            uf.count_and(r_url),
+            uf.count_double_slash(r_url),
+            uf.count_slash(r_url),
+            uf.count_equal(r_url),
+            uf.count_percentage(r_url),
+            uf.count_question(r_url),
+            uf.count_underscore(r_url),
+            uf.count_hyphens(r_url),
+            uf.count_dots(r_url),
+            uf.count_colon(r_url),
+            uf.count_star(r_url),
+            uf.count_or(r_url),
+            uf.count_http_token(r_url),
+
+            uf.https_token(scheme),
+
+            uf.ratio_digits(r_url),
+            uf.count_digits(r_url),
+
+            uf.count_tilde(r_url),
+            uf.phish_hints(r_url),
+
+            uf.tld_in_path(tld, path),
+            uf.tld_in_subdomain(tld, subdomain),
+            uf.tld_in_bad_position(tld, subdomain, path),
+
+            uf.abnormal_subdomain(r_url),
+
+            uf.count_redirection(request),
+            uf.count_external_redirection(request, domain),
+
+            uf.random_domain(domain),
+
+            uf.random_words(words_raw),
+            uf.random_words(words_raw_host),
+            uf.random_words(words_raw_path),
+
+            uf.char_repeat(words_raw),
+            uf.char_repeat(words_raw_host),
+            uf.char_repeat(words_raw_path),
+
+            uf.punycode(r_url),
+            uf.domain_in_brand(domain),
+            uf.brand_in_path(domain, words_raw_path),
+            uf.check_www(words_raw),
+            uf.check_com(words_raw),
+
+            uf.port(r_url),
+
+            uf.length_word_raw(words_raw),
+            uf.average_word_length(words_raw),
+            uf.longest_word_length(words_raw),
+            uf.shortest_word_length(words_raw),
+
+            uf.prefix_suffix(r_url),
+
+            uf.count_subdomain(r_url),
+
+
+
+
+            status
+        ]
+
+        # print(row)
+        return row
     return None
+
+
+def URLs_analyser(url_list):
+    pb = ProgressBar(total=len(url_list), prefix='url analysis', decimals=2, length=50, fill='█',
+                     zfill='-')
+
+    data = []
+    counters = []
+
+    def chunks(lst, n):
+        for i in range(0, len(lst), n):
+            yield lst[i:i + n]
+
+    def url_thread(url):
+        res = extract_features(url)
+
+        if res:
+            data.append(res[0])
+            counters.append(res[1])
+            pb.print_progress_bar(len(data))
+
+            if len(data) % 10 == 0:
+                pandas.DataFrame(url_list).to_csv("data/datasets/websites.csv", index=False, header=False)
+
+    for chunk in chunks(url_list, 100):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            executor.map(url_thread, chunk)
+            # TODO: USE OPR API
+
