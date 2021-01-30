@@ -23,12 +23,12 @@ def benchmark(func):
     return wrapper
 
 
-def normalize_exp3(func):
-    def wrapper(*args, **kwargs):
-        return_value = func(*args, **kwargs)
-        return 1 - 1 / (math.exp(return_value))
-
-    return wrapper
+# def normalize_exp3(func):
+#     def wrapper(*args, **kwargs):
+#         return_value = func(*args, **kwargs)
+#         return 1 - 1 / (math.exp(return_value))
+#
+#     return wrapper
 
 
 ########################################################################################################################
@@ -40,11 +40,54 @@ STOPWORDS = stopwords.words()
 
 
 def tokenize(text):
-    return RegexpTokenizer(r'[^\W\d]+').tokenize(text.lower())      # without numbers
+    return RegexpTokenizer(r'[^\W\d]+').tokenize(text)      # without numbers
 
 
 def clear_text(word_raw):
     return [word for word in word_raw if word not in STOPWORDS]
+
+
+from nltk.stem.wordnet import WordNetLemmatizer
+
+@benchmark
+def lemmatizer(word_raw):
+    lmtzr = WordNetLemmatizer()
+    return [lmtzr.lemmatize(word) for word in word_raw]
+
+
+########################################################################################################################
+#                                          TF-IDF
+########################################################################################################################
+
+
+from collections import Counter
+
+
+def compute_tf(word_raw):
+    tf = {}
+    N = len(word_raw)
+    for word, count in word_raw.items():
+        tf[word] = count/N
+    return tf
+
+
+def compute_idf(TF_list):
+    n = len(TF_list)
+    idf = Counter()
+    for TF in TF_list:
+        for word, count in TF.items():
+            idf[word] += 1
+
+    for word, v in idf.items():
+        idf[word] = math.log(n / float(v))
+    return dict(idf)
+
+
+def compute_tf_idf(tf, idf):
+    tf_idf = dict.fromkeys(tf.keys(), 0)
+    for word, v in tf.items():
+        tf_idf[word] = v * idf[word]
+    return tf_idf
 
 
 ########################################################################################################################

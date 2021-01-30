@@ -43,15 +43,15 @@ def whois_registered_domain(domain):
         if type(hostname) == list:
             for host in hostname:
                 if re.search(host.lower(), domain):
-                    return 0
-            return 1
+                    return 1
+            return 0
         else:
             if re.search(hostname.lower(), domain):
-                return 0
-            else:
                 return 1
+            else:
+                return 0
     except:
-        return 1
+        return -1
 
 
 #################################################################################################################################
@@ -65,8 +65,9 @@ def web_traffic(short_url):
         rank = BeautifulSoup(requests("http://data.alexa.com/data?cli=10&dat=s&url=" + short_url).text,
                              "xml").find("REACH")['RANK']
     except:
-        return sys.maxint
-    return int(rank)
+        return 1000000
+
+    return min(int(rank), 1000000)
 
 
 #################################################################################################################################
@@ -120,23 +121,72 @@ def google_index(url):
             return 0
 
     except AttributeError:
-        return 0
+        return -1
 
 
-#################################################################################################################################
+########################################################################################################################
 #               Page Rank from OPR
-#################################################################################################################################
+########################################################################################################################
+
+
+def http_build_query(params, topkey=''):
+    from urllib.parse import quote
+
+    if len(params) == 0:
+        return ""
+
+    result = ""
+
+    # is a dictionary?
+    if type(params) is dict:
+        for key in params.keys():
+            newkey = quote(key)
+            if topkey != '':
+                newkey = topkey + quote('[' + key + ']')
+
+            if type(params[key]) is dict:
+                result += http_build_query(params[key], newkey)
+
+            elif type(params[key]) is list:
+                i = 0
+                for val in params[key]:
+                    result += newkey + quote('[' + str(i) + ']') + "=" + quote(str(val)) + "&"
+                    i = i + 1
+
+            # boolean should have special treatment as well
+            elif type(params[key]) is bool:
+                result += newkey + "=" + quote(str(int(params[key]))) + "&"
+
+            # assume string (integers and floats work well)
+            else:
+                result += newkey + "=" + quote(str(params[key])) + "&"
+
+    # remove the last '&'
+    if (result) and (topkey == '') and (result[-1] == '&'):
+        result = result[:-1]
+
+    return result
+
 
 @benchmark
-def page_rank(domain):
-    url = 'https://openpagerank.com/api/v1.0/getPageRank?domains%5B0%5D=' + domain
+def page_rank(domains):
+    url = 'https://openpagerank.com/api/v1.0/getPageRank?' + http_build_query({"domains": domains})
     try:
         request = requests.get(url, headers={'API-OPR': OPR_key})
         result = request.json()
-        result = result['response'][0]['page_rank_integer']
-        if result:
-            return result
-        else:
-            return 0
+        result = [record['page_rank_decimal'] for record in result['response']]
+        return result
     except:
-        return 0
+        return None
+
+
+########################################################################################################################
+#               Google search by keywords
+########################################################################################################################
+
+
+from googlesearch import search
+
+@benchmark
+def compare_search2url(url, domain, keywords):
+    return search("http://{0}={1}".format(domain, '+'.join(keywords), 0))[0] == url

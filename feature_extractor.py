@@ -1,5 +1,4 @@
 import concurrent.futures
-from googletrans import Translator
 from console_progressbar import ProgressBar
 from datetime import date
 import pandas
@@ -8,83 +7,25 @@ import requests
 import os
 import re
 from random import randint
-from tools import benchmark, tokenize, segment
+import io
+import numpy as np
+
+from pandas.tests.io.json.test_ujson import numpy
+
+from tools import benchmark, tokenize, segment, clear_text, lemmatizer, compute_tf, compute_idf, compute_tf_idf
 
 from urllib.parse import urlparse, urlsplit
 from bs4 import BeautifulSoup
+from collections import Counter
 
 import url_features as uf
 import external_features as ef
+import content_features as cf
 
 
 key = open("OPR_key.txt").read()
 
-translator = Translator()
 
-
-def load_phishHints():
-    hints_dir = "data/phish_hints/"
-    file_list = os.listdir(hints_dir)
-
-    if file_list:
-        return [{leng[0:2]: pandas.read_csv(hints_dir + leng, header=None)[0].tolist()} for leng in file_list][0]
-    else:
-        hints = {'en': [
-            'login',
-            'logon',
-            'account',
-            'authorization',
-            'registration',
-            'user',
-            'password',
-            'pay',
-            'name',
-            'profile',
-            'mail',
-            'pass',
-            'reg',
-            'log',
-            'auth',
-            'psw',
-            'nickname',
-            'enter',
-            'bank',
-            'card',
-            'pincode',
-            'phone',
-            'key',
-            'visa',
-            'cvv',
-            'cvp',
-            'cvc',
-            'ccv'
-        ]
-        }
-
-        data = pandas.DataFrame(hints)
-        filename = "data/phish_hints/en.csv"
-        data.to_csv(filename, index=False, header=False)
-
-        return hints
-
-
-phish_hints = load_phishHints()
-
-@benchmark
-def check_Language(text):
-    language = translator.detect(text).lang
-
-    if language not in phish_hints:
-        phish_hints[language] = translator.translate(";".join(phish_hints['en'][0:16]), src='en',
-                                                     dest=language).text.split(";")
-        data = pandas.DataFrame(phish_hints[language])
-        filename = "data/phish_hints/{0}.csv".format(language)
-        data.to_csv(filename, index=False, header=False)
-
-    return language
-
-
-@benchmark
 def is_URL_accessible(url, time_out=5):
     page = None
     try:
@@ -344,6 +285,36 @@ def extract_data_from_URL(hostname, content, domain):
     return Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title, Text
 
 
+filter1 = re.compile('"|javascript:|void(0)|((\.js|\.png|\.css|\.ico|\.jpg|\.json|\.csv|\.xml|/#)$)').search
+filter2 = re.compile('(\.js|\.png|\.css|\.ico|\.jpg|\.json|\.csv|\.xml|/#)$').search
+
+
+def extract_URLs_from_page(hostname, content, domain):
+    Null_format = ["", "#", "#nothing", "#doesnotexist", "#null", "#void", "#whatever",
+                   "#content", "javascript::void(0)", "javascript::void(0);", "javascript::;", "javascript"]
+
+    Href = []
+    soup = BeautifulSoup(content, 'html.parser', from_encoding='iso-8859-1')
+
+    # collect all external and internal hrefs from url
+    for href in soup.find_all('a', href=True):
+        dots = [x.start(0) for x in re.finditer('\.', href['href'])]
+        if hostname in href['href'] or domain in href['href'] or len(dots) == 1 or not href['href'].startswith(
+                'http'):
+            if not href['href'].startswith('http'):
+                if not href['href'].startswith('/'):
+                    Href.append('http://' + hostname + '/' + href['href'])
+                elif href['href'] not in Null_format:
+                    Href.append('http://' + hostname + href['href'])
+        else:
+            Href.append(href['href'])
+
+    Href = [url for url in Href if url if url and not filter1(url) and not filter2(urlparse(url).path)]
+    # Href = [url for url in Href if is_URL_accessible(url)[0]]
+
+    return Href
+
+
 def find_duplicates(list):
     class Dictlist(dict):
         def __setitem__(self, key, value):
@@ -392,8 +363,6 @@ def generate_legitimate_urls(N):
                                   header=None)[1].tolist()
 
     url_list = []
-    search_1 = re.compile('"|javascript:|void(0)|((\.js|\.png|\.css|\.ico|\.jpg|\.json|\.csv|\.xml|/#)$)').search
-    search_2 = re.compile('(\.js|\.png|\.css|\.ico|\.jpg|\.json|\.csv|\.xml|/#)$').search
 
     def url_thread(domain):
         if len(url_list) >= N:
@@ -401,7 +370,7 @@ def generate_legitimate_urls(N):
 
         url = search_for_vulnerable_URLs(domain)
 
-        if url and not search_1(url) and not search_2(urlparse(url).path):
+        if url:
             url_list.append(url)
             pb.print_progress_bar(len(url_list))
 
@@ -414,7 +383,10 @@ def generate_legitimate_urls(N):
         executor.map(url_thread, domain_list)
 
     url_list = find_duplicates(filter_url_list(url_list))
-    pandas.DataFrame(url_list).to_csv("data/urls/legitimate/{0}.csv".format(date.today().strftime("%d-%m-%Y")), index=False, header=False)
+    pandas.DataFrame(url_list).to_csv("data/urls/legitimate/{0}.csv".format(date.today().strftime("%d-%m-%Y")),
+                                      index=False, header=False)
+
+
 
 
 def search_for_vulnerable_URLs(domain):
@@ -423,23 +395,19 @@ def search_for_vulnerable_URLs(domain):
     state, request = is_URL_accessible(url, 1)
 
     if state:
-        r_url = request.url
+        url = request.url
         content = request.content
-        hostname, domain, path = get_domain(r_url)
-        extracted_domain = tldextract.extract(r_url)
+        hostname, domain, path = get_domain(url)
+        extracted_domain = tldextract.extract(url)
         domain = extracted_domain.domain + '.' + extracted_domain.suffix
 
-        (Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title, Text), time_extraction = extract_data_from_URL(
-            hostname, content,
-            domain)
-        lst = Href['internals'] + Link['internals']
-        lst = ['http://'+lnk for lnk in lst] + Href['externals'] + Link['externals']
+        Href = extract_URLs_from_page(hostname, content, domain)
 
-        if lst:
-            url = lst[randint(1, len(lst))]
-            state, url, page = is_URL_accessible(url, 1)
+        if Href:
+            url = Href[randint(0, len(Href))-1]
+            state, request = is_URL_accessible(url, 1)
             if state:
-                return url
+                return request.url
 
     return None
 
@@ -473,11 +441,16 @@ def extract_features(url, status):
         scheme = parsed.scheme
 
         (Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title, Text), time_extraction = extract_data_from_URL(
-            hostname, content,
-            domain)
+            hostname, content, domain)
+
+        Text_words, lemmatization_time = lemmatizer(clear_text(tokenize(Text.lower() + Title.lower())))
+        TF = compute_tf(Text_words)
+        word_ratio = len(TF) / len(Text_words)
 
         row = [
-            [url, time_extraction],
+            (url, domain),
+            (word_ratio, lemmatization_time),
+            (status, time_extraction),
 
             uf.having_ip_address(url),
             uf.shortening_service(url),
@@ -553,13 +526,48 @@ def extract_features(url, status):
 
 
 
+            cf.nb_hyperlinks(Href, Link, Media, Form, CSS, Favicon),
+            cf.internal_hyperlinks(Href, Link, Media, Form, CSS, Favicon),
+            cf.external_hyperlinks(Href, Link, Media, Form, CSS, Favicon),
+            cf.null_hyperlinks(hostname, Href, Link, Media, Form, CSS, Favicon),
+            cf.external_css(CSS),
+            cf.internal_redirection(Href, Link, Media, Form, CSS, Favicon),
+            cf.external_redirection(Href, Link, Media, Form, CSS, Favicon),
+            cf.internal_errors(Href, Link, Media, Form, CSS, Favicon),
+            cf.external_errors(Href, Link, Media, Form, CSS, Favicon),
+            cf.login_form(Form),
+            cf.external_favicon(Favicon),
+            cf.submitting_to_email(Form),
+            cf.internal_media(Media),
+            cf.external_media(Media),
+            cf.empty_title(Title),
+            cf.safe_anchor(Anchor),
+            cf.links_in_tags(Link),
+            cf.iframe(IFrame),
+            cf.onmouseover(content),
+            cf.popup_window(content),
+            cf.right_clic(content),
+            cf.domain_in_title(domain, Title),
+            cf.domain_with_copyright(domain, content),
+            cf.compression_ratio(request),
 
-            status
+
+
+            ef.domain_registration_length(domain),
+            ef.whois_registered_domain(domain),
+            ef.web_traffic(r_url),
+            ef.domain_age(domain),
+            ef.google_index(r_url),
+            ef.page_rank(domain),
+            ef.compare_search2url(r_url, domain, [t[0] for t in TF.most_common(5)])
         ]
 
         # print(row)
-        return row
+        return row, TF
     return None
+
+
+chunk_size = 100
 
 
 def URLs_analyser(url_list):
@@ -567,25 +575,55 @@ def URLs_analyser(url_list):
                      zfill='-')
 
     data = []
-    counters = []
+    counter = []
+    buffer = []
+
+    TF = {0: [], 1: []}
 
     def chunks(lst, n):
         for i in range(0, len(lst), n):
             yield lst[i:i + n]
 
-    def url_thread(url):
-        res = extract_features(url)
+    def url_thread(url, status):
+        res = extract_features(url, status)
 
         if res:
-            data.append(res[0])
-            counters.append(res[1])
-            pb.print_progress_bar(len(data))
+            tmp.append(res[0])
+            TF[status].append(res[1])
 
-            if len(data) % 10 == 0:
-                pandas.DataFrame(url_list).to_csv("data/datasets/websites.csv", index=False, header=False)
+            pb.print_progress_bar(len(buffer)+len(data))
 
-    for chunk in chunks(url_list, 100):
+
+    for chunk in chunks(url_list, chunk_size):
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            executor.map(url_thread, chunk)
-            # TODO: USE OPR API
+            executor.map(lambda args: url_thread(*args), chunk)
 
+            clmn, rank_time = ef.page_rank([raw[0][1] for raw in buffer])
+
+            tmp = np.array(buffer)
+
+            data.append(np.c_[tmp[:, :, 0], clmn].tolist())
+            counter.append(np.c_[tmp[:, :, 0], [rank_time]*tmp.shape[0]].tolist())
+
+            tmp = []
+
+            times = np.average(np.array(counter), axis=0)
+
+            pandas.DataFrame(data + times).to_csv(
+                'data/datasets/{0}.csv'.format(date.today().strftime("%d-%m-%Y")), index=False, header=False)
+
+    IDF = {0: compute_idf(TF[0]), 1: compute_idf(TF[0])}
+    TF_IDF = {0: [], 1: []}
+
+    pb = ProgressBar(total=len(TF.values()), prefix='compute TF-IDF', decimals=2, length=50, fill='█',
+                     zfill='-')
+    i = 0
+
+    for s, tf_list in TF.items():
+        for tf in tf_list:
+            i += 1
+            pb.print_progress_bar(i)
+            TF_IDF[s].append(compute_tf_idf(tf, IDF[s]))
+
+    pandas.DataFrame(TF_IDF[0]).to_csv('data/TF-IDF/legitimate_{0}.csv'.format(date.today().strftime("%d-%m-%Y")))
+    pandas.DataFrame(TF_IDF[1]).to_csv('data/TF-IDF/phishing_{0}.csv'.format(date.today().strftime("%d-%m-%Y")))

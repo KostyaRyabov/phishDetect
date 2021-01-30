@@ -5,14 +5,7 @@ import pandas
 import re
 from tools import benchmark, WORDS, segment
 
-
-HINTS = ['wp', 'login', 'includes', 'admin', 'content', 'site', 'images', 'js', 'alibaba', 'css', 'myaccount',
-         'dropbox', 'themes', 'plugins', 'signin', 'view']
-
-allbrand = pandas.read_csv("data/brands/brandirectory-ranking-data-global-2020.csv", usecols=['Brand'])[
-        "Brand"].tolist()
-
-allbrand = [x.lower() for x in allbrand]
+from data.collector import phish_hints, brand_list
 
 
 ########################################################################################################################
@@ -316,7 +309,7 @@ def count_tilde(full_url):
 @benchmark
 def phish_hints(url_path):
     count = 0
-    for hint in HINTS:
+    for hint in phish_hints:
         count += url_path.lower().count(hint)
     return count
 
@@ -396,7 +389,7 @@ def count_external_redirection(page, domain):
 
 @benchmark
 def random_domain(domain):
-    return len([word for word in segment(domain) if word not in WORDS+allbrand]) > 0
+    return len([word for word in segment(domain) if word not in WORDS + brand_list]) > 0
 
 
 ########################################################################################################################
@@ -406,7 +399,7 @@ def random_domain(domain):
 @benchmark
 def random_words(words_raw):
     return [word for str in [segment(word) for word in words_raw] for word in str if
-            word not in WORDS + allbrand]
+            word not in WORDS + brand_list]
 
 
 ########################################################################################################################
@@ -452,12 +445,14 @@ import Levenshtein
 
 @benchmark
 def domain_in_brand(domain):
-    for b in allbrand:
-        dst = len(Levenshtein.editops(domain.lower(), b.lower()))
+    word = domain.lower()
+
+    for idx, b in brand_list:
+        dst = len(Levenshtein.editops(word, b.lower()))
         if dst == 0:
-            return 1
-        elif dst < 2:
-            return 0.5
+            return idx / len(brand_list)
+        elif dst <= (len(word)-2)/3+1:
+            return idx / (len(brand_list) * 2)
     return 0
 
 
@@ -465,11 +460,13 @@ def domain_in_brand(domain):
 #               brand name in path
 ########################################################################################################################
 
+import math
+
 @benchmark
 def brand_in_path(domain, path):
-    for b in allbrand:
+    for idx, b in brand_list:
         if b in path and b not in domain:
-            return 1
+            return idx / len(brand_list)
     return 0
 
 
@@ -575,49 +572,9 @@ def count_subdomain(url):
 
 
 ########################################################################################################################
-#               Statistical report
+#               count subdomain
 ########################################################################################################################
-
-import socket
 
 @benchmark
-def statistical_report(url, domain):
-    url_match = re.search(
-        'at\.ua|usa\.cc|baltazarpresentes\.com\.br|pe\.hu|esy\.es|hol\.es|sweddy\.com|myjino\.ru|96\.lt|ow\.ly', url)
-    try:
-        ip_address = socket.gethostbyname(domain)
-        ip_match = re.search(
-            '146\.112\.61\.108|213\.174\.157\.151|121\.50\.168\.88|192\.185\.217\.116|78\.46\.211\.158|181\.174\.165\.13|46\.242\.145\.103|121\.50\.168\.40|83\.125\.22\.219|46\.242\.145\.98|'
-            '107\.151\.148\.44|107\.151\.148\.107|64\.70\.19\.203|199\.184\.144\.27|107\.151\.148\.108|107\.151\.148\.109|119\.28\.52\.61|54\.83\.43\.69|52\.69\.166\.231|216\.58\.192\.225|'
-            '118\.184\.25\.86|67\.208\.74\.71|23\.253\.126\.58|104\.239\.157\.210|175\.126\.123\.219|141\.8\.224\.221|10\.10\.10\.10|43\.229\.108\.32|103\.232\.215\.140|69\.172\.201\.153|'
-            '216\.218\.185\.162|54\.225\.104\.146|103\.243\.24\.98|199\.59\.243\.120|31\.170\.160\.61|213\.19\.128\.77|62\.113\.226\.131|208\.100\.26\.234|195\.16\.127\.102|195\.16\.127\.157|'
-            '34\.196\.13\.28|103\.224\.212\.222|172\.217\.4\.225|54\.72\.9\.51|192\.64\.147\.141|198\.200\.56\.183|23\.253\.164\.103|52\.48\.191\.26|52\.214\.197\.72|87\.98\.255\.18|209\.99\.17\.27|'
-            '216\.38\.62\.18|104\.130\.124\.96|47\.89\.58\.141|78\.46\.211\.158|54\.86\.225\.156|54\.82\.156\.19|37\.157\.192\.102|204\.11\.56\.48|110\.34\.231\.42',
-            ip_address)
-        if url_match or ip_match:
-            return 1
-        else:
-            return 0
-    except:
-        return 2
-
-
-########################################################################################################################
-#               Suspecious TLD
-########################################################################################################################
-
-suspecious_tlds = ['fit', 'tk', 'gp', 'ga', 'work', 'ml', 'date', 'wang', 'men', 'icu', 'online', 'click',  # Spamhaus
-                   'country', 'stream', 'download', 'xin', 'racing', 'jetzt',
-                   'ren', 'mom', 'party', 'review', 'trade', 'accountants',
-                   'science', 'ninja', 'xyz', 'faith', 'zip', 'cricket', 'win',
-                   'link',  # Blue Coat Systems
-                   'cf','bid','host','tw','loan','site','ltd','vip','cat','pro','jobs','limited','mobi','support','moe'
-                   'asia', 'club', 'la', 'ae', 'exposed', 'pe', 'go.id', 'rs', 'k12.pa.us', 'or.kr',
-                   'ce.ke', 'audio', 'gob.pe', 'gov.az', 'website', 'bj', 'mx', 'media', 'sa.gov.au'  # statistics
-                   ]
-
-@benchmark
-def suspecious_tld(tld):
-    if tld in suspecious_tlds:
-        return 1
-    return 0
+def header_server(request):
+    return request.headers['server']

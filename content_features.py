@@ -16,20 +16,16 @@ def nb_hyperlinks(Href, Link, Media, Form, CSS, Favicon):
            len(CSS['internals']) + len(CSS['externals']) +\
            len(Favicon['internals']) + len(Favicon['externals'])
 
-# @benchmark
-# def nb_hyperlinks(dom):
-#     return len(dom.find("href")) + len(dom.find("src"))
-
 
 ########################################################################################################################
 #               Internal hyperlinks ratio
 ########################################################################################################################
 
-@benchmark
-def h_total(Href, Link, Media, Form, CSS, Favicon):
-    return nb_hyperlinks(Href, Link, Media, Form, CSS, Favicon)
 
-@benchmark
+def h_total(Href, Link, Media, Form, CSS, Favicon):
+    return nb_hyperlinks(Href, Link, Media, Form, CSS, Favicon)[0]
+
+
 def h_internal(Href, Link, Media, Form, CSS, Favicon):
     return len(Href['internals']) + len(Link['internals']) + len(Media['internals']) + \
            len(Form['internals']) + len(CSS['internals']) + len(Favicon['internals'])
@@ -47,7 +43,7 @@ def internal_hyperlinks(Href, Link, Media, Form, CSS, Favicon):
 #               External hyperlinks ratio
 ########################################################################################################################
 
-@benchmark
+
 def h_external(Href, Link, Media, Form, CSS, Favicon):
     return len(Href['externals']) + len(Link['externals']) + len(Media['externals']) + \
            len(Form['externals']) + len(CSS['externals']) + len(Favicon['externals'])
@@ -65,7 +61,7 @@ def external_hyperlinks(Href, Link, Media, Form, CSS, Favicon):
 #               Number of null hyperlinks
 ########################################################################################################################
 
-@benchmark
+
 def h_null(hostname, Href, Link, Media, Form, CSS, Favicon):
     return len(Href['null']) + len(Link['null']) + len(Media['null']) + len(Form['null']) + len(CSS['null']) + len(
         Favicon['null'])
@@ -91,7 +87,7 @@ def external_css(CSS):
 #               Internal redirections
 ########################################################################################################################
 
-@benchmark
+
 def h_i_redirect(Href, Link, Media, Form, CSS, Favicon):
     count = 0
     for link in Href['internals']:
@@ -151,7 +147,7 @@ def internal_redirection(Href, Link, Media, Form, CSS, Favicon):
 #               External redirections
 ########################################################################################################################
 
-@benchmark
+
 def h_e_redirect(Href, Link, Media, Form, CSS, Favicon):
     count = 0
     for link in Href['externals']:
@@ -217,7 +213,7 @@ def external_redirection(Href, Link, Media, Form, CSS, Favicon):
 #               Generates internal errors
 ########################################################################################################################
 
-@benchmark
+
 def h_i_error(Href, Link, Media, Form, CSS, Favicon):
     count = 0
     for link in Href['internals']:
@@ -270,7 +266,7 @@ def internal_errors(Href, Link, Media, Form, CSS, Favicon):
 #               Generates external errors
 ########################################################################################################################
 
-@benchmark
+
 def h_e_error(Href, Link, Media, Form, CSS, Favicon):
     count = 0
     for link in Href['externals']:
@@ -509,5 +505,20 @@ def domain_with_copyright(domain, content):
 #              Count of input areas
 ########################################################################################################################
 
+
 @benchmark
-def count_input(content):
+def compression_ratio(request):
+    try:
+        compressed_length = int(request.headers['content-length'])
+        decompressed_length = len(request.content)
+        return compressed_length / decompressed_length
+    except:
+        return -1
+
+
+########################################################################################################################
+#              Count of input areas
+########################################################################################################################
+
+# @benchmark
+# def count_input(content):
