@@ -3,9 +3,8 @@
 
 import pandas
 import re
-from tools import benchmark, WORDS, segment
-
-from data.collector import phish_hints, brand_list
+from tools import benchmark, segment, WORDS
+from data.collector import brand_list
 
 
 ########################################################################################################################
@@ -307,9 +306,9 @@ def count_tilde(full_url):
 ########################################################################################################################
 
 @benchmark
-def phish_hints(url_path):
+def phish_hints(url_path, phish_hints):
     count = 0
-    for hint in phish_hints:
+    for hint in [item for sublist in phish_hints.values() for item in sublist]:
         count += url_path.lower().count(hint)
     return count
 
@@ -380,7 +379,7 @@ def count_external_redirection(page, domain):
         for i, response in enumerate(page.history, 1):
             if domain.lower() not in response.url.lower():
                 count += 1
-            return count
+        return count
 
 
 ########################################################################################################################
@@ -388,8 +387,8 @@ def count_external_redirection(page, domain):
 ########################################################################################################################
 
 @benchmark
-def random_domain(domain):
-    return len([word for word in segment(domain) if word not in WORDS + brand_list]) > 0
+def random_domain(second_level_domain):
+    return len([word for word in segment(second_level_domain) if word not in WORDS + brand_list]) > 0
 
 
 ########################################################################################################################
@@ -398,8 +397,8 @@ def random_domain(domain):
 
 @benchmark
 def random_words(words_raw):
-    return [word for str in [segment(word) for word in words_raw] for word in str if
-            word not in WORDS + brand_list]
+    return len([word for str in [segment(word) for word in words_raw] for word in str if
+            word not in WORDS + brand_list])
 
 
 ########################################################################################################################
@@ -444,10 +443,10 @@ def punycode(url):
 import Levenshtein
 
 @benchmark
-def domain_in_brand(domain):
-    word = domain.lower()
+def domain_in_brand(second_level_domain):
+    word = second_level_domain.lower()
 
-    for idx, b in brand_list:
+    for idx, b in enumerate(brand_list):
         dst = len(Levenshtein.editops(word, b.lower()))
         if dst == 0:
             return idx / len(brand_list)
@@ -463,9 +462,9 @@ def domain_in_brand(domain):
 import math
 
 @benchmark
-def brand_in_path(domain, path):
-    for idx, b in brand_list:
-        if b in path and b not in domain:
+def brand_in_path(second_level_domain, path):
+    for idx, b in enumerate(brand_list):
+        if b in path and b not in second_level_domain:
             return idx / len(brand_list)
     return 0
 
@@ -572,9 +571,70 @@ def count_subdomain(url):
 
 
 ########################################################################################################################
-#               count subdomain
+#               header server
 ########################################################################################################################
 
-@benchmark
+
 def header_server(request):
     return request.headers['server']
+
+
+########################################################################################################################
+#               visual similarity of symbols
+########################################################################################################################
+
+
+symbols = {
+    'g': ['g', 'q'],
+    'q': ['q', 'g'],
+    'l': ['l', '1', 'i'],
+    '1': ['1', 'l', 'i'],
+    'i': ['i', '1', 'l'],
+    'o': ['o', '0'],
+    '0': ['0', 'o'],
+    'rn': ['rn', 'm'],
+    'vv': ['vv', 'w'],
+    'm': ['m', 'rn'],
+    'w': ['w', 'vv']
+}
+
+
+from functools import reduce
+from operator import mul
+
+
+def get_variation_list(dic):
+    N = len(dic)
+    dividers = [reduce(mul, [len(dic[N - y - 1]) for y in range(N - x - 1)], 1) for x in range(N)]
+    max_size = reduce(mul, [len(dic[x]) for x in range(N)], 1) - 1
+    return [[dic[x][int((i+1) / dividers[x]) % len(dic[x])] for x in range(N)] for i in range(max_size)]
+
+@benchmark
+def count_visual_similarity_domains(second_level_domain):
+    finded = {}
+
+    for s, lst in symbols.items():
+        shift = 0
+        while True:
+            idx = second_level_domain.find(s, shift)
+
+            if idx < 0:
+                break
+
+            shift = idx + 1
+            finded[idx] = {'from': s, 'to': lst}
+
+    dic = []
+    pattern = second_level_domain.lower()
+
+    for key in sorted(finded.keys()):
+        pattern = pattern.replace(finded[key]['from'], '{}')
+        dic.append(finded[key]['to'])
+
+    for b in brand_list[:100000]:
+        for variation in get_variation_list(dic):
+            word = pattern.format(*variation)
+            if word == b.lower():
+                return 1
+
+    return 0

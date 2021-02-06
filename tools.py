@@ -1,9 +1,8 @@
 import time
-from nltk.corpus import stopwords, brown
-from nltk.tokenize import RegexpTokenizer
 import math
+from nltk.tokenize import RegexpTokenizer
+from nltk.corpus import stopwords, brown
 from collections import Counter
-
 
 WORDS = list(Counter(brown.words()).keys())
 
@@ -49,11 +48,6 @@ def clear_text(word_raw):
 
 from nltk.stem.wordnet import WordNetLemmatizer
 
-@benchmark
-def lemmatizer(word_raw):
-    lmtzr = WordNetLemmatizer()
-    return [lmtzr.lemmatize(word) for word in word_raw]
-
 
 ########################################################################################################################
 #                                          TF-IDF
@@ -66,7 +60,7 @@ from collections import Counter
 def compute_tf(word_raw):
     tf = {}
     N = len(word_raw)
-    for word, count in word_raw.items():
+    for word, count in Counter(word_raw).items():
         tf[word] = count/N
     return tf
 

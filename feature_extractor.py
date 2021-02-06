@@ -9,18 +9,89 @@ import re
 from random import randint
 import io
 import numpy as np
+import time
 
-from pandas.tests.io.json.test_ujson import numpy
+from requests import request
 
-from tools import benchmark, tokenize, segment, clear_text, lemmatizer, compute_tf, compute_idf, compute_tf_idf
+from tools import tokenize, segment, clear_text, compute_tf, compute_idf, compute_tf_idf, benchmark
 
-from urllib.parse import urlparse, urlsplit
+from urllib.parse import urlparse, urlsplit, urljoin
 from bs4 import BeautifulSoup
 from collections import Counter
 
 import url_features as uf
 import external_features as ef
 import content_features as cf
+
+from googletrans import Translator
+
+translator = Translator()
+
+def load_phishHints():
+    hints_dir = "data/phish_hints/"
+    file_list = os.listdir(hints_dir)
+
+    if file_list:
+        return [{leng[0:2]: pandas.read_csv(hints_dir + leng, header=None)[0].tolist()} for leng in file_list][0]
+    else:
+        hints = {'en': [
+            'login',
+            'logon',
+            'account',
+            'authorization',
+            'registration',
+            'user',
+            'password',
+            'pay',
+            'name',
+            'profile',
+            'mail',
+            'pass',
+            'reg',
+            'log',
+            'auth',
+            'psw',
+            'nickname',
+            'enter',
+            'bank',
+            'card',
+            'pincode',
+            'phone',
+            'key',
+            'visa',
+            'cvv',
+            'cvp',
+            'cvc',
+            'ccv'
+        ]
+        }
+
+        data = pandas.DataFrame(hints)
+        filename = "data/phish_hints/en.csv"
+        data.to_csv(filename, index=False, header=False)
+
+        return hints
+
+
+phish_hints = load_phishHints()
+
+
+def check_Language(text):
+    global phish_hints
+
+    language = translator.detect(str(text)[0:5000]).lang
+
+    if language not in phish_hints:
+        words = translator.translate(";".join(phish_hints['en'][0:16]), src='en',
+                                                     dest=language).text.split(";")
+
+        phish_hints[language] = [word.strip() for word in words]
+
+        data = pandas.DataFrame(phish_hints[language])
+        filename = "data/phish_hints/{0}.csv".format(language)
+        data.to_csv(filename, index=False, header=False)
+
+    return language
 
 
 key = open("OPR_key.txt").read()
@@ -52,209 +123,216 @@ def get_domain(url):
     return o.hostname, tldextract.extract(url).domain, o.path
 
 @benchmark
-def extract_data_from_URL(hostname, content, domain):
+def extract_data_from_URL(hostname, content, domain, base_url):
     Null_format = ["", "#", "#nothing", "#doesnotexist", "#null", "#void", "#whatever",
                    "#content", "javascript::void(0)", "javascript::void(0);", "javascript::;", "javascript"]
 
     Href = {'internals': [], 'externals': [], 'null': []}
     Link = {'internals': [], 'externals': [], 'null': []}
     Anchor = {'safe': [], 'unsafe': [], 'null': []}
+    Img = {'internals': [], 'externals': [], 'null': []}
     Media = {'internals': [], 'externals': [], 'null': []}
     Form = {'internals': [], 'externals': [], 'null': []}
-    CSS = {'internals': [], 'externals': [], 'null': []}
+    CSS = {'internals': [], 'externals': [], 'null': [], 'embedded': 0}
     Favicon = {'internals': [], 'externals': [], 'null': []}
     IFrame = {'visible': [], 'invisible': [], 'null': []}
+    SCRIPT = {'internals': [], 'externals': [], 'null': [], 'embedded': 0}       # JavaScript
     Title = ''
     Text = ''
 
-    soup = BeautifulSoup(content, 'html.parser', from_encoding='iso-8859-1')
+    soup = BeautifulSoup(content, 'html.parser')
+
+    # collect all external and internal hrefs from url
+    for script in soup.find_all('script', src=True):
+        url = script['src']
+
+        if url in Null_format:
+            url = 'http://' + hostname + '/' + url
+            SCRIPT['null'].append(url)
+            Link['null'].append(url)
+            continue
+
+        url = urljoin(base_url, url)
+
+        if domain in urlparse(url).netloc:
+            SCRIPT['internals'].append(url)
+            Link['internals'].append(url)
+        else:
+            SCRIPT['externals'].append(url)
+            Link['externals'].append(url)
 
     # collect all external and internal hrefs from url
     for href in soup.find_all('a', href=True):
-        dots = [x.start(0) for x in re.finditer('\.', href['href'])]
-        if hostname in href['href'] or domain in href['href'] or len(dots) == 1 or not href['href'].startswith('http'):
-            if "#" in href['href'] or "javascript" in href['href'].lower() or "mailto" in href['href'].lower():
-                Anchor['unsafe'].append(href['href'])
-            if not href['href'].startswith('http'):
-                if not href['href'].startswith('/'):
-                    Href['internals'].append(hostname + '/' + href['href'])
-                elif href['href'] in Null_format:
-                    Href['null'].append(href['href'])
-                else:
-                    Href['internals'].append(hostname + href['href'])
+        url = href['href']
+
+        if "#" in url or "javascript" in url.lower() or "mailto" in url.lower():
+            Anchor['unsafe'].append('http://' + hostname + '/' + url)
+
+        if url in Null_format:
+            Href['null'].append('http://' + hostname + '/' + url)
+            continue
+
+        url = urljoin(base_url, url)
+
+        if domain in urlparse(url).netloc:
+            Href['internals'].append(url)
         else:
-            Href['externals'].append(href['href'])
-            Anchor['safe'].append(href['href'])
+            Href['externals'].append(url)
+            Anchor['safe'].append(url)
 
     # collect all media src tags
     for img in soup.find_all('img', src=True):
-        dots = [x.start(0) for x in re.finditer('\.', img['src'])]
-        if hostname in img['src'] or domain in img['src'] or len(dots) == 1 or not img['src'].startswith('http'):
-            if not img['src'].startswith('http'):
-                if not img['src'].startswith('/'):
-                    Media['internals'].append(hostname + '/' + img['src'])
-                elif img['src'] in Null_format:
-                    Media['null'].append(img['src'])
-                else:
-                    Media['internals'].append(hostname + img['src'])
+        url = img['src']
+
+        if url in Null_format:
+            url = 'http://' + hostname + '/' + url
+            Media['null'].append(url)
+            Img['null'].append(url)
+            continue
+
+        url = urljoin(base_url, url)
+
+        if domain in urlparse(url).netloc:
+            Media['internals'].append(url)
+            Img['internals'].append(url)
         else:
-            Media['externals'].append(img['src'])
+            Media['externals'].append(url)
+            Img['externals'].append(url)
+
 
     for audio in soup.find_all('audio', src=True):
-        dots = [x.start(0) for x in re.finditer('\.', audio['src'])]
-        if hostname in audio['src'] or domain in audio['src'] or len(dots) == 1 or not audio['src'].startswith('http'):
-            if not audio['src'].startswith('http'):
-                if not audio['src'].startswith('/'):
-                    Media['internals'].append(hostname + '/' + audio['src'])
-                elif audio['src'] in Null_format:
-                    Media['null'].append(audio['src'])
-                else:
-                    Media['internals'].append(hostname + audio['src'])
+        url = audio['src']
+
+        if url in Null_format:
+            Media['null'].append('http://' + hostname + '/' + url)
+            continue
+
+        url = urljoin(base_url, url)
+
+        if domain in urlparse(url).netloc:
+            Media['internals'].append(url)
         else:
-            Media['externals'].append(audio['src'])
+            Media['externals'].append(url)
+
 
     for embed in soup.find_all('embed', src=True):
-        dots = [x.start(0) for x in re.finditer('\.', embed['src'])]
-        if hostname in embed['src'] or domain in embed['src'] or len(dots) == 1 or not embed['src'].startswith('http'):
-            if not embed['src'].startswith('http'):
-                if not embed['src'].startswith('/'):
-                    Media['internals'].append(hostname + '/' + embed['src'])
-                elif embed['src'] in Null_format:
-                    Media['null'].append(embed['src'])
-                else:
-                    Media['internals'].append(hostname + embed['src'])
+        url = embed['src']
+
+        if url in Null_format:
+            Media['null'].append('http://' + hostname + '/' + url)
+            continue
+
+        url = urljoin(base_url, url)
+
+        if domain in urlparse(url).netloc:
+            Media['internals'].append(url)
         else:
-            Media['externals'].append(embed['src'])
+            Media['externals'].append(url)
+
 
     for i_frame in soup.find_all('iframe', src=True):
-        dots = [x.start(0) for x in re.finditer('\.', i_frame['src'])]
-        if hostname in i_frame['src'] or domain in i_frame['src'] or len(dots) == 1 or not i_frame['src'].startswith(
-                'http'):
-            if not i_frame['src'].startswith('http'):
-                if not i_frame['src'].startswith('/'):
-                    Media['internals'].append(hostname + '/' + i_frame['src'])
-                elif i_frame['src'] in Null_format:
-                    Media['null'].append(i_frame['src'])
-                else:
-                    Media['internals'].append(hostname + i_frame['src'])
+        url = i_frame['src']
+
+        if url in Null_format:
+            Media['null'].append('http://' + hostname + '/' + url)
+            continue
+
+        url = urljoin(base_url, url)
+
+        if domain in urlparse(url).netloc:
+            Media['internals'].append(url)
         else:
-            Media['externals'].append(i_frame['src'])
+            Media['externals'].append(url)
 
     # collect all link tags
     for link in soup.findAll('link', href=True):
-        dots = [x.start(0) for x in re.finditer('\.', link['href'])]
-        if hostname in link['href'] or domain in link['href'] or len(dots) == 1 or not link['href'].startswith('http'):
-            if not link['href'].startswith('http'):
-                if not link['href'].startswith('/'):
-                    Link['internals'].append(hostname + '/' + link['href'])
-                elif link['href'] in Null_format:
-                    Link['null'].append(link['href'])
-                else:
-                    Link['internals'].append(hostname + link['href'])
-        else:
-            Link['externals'].append(link['href'])
+        url = link['href']
 
-    for script in soup.find_all('script', src=True):
-        dots = [x.start(0) for x in re.finditer('\.', script['src'])]
-        if hostname in script['src'] or domain in script['src'] or len(dots) == 1 or not script['src'].startswith(
-                'http'):
-            if not script['src'].startswith('http'):
-                if not script['src'].startswith('/'):
-                    Link['internals'].append(hostname + '/' + script['src'])
-                elif script['src'] in Null_format:
-                    Link['null'].append(script['src'])
-                else:
-                    Link['internals'].append(hostname + script['src'])
+        if url in Null_format:
+            Link['null'].append('http://' + hostname + '/' + url)
+            continue
+
+        url = urljoin(base_url, url)
+
+        if domain in urlparse(url).netloc:
+            Link['internals'].append(url)
         else:
-            Link['externals'].append(link['href'])
+            Link['externals'].append(url)
 
     # collect all css
     for link in soup.find_all('link', rel='stylesheet'):
-        dots = [x.start(0) for x in re.finditer('\.', link['href'])]
-        if hostname in link['href'] or domain in link['href'] or len(dots) == 1 or not link['href'].startswith('http'):
-            if not link['href'].startswith('http'):
-                if not link['href'].startswith('/'):
-                    CSS['internals'].append(hostname + '/' + link['href'])
-                elif link['href'] in Null_format:
-                    CSS['null'].append(link['href'])
-                else:
-                    CSS['internals'].append(hostname + link['href'])
-        else:
-            CSS['externals'].append(link['href'])
+        url = link['href']
 
-    for style in soup.find_all('style', type='text/css'):
-        try:
-            start = str(style[0]).index('@import url(')
-            end = str(style[0]).index(')')
-            css = str(style[0])[start + 12:end]
-            dots = [x.start(0) for x in re.finditer('\.', css)]
-            if hostname in css or domain in css or len(dots) == 1 or not css.startswith('http'):
-                if not css.startswith('http'):
-                    if not css.startswith('/'):
-                        CSS['internals'].append(hostname + '/' + css)
-                    elif css in Null_format:
-                        CSS['null'].append(css)
-                    else:
-                        CSS['internals'].append(hostname + css)
-            else:
-                CSS['externals'].append(css)
-        except:
+        if url in Null_format:
+            CSS['null'].append('http://' + hostname + '/' + url)
             continue
+
+        url = urljoin(base_url, url)
+
+        if domain in urlparse(url).netloc:
+            CSS['internals'].append(url)
+        else:
+            CSS['externals'].append(url)
+
+
+    CSS['embedded'] = len([css for css in soup.find_all('style', type='text/css') if len(css.contents[0]) > 0])
 
     # collect all form actions
     for form in soup.findAll('form', action=True):
-        dots = [x.start(0) for x in re.finditer('\.', form['action'])]
-        if hostname in form['action'] or domain in form['action'] or len(dots) == 1 or not form['action'].startswith(
-                'http'):
-            if not form['action'].startswith('http'):
-                if not form['action'].startswith('/'):
-                    Form['internals'].append(hostname + '/' + form['action'])
-                elif form['action'] in Null_format or form['action'] == 'about:blank':
-                    Form['null'].append(form['action'])
-                else:
-                    Form['internals'].append(hostname + form['action'])
+        url = form['action']
+
+        if url in Null_format or url == 'about:blank':
+            Form['null'].append('http://' + hostname + '/' + url)
+            continue
+
+        url = urljoin(base_url, url)
+
+        if domain in urlparse(url).netloc:
+            Form['internals'].append(url)
         else:
-            Form['externals'].append(form['action'])
+            Form['externals'].append(url)
 
     # collect all link tags
     for head in soup.find_all('head'):
         for head.link in soup.find_all('link', href=True):
-            dots = [x.start(0) for x in re.finditer('\.', head.link['href'])]
-            if hostname in head.link['href'] or len(dots) == 1 or domain in head.link['href'] or not head.link[
-                'href'].startswith('http'):
-                if not head.link['href'].startswith('http'):
-                    if not head.link['href'].startswith('/'):
-                        Favicon['internals'].append(hostname + '/' + head.link['href'])
-                    elif head.link['href'] in Null_format:
-                        Favicon['null'].append(head.link['href'])
-                    else:
-                        Favicon['internals'].append(hostname + head.link['href'])
+            url = head.link['href']
+
+            if url in Null_format:
+                Favicon['null'].append('http://' + hostname + '/' + url)
+                continue
+
+            url = urljoin(base_url, url)
+
+            if domain in urlparse(url).netloc:
+                Favicon['internals'].append(url)
             else:
-                Favicon['externals'].append(head.link['href'])
+                Favicon['externals'].append(url)
 
         for head.link in soup.findAll('link', {'href': True, 'rel': True}):
             isicon = False
             if isinstance(head.link['rel'], list):
                 for e_rel in head.link['rel']:
-                    if (e_rel.endswith('icon')):
+                    if e_rel.endswith('icon'):
                         isicon = True
+                        break
             else:
-                if (head.link['rel'].endswith('icon')):
+                if head.link['rel'].endswith('icon'):
                     isicon = True
+                    break
 
             if isicon:
-                dots = [x.start(0) for x in re.finditer('\.', head.link['href'])]
-                if hostname in head.link['href'] or len(dots) == 1 or domain in head.link['href'] or not head.link[
-                    'href'].startswith('http'):
-                    if not head.link['href'].startswith('http'):
-                        if not head.link['href'].startswith('/'):
-                            Favicon['internals'].append(hostname + '/' + head.link['href'])
-                        elif head.link['href'] in Null_format:
-                            Favicon['null'].append(head.link['href'])
-                        else:
-                            Favicon['internals'].append(hostname + head.link['href'])
+                url = head.link['href']
+
+                if url in Null_format:
+                    Favicon['null'].append('http://' + hostname + '/' + url)
+                    continue
+
+                url = urljoin(base_url, url)
+
+                if domain in urlparse(url).netloc:
+                    Favicon['internals'].append(url)
                 else:
-                    Favicon['externals'].append(head.link['href'])
+                    Favicon['externals'].append(url)
 
     # collect i_frame
     for i_frame in soup.find_all('iframe', width=True, height=True, frameborder=True):
@@ -275,14 +353,33 @@ def extract_data_from_URL(hostname, content, domain):
 
     # get page title
     try:
-        Title = soup.title.string
+        Title = soup.title.string.lower()
     except:
         pass
 
     # get content text
-    Text = soup.get_text()
+    Text = soup.get_text().lower()
 
-    return Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title, Text
+    def merge_scripts(script_lnks):
+        docs = []
+
+        for url in script_lnks:
+            state, request = is_URL_accessible(url)
+
+            if state:
+                docs.append(request.content.decode('utf-8'))
+
+        return "\n".join(docs)
+
+    internals_script_doc = merge_scripts(SCRIPT['internals'])
+    externals_script_doc = merge_scripts(SCRIPT['externals'])
+
+    internals_script_doc = ' '.join(
+        [internals_script_doc] + [script.contents[0] for script in soup.find_all('script', src=False) if
+                                  len(script.contents) > 0])
+    SCRIPT['embedded'] = len([script.contents[0] for script in soup.find_all('script', src=False) if len(script.contents) > 0])
+
+    return Href, Link, Anchor, Media, Img, Form, CSS, Favicon, IFrame, SCRIPT, Title, Text, internals_script_doc, externals_script_doc
 
 
 filter1 = re.compile('"|javascript:|void(0)|((\.js|\.png|\.css|\.ico|\.jpg|\.json|\.csv|\.xml|/#)$)').search
@@ -294,7 +391,7 @@ def extract_URLs_from_page(hostname, content, domain):
                    "#content", "javascript::void(0)", "javascript::void(0);", "javascript::;", "javascript"]
 
     Href = []
-    soup = BeautifulSoup(content, 'html.parser', from_encoding='iso-8859-1')
+    soup = BeautifulSoup(content, 'html.parser')
 
     # collect all external and internal hrefs from url
     for href in soup.find_all('a', href=True):
@@ -338,7 +435,7 @@ def find_duplicates(list):
 
     pb = ProgressBar(total=len(dom_urls), prefix='removing duplicates', decimals=2, length=50, fill='█',
                      zfill='-')
-    i=0
+    i = 0
 
     for item in dom_urls.values():
         list.append(item[randint(0, len(item)-1)])
@@ -364,7 +461,7 @@ def generate_legitimate_urls(N):
 
     url_list = []
 
-    def url_thread(domain):
+    def url_search(domain):
         if len(url_list) >= N:
             return
 
@@ -380,13 +477,11 @@ def generate_legitimate_urls(N):
                     header=False)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        executor.map(url_thread, domain_list)
+        executor.map(url_search, domain_list)
 
     url_list = find_duplicates(filter_url_list(url_list))
     pandas.DataFrame(url_list).to_csv("data/urls/legitimate/{0}.csv".format(date.today().strftime("%d-%m-%Y")),
                                       index=False, header=False)
-
-
 
 
 def search_for_vulnerable_URLs(domain):
@@ -411,6 +506,234 @@ def search_for_vulnerable_URLs(domain):
 
     return None
 
+headers = {
+    'stats': [
+        'word_ratio',
+
+                    #   URL FEATURES
+
+                    'uf.having_ip_address(url)',
+                    'uf.shortening_service(url)',
+
+                    'uf.url_length(r_url)',
+
+                    'uf.count_at(r_url)',
+                    'uf.count_exclamation(r_url)',
+                    'uf.count_plust(r_url)',
+                    'uf.count_sBrackets(r_url)',
+                    'uf.count_rBrackets(r_url)',
+                    'uf.count_comma(r_url)',
+                    'uf.count_dollar(r_url)',
+                    'uf.count_semicolumn(r_url)',
+                    'uf.count_space(r_url)',
+                    'uf.count_and(r_url)',
+                    'uf.count_double_slash(r_url)',
+                    'uf.count_slash(r_url)',
+                    'uf.count_equal(r_url)',
+                    'uf.count_percentage(r_url)',
+                    'uf.count_question(r_url)',
+                    'uf.count_underscore(r_url)',
+                    'uf.count_hyphens(r_url)',
+                    'uf.count_dots(r_url)',
+                    'uf.count_colon(r_url)',
+                    'uf.count_star(r_url)',
+                    'uf.count_or(r_url)',
+                    'uf.count_tilde(r_url)',
+                    'uf.count_http_token(r_url)',
+
+                    'uf.https_token(scheme)',
+
+                    'uf.ratio_digits(r_url)',
+                    'uf.count_digits(r_url)',
+
+                    'cf.count_phish_hints(r_url,phish_hints)',
+
+                    'uf.tld_in_path(tld,path)',
+                    'uf.tld_in_subdomain(tld,subdomain)',
+                    'uf.tld_in_bad_position(tld,subdomain,path)',
+                    'uf.abnormal_subdomain(r_url)',
+
+                    'uf.count_redirection(request)',
+                    'uf.count_external_redirection(request,domain)',
+
+                    'uf.random_domain(second_level_domain)',
+
+                    'uf.random_words(words_raw)',
+                    'uf.random_words(words_raw_host)',
+                    'uf.random_words(words_raw_path)',
+
+                    'uf.char_repeat(words_raw)',
+                    'uf.char_repeat(words_raw_host)',
+                    'uf.char_repeat(words_raw_path)',
+
+                    'uf.punycode(r_url)',
+                    'uf.domain_in_brand(second_level_domain)',
+                    'uf.brand_in_path(second_level_domain, words_raw_path)',
+                    'uf.check_www(words_raw)',
+                    'uf.check_com(words_raw)',
+
+                    'uf.port(r_url)',
+
+                    'uf.length_word_raw(words_raw)',
+                    'uf.average_word_length(words_raw)',
+                    'uf.longest_word_length(words_raw)',
+                    'uf.shortest_word_length(words_raw)',
+
+                    'uf.prefix_suffix(r_url)',
+
+                    'uf.count_subdomain(r_url)',
+
+                    'uf.count_visual_similarity_domains(second_level_domain)',
+
+                    #   CONTENT FEATURE
+                    #       (static)
+
+                    'cf.compression_ratio(request)',
+                    'cf.count_textareas(content)',
+                    'cf.ratio_js_on_html(Text)',
+
+                    'len(iUrl_s)+len(eUrl_s)',
+                    'cf.urls_ratio(iUrl_s,iUrl_s+eUrl_s+nUrl_s)',
+                    'cf.urls_ratio(eUrl_s,iUrl_s+eUrl_s+nUrl_s)',
+                    'cf.urls_ratio(nUrl_s,iUrl_s+eUrl_s+nUrl_s)',
+                    "cf.ratio_List(CSS,'externals')",
+                    "cf.ratio_List(CSS,'embedded')",
+                    "cf.ratio_List(SCRIPT,'externals')",
+                    "cf.ratio_List(SCRIPT,'embedded')",
+                    "cf.ratio_List(Img,'externals')",
+                    "cf.count_reqs_redirections(reqs_iData_s)",
+                    "cf.count_reqs_redirections(reqs_eData_s)",
+                    "cf.count_reqs_error(reqs_iData_s)",
+                    "cf.count_reqs_error(reqs_eData_s)",
+                    "cf.login_form(Form)",
+                    "cf.ratio_List(Favicon,'externals')",
+                    "cf.submitting_to_email(Form)",
+                    "cf.ratio_List(Media,'internals')",
+                    "cf.ratio_List(Media,'externals')",
+                    "cf.empty_title(Title)",
+                    "cf.ratio_anchor(Anchor,'unsafe')",
+                    "cf.ratio_List(Link,'internals')",
+                    "cf.ratio_List(Link,'externals')",
+                    "cf.iframe(IFrame)",
+                    "cf.onmouseover(content)",
+                    "cf.popup_window(content)",
+                    "cf.right_clic(content)",
+                    "cf.domain_in_text(second_level_domain,Text)",
+                    "cf.domain_in_text(second_level_domain,Title)",
+                    "cf.domain_with_copyright(domain,content)",
+                    "cf.count_phish_hints(Text,phish_hints)",
+                    "cf.ratio_Txt(iImgTxt_words+eImgTxt_words,sContent_words)",
+                    "cf.ratio_Txt(iImgTxt_words,sContent_words)",
+                    "cf.ratio_Txt(eImgTxt_words,sContent_words)",
+                    "cf.ratio_Txt(eImgTxt_words,iImgTxt_words)",
+
+                    #       (dynamic)
+
+                    "cf.ratio_dynamic_html(Text,"".join([Text_di,Text_de]))",
+
+                    #       (dynamic internals)
+
+                    "cf.ratio_dynamic_html(Text,Text_di)",
+                    "cf.ratio_js_on_html(Text_di)",
+                    "cf.count_textareas(content_di)",
+
+                    "len(iUrl_di)+len(eUrl_di)",
+                    "cf.urls_ratio(iUrl_di,iUrl_di+eUrl_di+nUrl_di)",
+                    "cf.urls_ratio(eUrl_di,iUrl_di+eUrl_di+nUrl_di)",
+                    "cf.urls_ratio(nUrl_di,iUrl_di+eUrl_di+nUrl_di)",
+                    "cf.ratio_List(CSS_di,'externals')",
+                    "cf.ratio_List(CSS_di,'embedded')",
+                    "cf.ratio_List(SCRIPT_di,'externals')",
+                    "cf.ratio_List(SCRIPT_di,'embedded')",
+                    "cf.ratio_List(Img_di,'externals')",
+                    "cf.count_reqs_redirections(reqs_iData_di)",
+                    "cf.count_reqs_redirections(reqs_eData_di)",
+                    "cf.count_reqs_error(reqs_iData_di)",
+                    "cf.count_reqs_error(reqs_eData_di)",
+                    "cf.login_form(Form_di)",
+                    "cf.ratio_List(Favicon_di,'externals')",
+                    "cf.submitting_to_email(Form_di)",
+                    "cf.ratio_List(Media_di,'internals')",
+                    "cf.ratio_List(Media_di,'externals')",
+                    "cf.empty_title(Title_di)",
+                    "cf.ratio_anchor(Anchor_di,'unsafe')",
+                    "cf.ratio_List(Link_di,'internals')",
+                    "cf.ratio_List(Link_di,'externals')",
+                    "cf.iframe(IFrame_di)",
+                    "cf.onmouseover(content_di)",
+                    "cf.popup_window(content_di)",
+                    "cf.right_clic(content_di)",
+                    "cf.domain_in_text(second_level_domain,Text_di)",
+                    "cf.domain_in_text(second_level_domain,Title_di)",
+                    "cf.domain_with_copyright(domain,content_di)",
+
+                    "cf.count_io_commands(internals_script_doc)",
+                    "cf.count_phish_hints(Text_di,phish_hints)",
+
+                    #       (dynamic externals)
+
+                    "cf.ratio_dynamic_html(Text,Text_de)",
+                    "cf.ratio_js_on_html(Text_de)",
+                    "cf.count_textareas(content_de)",
+
+                    "len(iUrl_de)+len(eUrl_de)",
+                    "cf.urls_ratio(iUrl_de,iUrl_de+eUrl_de+nUrl_de)",
+                    "cf.urls_ratio(eUrl_de,iUrl_de+eUrl_de+nUrl_de)",
+                    "cf.urls_ratio(nUrl_de,iUrl_de+eUrl_de+nUrl_de)",
+                    "cf.ratio_List(CSS_de,'externals')",
+                    "cf.ratio_List(CSS_de,'embedded')",
+                    "cf.ratio_List(SCRIPT_de,'externals')",
+                    "cf.ratio_List(SCRIPT_de,'embedded')",
+                    "cf.ratio_List(Img_de,'externals')",
+                    "cf.count_reqs_redirections(reqs_iData_de)",
+                    "cf.count_reqs_redirections(reqs_eData_de)",
+                    "cf.count_reqs_error(reqs_iData_de)",
+                    "cf.count_reqs_error(reqs_eData_de)",
+                    "cf.login_form(Form_de)",
+                    "cf.ratio_List(Favicon_de,'externals')",
+                    "cf.submitting_to_email(Form_de)",
+                    "cf.ratio_List(Media_de,'internals')",
+                    "cf.ratio_List(Media_de,'externals')",
+                    "cf.empty_title(Title_de)",
+                    "cf.ratio_anchor(Anchor_de,'unsafe')",
+                    "cf.ratio_List(Link_de,'internals')",
+                    "cf.ratio_List(Link_de,'externals')",
+                    "cf.iframe(IFrame_de)",
+                    "cf.onmouseover(content_de)",
+                    'cf.popup_window(content_de)',
+                    "cf.right_clic(content_de)",
+                    "cf.domain_in_text(second_level_domain,Text_de)",
+                    "cf.domain_in_text(second_level_domain,Title_de)",
+                    "cf.domain_with_copyright(domain,content_de)",
+
+                    "cf.count_io_commands(externals_script_doc)",
+                    "cf.count_phish_hints(Text_de,phish_hints)",
+
+                    #   EXTERNAL FEATURES
+
+                    'ef.domain_registration_length(domain)',
+                    "ef.whois_registered_domain(domain)",
+                    "ef.web_traffic(r_url)",
+                    "ef.domain_age(domain)",
+                    "ef.google_index(r_url)",
+                    "ef.compare_search2url(r_url,domain,TF.most_common(5)])",
+                    "ef.remainder_valid_cert(hostinfo.cert)",
+                    "ef.valid_cert_period(hostinfo.cert)",
+                    "ef.count_alt_names(hostinfo.cert)"
+    ],
+    'metadata': [
+        'url',
+        'lang',
+        'status'
+    ],
+    'group_stat': [
+        'openpagerank'
+    ],
+    'substats': [
+        'extraction-contextData-time',
+        'image-recognition-time'
+    ]
+}
 
 def extract_features(url, status):
     def words_raw_extraction(domain, subdomain, path):
@@ -427,8 +750,8 @@ def extract_features(url, status):
 
     if state:
         r_url = request.url
-        content = request.content
-        hostname, domain, path = get_domain(r_url)
+        content = request.content.decode('utf-8')
+        hostname, second_level_domain, path = get_domain(r_url)
         extracted_domain = tldextract.extract(r_url)
         domain = extracted_domain.domain + '.' + extracted_domain.suffix
         subdomain = extracted_domain.subdomain
@@ -440,143 +763,306 @@ def extract_features(url, status):
         parsed = urlparse(r_url)
         scheme = parsed.scheme
 
-        (Href, Link, Anchor, Media, Form, CSS, Favicon, IFrame, Title, Text), time_extraction = extract_data_from_URL(
-            hostname, content, domain)
+        hostinfo = ef.get_hostinfo(domain, 443)
 
-        Text_words, lemmatization_time = lemmatizer(clear_text(tokenize(Text.lower() + Title.lower())))
+        (Href, Link, Anchor, Media, Img, Form, CSS, Favicon, IFrame, SCRIPT, Title, Text, internals_script_doc,
+         externals_script_doc), extraction_data_time = extract_data_from_URL(hostname, content, domain, r_url)
+
+        content_di = cf.get_html_from_js(cf.remove_JScomments(internals_script_doc))
+        content_de = cf.get_html_from_js(cf.remove_JScomments(externals_script_doc))
+
+        (Href_di, Link_di, Anchor_di, Media_di, Img_di, Form_di, CSS_di, Favicon_di, IFrame_di, SCRIPT_di, Title_di,
+         Text_di, internals_script_doc_di, externals_script_doc_di), extraction_data_di_time = extract_data_from_URL(
+            hostname, content_di, domain, r_url)
+
+        (Href_de, Link_de, Anchor_de, Media_de, Img_de, Form_de, CSS_de, Favicon_de, IFrame_de, SCRIPT_de, Title_de,
+         Text_de, internals_script_doc_de, externals_script_doc_de), extraction_data_de_time = extract_data_from_URL(
+            hostname, content_de, domain, r_url)
+
+
+        start = time.time()
+        internals_img_txt = cf.image_to_text(Img['internals'])
+        externals_img_txt = cf.image_to_text(Img['externals'])
+        extracting_ImgTxt_time = time.time() - start
+
+
+        start = time.time()
+        iImgTxt_words = clear_text(tokenize(internals_img_txt.lower()))
+        eImgTxt_words = clear_text(tokenize(externals_img_txt.lower()))
+
+        sContent_words = clear_text(tokenize(Text.lower()))
+        diContent_words = clear_text(tokenize(Text_di.lower()))
+        deContent_words = clear_text(tokenize(Text_de.lower()))
+
+        Text_words = iImgTxt_words + eImgTxt_words + sContent_words + diContent_words + deContent_words
         TF = compute_tf(Text_words)
         word_ratio = len(TF) / len(Text_words)
+        preparing_words_time = time.time() - start
 
-        row = [
-            (url, domain),
-            (word_ratio, lemmatization_time),
-            (status, time_extraction),
+        lang = check_Language(content)
 
-            uf.having_ip_address(url),
-            uf.shortening_service(url),
+        iUrl_s = Href['internals'] + Link['internals'] + Media['internals'] + Form['internals']
+        eUrl_s = Href['externals'] + Link['externals'] + Media['externals'] + Form['externals']
+        nUrl_s = Href['null'] + Link['null'] + Media['null'] + Form['null']
 
-            uf.url_length(r_url),
-
-            uf.count_at(r_url),
-            uf.count_exclamation(r_url),
-            uf.count_plust(r_url),
-            uf.count_sBrackets(r_url),
-            uf.count_rBrackets(r_url),
-            uf.count_comma(r_url),
-            uf.count_dollar(r_url),
-            uf.count_semicolumn(r_url),
-            uf.count_space(r_url),
-            uf.count_and(r_url),
-            uf.count_double_slash(r_url),
-            uf.count_slash(r_url),
-            uf.count_equal(r_url),
-            uf.count_percentage(r_url),
-            uf.count_question(r_url),
-            uf.count_underscore(r_url),
-            uf.count_hyphens(r_url),
-            uf.count_dots(r_url),
-            uf.count_colon(r_url),
-            uf.count_star(r_url),
-            uf.count_or(r_url),
-            uf.count_http_token(r_url),
-
-            uf.https_token(scheme),
-
-            uf.ratio_digits(r_url),
-            uf.count_digits(r_url),
-
-            uf.count_tilde(r_url),
-            uf.phish_hints(r_url),
-
-            uf.tld_in_path(tld, path),
-            uf.tld_in_subdomain(tld, subdomain),
-            uf.tld_in_bad_position(tld, subdomain, path),
-
-            uf.abnormal_subdomain(r_url),
-
-            uf.count_redirection(request),
-            uf.count_external_redirection(request, domain),
-
-            uf.random_domain(domain),
-
-            uf.random_words(words_raw),
-            uf.random_words(words_raw_host),
-            uf.random_words(words_raw_path),
-
-            uf.char_repeat(words_raw),
-            uf.char_repeat(words_raw_host),
-            uf.char_repeat(words_raw_path),
-
-            uf.punycode(r_url),
-            uf.domain_in_brand(domain),
-            uf.brand_in_path(domain, words_raw_path),
-            uf.check_www(words_raw),
-            uf.check_com(words_raw),
-
-            uf.port(r_url),
-
-            uf.length_word_raw(words_raw),
-            uf.average_word_length(words_raw),
-            uf.longest_word_length(words_raw),
-            uf.shortest_word_length(words_raw),
-
-            uf.prefix_suffix(r_url),
-
-            uf.count_subdomain(r_url),
+        reqs_iData_s, reqs_iTime_s = cf.get_reqs_data(iUrl_s)
+        reqs_eData_s, reqs_eTime_s = cf.get_reqs_data(eUrl_s)
 
 
+        iUrl_di = Href_di['internals'] + Link_di['internals'] + Media_di['internals'] + Form_di['internals']
+        eUrl_di = Href_di['externals'] + Link_di['externals'] + Media_di['externals'] + Form_di['externals']
+        nUrl_di = Href_di['null'] + Link_di['null'] + Media_di['null'] + Form_di['null']
 
-            cf.nb_hyperlinks(Href, Link, Media, Form, CSS, Favicon),
-            cf.internal_hyperlinks(Href, Link, Media, Form, CSS, Favicon),
-            cf.external_hyperlinks(Href, Link, Media, Form, CSS, Favicon),
-            cf.null_hyperlinks(hostname, Href, Link, Media, Form, CSS, Favicon),
-            cf.external_css(CSS),
-            cf.internal_redirection(Href, Link, Media, Form, CSS, Favicon),
-            cf.external_redirection(Href, Link, Media, Form, CSS, Favicon),
-            cf.internal_errors(Href, Link, Media, Form, CSS, Favicon),
-            cf.external_errors(Href, Link, Media, Form, CSS, Favicon),
-            cf.login_form(Form),
-            cf.external_favicon(Favicon),
-            cf.submitting_to_email(Form),
-            cf.internal_media(Media),
-            cf.external_media(Media),
-            cf.empty_title(Title),
-            cf.safe_anchor(Anchor),
-            cf.links_in_tags(Link),
-            cf.iframe(IFrame),
-            cf.onmouseover(content),
-            cf.popup_window(content),
-            cf.right_clic(content),
-            cf.domain_in_title(domain, Title),
-            cf.domain_with_copyright(domain, content),
-            cf.compression_ratio(request),
+        reqs_iData_di, reqs_iTime_di = cf.get_reqs_data(iUrl_di)
+        reqs_eData_di, reqs_eTime_di = cf.get_reqs_data(eUrl_di)
 
 
+        iUrl_de = Href_de['internals'] + Link_de['internals'] + Media_de['internals'] + Form_de['internals']
+        eUrl_de = Href_de['externals'] + Link_de['externals'] + Media_de['externals'] + Form_de['externals']
+        nUrl_de = Href_de['null'] + Link_de['null'] + Media_de['null'] + Form_de['null']
 
-            ef.domain_registration_length(domain),
-            ef.whois_registered_domain(domain),
-            ef.web_traffic(r_url),
-            ef.domain_age(domain),
-            ef.google_index(r_url),
-            ef.page_rank(domain),
-            ef.compare_search2url(r_url, domain, [t[0] for t in TF.most_common(5)])
-        ]
+        reqs_iData_de, reqs_iTime_de = cf.get_reqs_data(iUrl_de)
+        reqs_eData_de, reqs_eTime_de = cf.get_reqs_data(eUrl_de)
 
-        # print(row)
-        return row, TF
+        record = {
+            'url': url,
+            'domain': domain,
+            'lang': lang,
+            'TF': TF,
+            'status': status,
+            'extraction-contextData-time': extraction_data_time + extraction_data_di_time + extraction_data_de_time,
+            'image-recognition-time': extracting_ImgTxt_time,
+            'stats':
+                [
+                    (word_ratio, preparing_words_time),
+
+                    #   URL FEATURES
+
+                    uf.having_ip_address(url),
+                    uf.shortening_service(url),
+
+                    uf.url_length(r_url),
+
+                    uf.count_at(r_url),
+                    uf.count_exclamation(r_url),
+                    uf.count_plust(r_url),
+                    uf.count_sBrackets(r_url),
+                    uf.count_rBrackets(r_url),
+                    uf.count_comma(r_url),
+                    uf.count_dollar(r_url),
+                    uf.count_semicolumn(r_url),
+                    uf.count_space(r_url),
+                    uf.count_and(r_url),
+                    uf.count_double_slash(r_url),
+                    uf.count_slash(r_url),
+                    uf.count_equal(r_url),
+                    uf.count_percentage(r_url),
+                    uf.count_question(r_url),
+                    uf.count_underscore(r_url),
+                    uf.count_hyphens(r_url),
+                    uf.count_dots(r_url),
+                    uf.count_colon(r_url),
+                    uf.count_star(r_url),
+                    uf.count_or(r_url),
+                    uf.count_tilde(r_url),
+                    uf.count_http_token(r_url),
+
+                    uf.https_token(scheme),
+
+                    uf.ratio_digits(r_url),
+                    uf.count_digits(r_url),
+
+                    cf.count_phish_hints(r_url, phish_hints),
+
+                    uf.tld_in_path(tld, path),
+                    uf.tld_in_subdomain(tld, subdomain),
+                    uf.tld_in_bad_position(tld, subdomain, path),
+                    uf.abnormal_subdomain(r_url),
+
+                    uf.count_redirection(request),
+                    uf.count_external_redirection(request, domain),
+
+                    uf.random_domain(second_level_domain),
+
+                    uf.random_words(words_raw),
+                    uf.random_words(words_raw_host),
+                    uf.random_words(words_raw_path),
+
+                    uf.char_repeat(words_raw),
+                    uf.char_repeat(words_raw_host),
+                    uf.char_repeat(words_raw_path),
+
+                    uf.punycode(r_url),
+                    uf.domain_in_brand(second_level_domain),
+                    uf.brand_in_path(second_level_domain, words_raw_path),
+                    uf.check_www(words_raw),
+                    uf.check_com(words_raw),
+
+                    uf.port(r_url),
+
+                    uf.length_word_raw(words_raw),
+                    uf.average_word_length(words_raw),
+                    uf.longest_word_length(words_raw),
+                    uf.shortest_word_length(words_raw),
+
+                    uf.prefix_suffix(r_url),
+
+                    uf.count_subdomain(r_url),
+
+                    uf.count_visual_similarity_domains(second_level_domain),
+
+                    #   CONTENT FEATURE
+                    #       (static)
+
+                    cf.compression_ratio(request),
+                    cf.count_textareas(content),
+                    cf.ratio_js_on_html(Text),
+
+                    (len(iUrl_s) + len(eUrl_s), reqs_iTime_s + reqs_eTime_s),
+                    (cf.urls_ratio(iUrl_s, iUrl_s + eUrl_s + nUrl_s), reqs_iTime_s),
+                    (cf.urls_ratio(eUrl_s, iUrl_s + eUrl_s + nUrl_s), reqs_eTime_s),
+                    (cf.urls_ratio(nUrl_s, iUrl_s + eUrl_s + nUrl_s), 0),
+                    cf.ratio_List(CSS, 'externals'),
+                    cf.ratio_List(CSS, 'embedded'),
+                    cf.ratio_List(SCRIPT, 'externals'),
+                    cf.ratio_List(SCRIPT, 'embedded'),
+                    cf.ratio_List(Img, 'externals'),
+                    cf.count_reqs_redirections(reqs_iData_s),
+                    cf.count_reqs_redirections(reqs_eData_s),
+                    cf.count_reqs_error(reqs_iData_s),
+                    cf.count_reqs_error(reqs_eData_s),
+                    cf.login_form(Form),
+                    cf.ratio_List(Favicon, 'externals'),
+                    cf.submitting_to_email(Form),
+                    cf.ratio_List(Media, 'internals'),
+                    cf.ratio_List(Media, 'externals'),
+                    cf.empty_title(Title),
+                    cf.ratio_anchor(Anchor, 'unsafe'),
+                    cf.ratio_List(Link, 'internals'),
+                    cf.ratio_List(Link, 'externals'),
+                    cf.iframe(IFrame),
+                    cf.onmouseover(content),
+                    cf.popup_window(content),
+                    cf.right_clic(content),
+                    cf.domain_in_text(second_level_domain, Text),
+                    cf.domain_in_text(second_level_domain, Title),
+                    cf.domain_with_copyright(domain, content),
+                    cf.count_phish_hints(Text, phish_hints),
+                    cf.ratio_Txt(iImgTxt_words + eImgTxt_words, sContent_words),
+                    cf.ratio_Txt(iImgTxt_words, sContent_words),
+                    cf.ratio_Txt(eImgTxt_words, sContent_words),
+                    cf.ratio_Txt(eImgTxt_words, iImgTxt_words),
+
+                    #       (dynamic)
+
+                    cf.ratio_dynamic_html(Text, "".join([Text_di, Text_de])),
+
+                    #       (dynamic internals)
+
+                    cf.ratio_dynamic_html(Text, Text_di),
+                    cf.ratio_js_on_html(Text_di),
+                    cf.count_textareas(content_di),
+
+                    (len(iUrl_di) + len(eUrl_di), reqs_iTime_de + reqs_eTime_de),
+                    (cf.urls_ratio(iUrl_di, iUrl_di + eUrl_di + nUrl_di), reqs_iTime_di),
+                    (cf.urls_ratio(eUrl_di, iUrl_di + eUrl_di + nUrl_di), reqs_eTime_di),
+                    (cf.urls_ratio(nUrl_di, iUrl_di + eUrl_di + nUrl_di), 0),
+                    cf.ratio_List(CSS_di, 'externals'),
+                    cf.ratio_List(CSS_di, 'embedded'),
+                    cf.ratio_List(SCRIPT_di, 'externals'),
+                    cf.ratio_List(SCRIPT_di, 'embedded'),
+                    cf.ratio_List(Img_di, 'externals'),
+                    cf.count_reqs_redirections(reqs_iData_di),
+                    cf.count_reqs_redirections(reqs_eData_di),
+                    cf.count_reqs_error(reqs_iData_di),
+                    cf.count_reqs_error(reqs_eData_di),
+                    cf.login_form(Form_di),
+                    cf.ratio_List(Favicon_di, 'externals'),
+                    cf.submitting_to_email(Form_di),
+                    cf.ratio_List(Media_di, 'internals'),
+                    cf.ratio_List(Media_di, 'externals'),
+                    cf.empty_title(Title_di),
+                    cf.ratio_anchor(Anchor_di, 'unsafe'),
+                    cf.ratio_List(Link_di, 'internals'),
+                    cf.ratio_List(Link_di, 'externals'),
+                    cf.iframe(IFrame_di),
+                    cf.onmouseover(content_di),
+                    cf.popup_window(content_di),
+                    cf.right_clic(content_di),
+                    cf.domain_in_text(second_level_domain, Text_di),
+                    cf.domain_in_text(second_level_domain, Title_di),
+                    cf.domain_with_copyright(domain, content_di),
+
+                    cf.count_io_commands(internals_script_doc),
+                    cf.count_phish_hints(Text_di, phish_hints),
+
+                    #       (dynamic externals)
+
+                    cf.ratio_dynamic_html(Text, Text_de),
+                    cf.ratio_js_on_html(Text_de),
+                    cf.count_textareas(content_de),
+
+                    (len(iUrl_de) + len(eUrl_de), reqs_iTime_de + reqs_eTime_de),
+                    (cf.urls_ratio(iUrl_de, iUrl_de + eUrl_de + nUrl_de), reqs_iTime_de),
+                    (cf.urls_ratio(eUrl_de, iUrl_de + eUrl_de + nUrl_de), reqs_eTime_de),
+                    (cf.urls_ratio(nUrl_de, iUrl_de + eUrl_de + nUrl_de), 0),
+                    cf.ratio_List(CSS_de, 'externals'),
+                    cf.ratio_List(CSS_de, 'embedded'),
+                    cf.ratio_List(SCRIPT_de, 'externals'),
+                    cf.ratio_List(SCRIPT_de, 'embedded'),
+                    cf.ratio_List(Img_de, 'externals'),
+                    cf.count_reqs_redirections(reqs_iData_de),
+                    cf.count_reqs_redirections(reqs_eData_de),
+                    cf.count_reqs_error(reqs_iData_de),
+                    cf.count_reqs_error(reqs_eData_de),
+                    cf.login_form(Form_de),
+                    cf.ratio_List(Favicon_de, 'externals'),
+                    cf.submitting_to_email(Form_de),
+                    cf.ratio_List(Media_de, 'internals'),
+                    cf.ratio_List(Media_de, 'externals'),
+                    cf.empty_title(Title_de),
+                    cf.ratio_anchor(Anchor_de, 'unsafe'),
+                    cf.ratio_List(Link_de, 'internals'),
+                    cf.ratio_List(Link_de, 'externals'),
+                    cf.iframe(IFrame_de),
+                    cf.onmouseover(content_de),
+                    cf.popup_window(content_de),
+                    cf.right_clic(content_de),
+                    cf.domain_in_text(second_level_domain, Text_de),
+                    cf.domain_in_text(second_level_domain, Title_de),
+                    cf.domain_with_copyright(domain, content_de),
+
+                    cf.count_io_commands(externals_script_doc),
+                    cf.count_phish_hints(Text_de, phish_hints),
+
+                    #   EXTERNAL FEATURES
+
+                    ef.domain_registration_length(domain),
+                    ef.whois_registered_domain(domain),
+                    ef.web_traffic(r_url),
+                    ef.domain_age(domain),
+                    ef.google_index(r_url),
+                    ef.compare_search2url(r_url, domain, [t[0] for t in Counter(TF).most_common(5)]),
+                    ef.remainder_valid_cert(hostinfo.cert),
+                    ef.valid_cert_period(hostinfo.cert),
+                    ef.count_alt_names(hostinfo.cert)
+                ]
+        }
+
+        return record
     return None
 
 
 chunk_size = 100
 
 
-def URLs_analyser(url_list):
+def generate_dataset(url_list):
     pb = ProgressBar(total=len(url_list), prefix='url analysis', decimals=2, length=50, fill='█',
                      zfill='-')
 
     data = []
-    counter = []
     buffer = []
+    counter = []
 
     TF = {0: [], 1: []}
 
@@ -584,40 +1070,53 @@ def URLs_analyser(url_list):
         for i in range(0, len(lst), n):
             yield lst[i:i + n]
 
-    def url_thread(url, status):
-        res = extract_features(url, status)
+    def extraction_data(obj):
+        try:
+            res = extract_features(obj[0], obj[1])
 
-        if res:
-            tmp.append(res[0])
-            TF[status].append(res[1])
+            if res:
+                buffer.append(res)
+                pb.print_progress_bar(len(buffer) + len(data))
+        except Exception as e:
+            print('[{0}] - error: {1}'.format(obj[0], e))
 
-            pb.print_progress_bar(len(buffer)+len(data))
-
+    pb.print_progress_bar(0)
 
     for chunk in chunks(url_list, chunk_size):
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            executor.map(lambda args: url_thread(*args), chunk)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            executor.map(extraction_data, chunk)
 
-            clmn, rank_time = ef.page_rank([raw[0][1] for raw in buffer])
+        clmn, rank_time = ef.page_rank([record['domain'] for record in buffer])
 
-            tmp = np.array(buffer)
+        tmp = np.array([record['stats'] for record in buffer])
+        metadata = np.array([[record.get(key) for key in headers['metadata']] for record in buffer])
+        substats = np.array([[record.get(key) for key in headers['substats']] for record in buffer])
 
-            data.append(np.c_[tmp[:, :, 0], clmn].tolist())
-            counter.append(np.c_[tmp[:, :, 0], [rank_time]*tmp.shape[0]].tolist())
+        for record in buffer:
+            TF[record['status']].append(record['TF'])
 
-            tmp = []
+        data += np.c_[metadata, np.c_[tmp[:, :, 0], clmn]].tolist()
+        counter += np.c_[substats, np.c_[tmp[:, :, 1], [rank_time] * tmp.shape[0]]].tolist()
 
-            times = np.average(np.array(counter), axis=0)
+        times = np.average(np.array(counter), axis=0)
 
-            pandas.DataFrame(data + times).to_csv(
-                'data/datasets/{0}.csv'.format(date.today().strftime("%d-%m-%Y")), index=False, header=False)
+        pandas.DataFrame(data).to_csv('data/datasets/high_pack/{0}.csv'.format(date.today().strftime("%d-%m-%Y")),
+                                      index=False, header=headers['metadata']+headers['stats']+headers['group_stat'])
+
+        pandas.DataFrame(times.reshape(1, len(times))).to_csv('data/feature_times/high_pack/{0}.csv'.format(date.today().strftime("%d-%m-%Y")),
+                                       index=False, header=headers['substats']+headers['stats']+headers['group_stat'])
+
+        pandas.DataFrame([['{}={}'.format(k, tf_list[k]) for k in tf_list] for tf_list in TF[0]]).to_csv(
+            'data/TF/legitimate/{0}.csv'.format(date.today().strftime("%d-%m-%Y")), index=False, header=False)
+        pandas.DataFrame([['{}={}'.format(k, tf_list[k]) for k in tf_list] for tf_list in TF[1]]).to_csv(
+            'data/TF/phishing/{0}.csv'.format(date.today().strftime("%d-%m-%Y")), index=False, header=False)
 
     IDF = {0: compute_idf(TF[0]), 1: compute_idf(TF[0])}
     TF_IDF = {0: [], 1: []}
 
-    pb = ProgressBar(total=len(TF.values()), prefix='compute TF-IDF', decimals=2, length=50, fill='█',
-                     zfill='-')
+    pb = ProgressBar(total=sum([len(tf_list) for tf_list in TF.values()]), prefix='compute TF-IDF', decimals=2, length=50, fill='█', zfill='-')
     i = 0
+    pb.print_progress_bar(i)
 
     for s, tf_list in TF.items():
         for tf in tf_list:
@@ -625,5 +1124,7 @@ def URLs_analyser(url_list):
             pb.print_progress_bar(i)
             TF_IDF[s].append(compute_tf_idf(tf, IDF[s]))
 
-    pandas.DataFrame(TF_IDF[0]).to_csv('data/TF-IDF/legitimate_{0}.csv'.format(date.today().strftime("%d-%m-%Y")))
-    pandas.DataFrame(TF_IDF[1]).to_csv('data/TF-IDF/phishing_{0}.csv'.format(date.today().strftime("%d-%m-%Y")))
+    pandas.DataFrame(TF_IDF[0]).to_csv('data/TF-IDF/legitimate/{0}.csv'.format(date.today().strftime("%d-%m-%Y")),
+                                      index=False, header=False)
+    pandas.DataFrame(TF_IDF[1]).to_csv('data/TF-IDF/phishing/{0}.csv'.format(date.today().strftime("%d-%m-%Y")),
+                                      index=False, header=False)

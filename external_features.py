@@ -10,9 +10,9 @@ import re
 OPR_key = open("OPR_key.txt").read()
 
 
-#################################################################################################################################
+########################################################################################################################
 #               Domain registration age
-#################################################################################################################################
+########################################################################################################################
 
 @benchmark
 def domain_registration_length(domain):
@@ -57,6 +57,8 @@ def whois_registered_domain(domain):
 #################################################################################################################################
 #               Unable to get web traffic (Page Rank)
 #################################################################################################################################
+
+
 import sys, lxml
 
 @benchmark
@@ -65,9 +67,10 @@ def web_traffic(short_url):
         rank = BeautifulSoup(requests("http://data.alexa.com/data?cli=10&dat=s&url=" + short_url).text,
                              "xml").find("REACH")['RANK']
     except:
-        return 1000000
+        return -1
 
-    return min(int(rank), 1000000)
+    # return min(int(rank), 10000000)
+    return rank
 
 
 #################################################################################################################################
@@ -190,3 +193,79 @@ from googlesearch import search
 @benchmark
 def compare_search2url(url, domain, keywords):
     return search("http://{0}={1}".format(domain, '+'.join(keywords), 0))[0] == url
+
+
+########################################################################################################################
+#               Certificate information
+########################################################################################################################
+
+
+from OpenSSL import SSL
+from cryptography import x509
+import idna
+
+from socket import socket
+from collections import namedtuple
+
+HostInfo = namedtuple(field_names='cert hostname peername', typename='HostInfo')
+
+
+def get_hostinfo(hostname, port):
+    try:
+        hostname_idna = idna.encode(hostname)
+        sock = socket()
+
+        sock.connect((hostname, port))
+        peername = sock.getpeername()
+        ctx = SSL.Context(SSL.SSLv23_METHOD) # most compatible
+        ctx.check_hostname = False
+        ctx.verify_mode = SSL.VERIFY_NONE
+
+        sock_ssl = SSL.Connection(ctx, sock)
+        sock_ssl.set_connect_state()
+        sock_ssl.set_tlsext_host_name(hostname_idna)
+        sock_ssl.do_handshake()
+        cert = sock_ssl.get_peer_certificate()
+        crypto_cert = cert.to_cryptography()
+        sock_ssl.close()
+        sock.close()
+
+        return HostInfo(cert=crypto_cert, peername=peername, hostname=hostname)
+    except:
+        return HostInfo
+
+
+def get_alt_names(cert):
+    try:
+        ext = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+        return ext.value.get_values_for_type(x509.DNSName)
+    except x509.ExtensionNotFound:
+        return None
+
+@benchmark
+def count_alt_names(cert):
+    try:
+        return len(get_alt_names(cert))
+    except:
+        return -1
+
+@benchmark
+def valid_cert_period(cert):
+    try:
+        return (cert.not_valid_after - cert.not_valid_before).days
+    except:
+        return -1
+
+@benchmark
+def remainder_valid_cert(cert):
+    try:
+        period = cert.not_valid_after - cert.not_valid_before
+
+        today = time.strftime('%Y-%m-%d')
+        today = datetime.strptime(today, '%Y-%m-%d')
+
+        passed_time = today - cert.not_valid_before
+
+        return max(0, min(1, passed_time / period))
+    except:
+        return -1

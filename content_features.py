@@ -3,316 +3,90 @@ import re
 from tools import benchmark
 
 
-########################################################################################################################
-#               Number of hyperlinks present in a website
-########################################################################################################################
-
-@benchmark
-def nb_hyperlinks(Href, Link, Media, Form, CSS, Favicon):
-    return len(Href['internals']) + len(Href['externals']) +\
-           len(Link['internals']) + len(Link['externals']) +\
-           len(Media['internals']) + len(Media['externals']) +\
-           len(Form['internals']) + len(Form['externals']) +\
-           len(CSS['internals']) + len(CSS['externals']) +\
-           len(Favicon['internals']) + len(Favicon['externals'])
-
 
 ########################################################################################################################
-#               Internal hyperlinks ratio
+########################################################################################################################
+#                                               HTML
+########################################################################################################################
 ########################################################################################################################
 
 
-def h_total(Href, Link, Media, Form, CSS, Favicon):
-    return nb_hyperlinks(Href, Link, Media, Form, CSS, Favicon)[0]
-
-
-def h_internal(Href, Link, Media, Form, CSS, Favicon):
-    return len(Href['internals']) + len(Link['internals']) + len(Media['internals']) + \
-           len(Form['internals']) + len(CSS['internals']) + len(Favicon['internals'])
-
-@benchmark
-def internal_hyperlinks(Href, Link, Media, Form, CSS, Favicon):
-    total = h_total(Href, Link, Media, Form, CSS, Favicon)
-    if total == 0:
+def urls_ratio(urls, total_urls):
+    if len(total_urls) == 0:
         return 0
     else:
-        return h_internal(Href, Link, Media, Form, CSS, Favicon) / total
+        return len(urls) / len(total_urls)
 
 
 ########################################################################################################################
-#               External hyperlinks ratio
+#               ratio url-list
 ########################################################################################################################
-
-
-def h_external(Href, Link, Media, Form, CSS, Favicon):
-    return len(Href['externals']) + len(Link['externals']) + len(Media['externals']) + \
-           len(Form['externals']) + len(CSS['externals']) + len(Favicon['externals'])
 
 @benchmark
-def external_hyperlinks(Href, Link, Media, Form, CSS, Favicon):
-    total = h_total(Href, Link, Media, Form, CSS, Favicon)
+def ratio_List(Arr, key):
+    total = len(Arr['internals']) + len(Arr['externals'])
+
+    if 'embedded' in Arr:
+        total += Arr['embedded']
+
     if total == 0:
         return 0
+    elif key == 'embedded':
+        return min(Arr[key] / total, 1)
     else:
-        return h_external(Href, Link, Media, Form, CSS, Favicon) / total
+        return min(len(Arr[key]) / total, 1)
 
 
 ########################################################################################################################
-#               Number of null hyperlinks
+#               Getting http-requests data
 ########################################################################################################################
 
 
-def h_null(hostname, Href, Link, Media, Form, CSS, Favicon):
-    return len(Href['null']) + len(Link['null']) + len(Media['null']) + len(Form['null']) + len(CSS['null']) + len(
-        Favicon['null'])
+from requests_futures import sessions
+
+
+def fetch(url, s):
+    try:
+        req = s.get(url).result()
+        return req
+    except:
+        return None
+
 
 @benchmark
-def null_hyperlinks(hostname, Href, Link, Media, Form, CSS, Favicon):
-    total = h_total(Href, Link, Media, Form, CSS, Favicon)
-    if total == 0:
+def get_reqs_data(url_list):
+    ses = sessions.FuturesSession()
+    return [fetch(url, ses) for url in url_list]
+
+
+@benchmark
+def count_reqs_error(reqs):
+    count = 0
+
+    if len(reqs) > 0:
+        for req in reqs:
+            if req:
+                if req.status_code >= 400:
+                    count += 1
+
+        return count / len(reqs)
+    else:
         return 0
-    return h_null(hostname, Href, Link, Media, Form, CSS, Favicon) / total
 
-
-########################################################################################################################
-#               External CSS
-########################################################################################################################
 
 @benchmark
-def external_css(CSS):
-    return len(CSS['externals'])
-
-
-########################################################################################################################
-#               Internal redirections
-########################################################################################################################
-
-
-def h_i_redirect(Href, Link, Media, Form, CSS, Favicon):
+def count_reqs_redirections(reqs):
     count = 0
-    for link in Href['internals']:
-        try:
-            r = requests.get(link)
-            if len(r.history) > 0:
-                count += 1
-        except:
-            continue
-    for link in Link['internals']:
-        try:
-            r = requests.get(link)
-            if len(r.history) > 0:
-                count += 1
-        except:
-            continue
-    for link in Media['internals']:
-        try:
-            r = requests.get(link)
-            if len(r.history) > 0:
-                count += 1
-        except:
-            continue
-    for link in Form['internals']:
-        try:
-            r = requests.get(link)
-            if len(r.history) > 0:
-                count += 1
-        except:
-            continue
-    for link in CSS['internals']:
-        try:
-            r = requests.get(link)
-            if len(r.history) > 0:
-                count += 1
-        except:
-            continue
-    for link in Favicon['internals']:
-        try:
-            r = requests.get(link)
-            if len(r.history) > 0:
-                count += 1
-        except:
-            continue
-    return count
 
+    if len(reqs) > 0:
+        for req in reqs:
+            if req:
+                if req.is_redirect:
+                    count += 1
 
-@benchmark
-def internal_redirection(Href, Link, Media, Form, CSS, Favicon):
-    internals = h_internal(Href, Link, Media, Form, CSS, Favicon)
-    if (internals > 0):
-        return h_i_redirect(Href, Link, Media, Form, CSS, Favicon) / internals
-    return 0
-
-
-########################################################################################################################
-#               External redirections
-########################################################################################################################
-
-
-def h_e_redirect(Href, Link, Media, Form, CSS, Favicon):
-    count = 0
-    for link in Href['externals']:
-        try:
-            r = requests.get(link)
-            if len(r.history) > 0:
-                count += 1
-        except:
-            continue
-    for link in Link['externals']:
-        try:
-            r = requests.get(link)
-            if len(r.history) > 0:
-                count += 1
-        except:
-            continue
-    for link in Media['externals']:
-        try:
-            r = requests.get(link)
-            if len(r.history) > 0:
-                count += 1
-        except:
-            continue
-    for link in Media['externals']:
-        try:
-            r = requests.get(link)
-            if len(r.history) > 0:
-                count += 1
-        except:
-            continue
-    for link in Form['externals']:
-        try:
-            r = requests.get(link)
-            if len(r.history) > 0:
-                count += 1
-        except:
-            continue
-    for link in CSS['externals']:
-        try:
-            r = requests.get(link)
-            if len(r.history) > 0:
-                count += 1
-        except:
-            continue
-    for link in Favicon['externals']:
-        try:
-            r = requests.get(link)
-            if len(r.history) > 0:
-                count += 1
-        except:
-            continue
-    return count
-
-@benchmark
-def external_redirection(Href, Link, Media, Form, CSS, Favicon):
-    externals = h_external(Href, Link, Media, Form, CSS, Favicon)
-    if (externals > 0):
-        return h_e_redirect(Href, Link, Media, Form, CSS, Favicon) / externals
-    return 0
-
-
-########################################################################################################################
-#               Generates internal errors
-########################################################################################################################
-
-
-def h_i_error(Href, Link, Media, Form, CSS, Favicon):
-    count = 0
-    for link in Href['internals']:
-        try:
-            if requests.get(link).status_code >= 400:
-                count += 1
-        except:
-            continue
-    for link in Link['internals']:
-        try:
-            if requests.get(link).status_code >= 400:
-                count += 1
-        except:
-            continue
-    for link in Media['internals']:
-        try:
-            if requests.get(link).status_code >= 400:
-                count += 1
-        except:
-            continue
-    for link in Form['internals']:
-        try:
-            if requests.get(link).status_code >= 400:
-                count += 1
-        except:
-            continue
-    for link in CSS['internals']:
-        try:
-            if requests.get(link).status_code >= 400:
-                count += 1
-        except:
-            continue
-    for link in Favicon['internals']:
-        try:
-            if requests.get(link).status_code >= 400:
-                count += 1
-        except:
-            continue
-    return count
-
-@benchmark
-def internal_errors(Href, Link, Media, Form, CSS, Favicon):
-    internals = h_internal(Href, Link, Media, Form, CSS, Favicon)
-    if (internals > 0):
-        return h_i_error(Href, Link, Media, Form, CSS, Favicon) / internals
-    return 0
-
-
-########################################################################################################################
-#               Generates external errors
-########################################################################################################################
-
-
-def h_e_error(Href, Link, Media, Form, CSS, Favicon):
-    count = 0
-    for link in Href['externals']:
-        try:
-            if requests.get(link).status_code >= 400:
-                count += 1
-        except:
-            continue
-    for link in Link['externals']:
-        try:
-            if requests.get(link).status_code >= 400:
-                count += 1
-        except:
-            continue
-    for link in Media['externals']:
-        try:
-            if requests.get(link).status_code >= 400:
-                count += 1
-        except:
-            continue
-    for link in Form['externals']:
-        try:
-            if requests.get(link).status_code >= 400:
-                count += 1
-        except:
-            continue
-    for link in CSS['externals']:
-        try:
-            if requests.get(link).status_code >= 400:
-                count += 1
-        except:
-            continue
-    for link in Favicon['externals']:
-        try:
-            if requests.get(link).status_code >= 400:
-                count += 1
-        except:
-            continue
-    return count
-
-@benchmark
-def external_errors(Href, Link, Media, Form, CSS, Favicon):
-    externals = h_external(Href, Link, Media, Form, CSS, Favicon)
-    if (externals > 0):
-        return h_e_error(Href, Link, Media, Form, CSS, Favicon) / externals
-    return 0
+        return count / len(reqs)
+    else:
+        return 0
 
 
 ########################################################################################################################
@@ -321,23 +95,13 @@ def external_errors(Href, Link, Media, Form, CSS, Favicon):
 
 @benchmark
 def login_form(Form):
-    p = re.compile('([a-zA-Z0-9\_])+.php')
     if len(Form['externals']) > 0 or len(Form['null']) > 0:
         return 1
+
+    p = re.compile('([a-zA-Z0-9\_])+.php')
     for form in Form['internals'] + Form['externals']:
         if p.match(form) != None:
             return 1
-    return 0
-
-
-########################################################################################################################
-#               Having external favicon (Kumar Jain'18)
-########################################################################################################################
-
-@benchmark
-def external_favicon(Favicon):
-    if len(Favicon['externals']) > 0:
-        return 1
     return 0
 
 
@@ -348,41 +112,9 @@ def external_favicon(Favicon):
 @benchmark
 def submitting_to_email(Form):
     for form in Form['internals'] + Form['externals']:
-        if "mailto:" in form or "mail(" in form:
+        if "mailto:" in form or "mail()" in form:
             return 1
     return 0
-
-
-########################################################################################################################
-#               Percentile of internal media <= 61 : Request URL
-########################################################################################################################
-
-@benchmark
-def internal_media(Media):
-    total = len(Media['internals']) + len(Media['externals'])
-    internals = len(Media['internals'])
-    try:
-        percentile = internals / float(total) * 100
-    except:
-        return 0
-
-    return percentile
-
-
-########################################################################################################################
-#               Percentile of external media : Request URL
-########################################################################################################################
-
-@benchmark
-def external_media(Media):
-    total = len(Media['internals']) + len(Media['externals'])
-    externals = len(Media['externals'])
-    try:
-        percentile = externals / float(total) * 100
-    except:
-        return 0
-
-    return percentile
 
 
 ########################################################################################################################
@@ -397,33 +129,17 @@ def empty_title(Title):
 
 
 ########################################################################################################################
-#               Percentile of safe anchor : URL_of_Anchor
+#               ratio of anchor
 ########################################################################################################################
 
 @benchmark
-def safe_anchor(Anchor):
+def ratio_anchor(Anchor, key):
     total = len(Anchor['safe']) + len(Anchor['unsafe'])
-    unsafe = len(Anchor['unsafe'])
-    try:
-        percentile = unsafe / float(total) * 100
-    except:
+
+    if total == 0:
         return 0
-    return percentile
-
-
-########################################################################################################################
-#               Percentile of internal links : links_in_tags but without <Meta> tag
-########################################################################################################################
-
-@benchmark
-def links_in_tags(Link):
-    total = len(Link['internals']) + len(Link['externals'])
-    internals = len(Link['internals'])
-    try:
-        percentile = internals / float(total) * 100
-    except:
-        return 0
-    return percentile
+    else:
+        return len(Anchor[key]) / total
 
 
 ########################################################################################################################
@@ -467,19 +183,19 @@ def popup_window(content):
 
 @benchmark
 def right_clic(content):
-    if re.findall(r"event.button ?== ?2", content):
+    if re.findall(r"event.button\s*==\s*2", content):
         return 1
     else:
         return 0
 
 
 ########################################################################################################################
-#              Domain in page title
+#              Domain in page title/body
 ########################################################################################################################
 
 @benchmark
-def domain_in_title(domain, title):
-    if domain.lower() in title.lower():
+def domain_in_text(second_level_domain, text):
+    if second_level_domain.lower() in text.lower():
         return 1
     return 0
 
@@ -502,7 +218,7 @@ def domain_with_copyright(domain, content):
 
 
 ########################################################################################################################
-#              Count of input areas
+#              Compression ratio
 ########################################################################################################################
 
 
@@ -517,8 +233,168 @@ def compression_ratio(request):
 
 
 ########################################################################################################################
-#              Count of input areas
+#              Count of text areas
 ########################################################################################################################
 
-# @benchmark
-# def count_input(content):
+@benchmark
+def count_textareas(content):
+    soup = BeautifulSoup(content, 'html.parser')
+
+    io_count = len(soup.find_all('textarea')) + len(soup.find_all('input', type=None))
+    for io in soup.find_all('input', type=True):
+        if io['type'] == 'text' or io['type'] == 'password' or io['type'] == 'search':
+            io_count += 1
+
+    return io_count
+
+
+########################################################################################################################
+########################################################################################################################
+#                                               JAVASCRIPT
+########################################################################################################################
+########################################################################################################################
+
+
+def get_html_from_js(context):
+    pattern = r"([\"'`])[\s\w]*(<\s*(\w+)[^>]*>.*<\s*\/\s*\3\s*>)[\s\w]*\1"
+    return " ".join([res.group(2) for res in re.finditer(pattern, context, re.MULTILINE) if res.group(1) is not None])
+
+
+from bs4 import BeautifulSoup
+import re
+
+
+def remove_JScomments(string):
+    pattern = r"(\".*?\"|\'.*?\'|\`.*?\`)|(/\*.*?\*/|//[^\r\n]*$)"
+    regex = re.compile(pattern, re.MULTILINE | re.DOTALL)
+
+    def _replacer(match):
+        if match.group(2) is not None:
+            return ""
+        else:
+            return match.group(1)
+    return regex.sub(_replacer, string)
+
+
+########################################################################################################################
+#              Ratio static/dynamic html content
+########################################################################################################################
+
+@benchmark
+def ratio_dynamic_html(s_html, d_html):
+    return max(0, min(1, len(d_html) / len(s_html)))
+
+
+########################################################################################################################
+#              Ratio html content on js-code
+########################################################################################################################
+
+@benchmark
+def ratio_js_on_html(html_context):
+    if len(html_context):
+        return len(get_html_from_js(remove_JScomments(html_context))) / len(html_context)
+    else:
+        return 0
+
+
+########################################################################################################################
+#              Amount of http request operations (popular)
+########################################################################################################################
+
+@benchmark
+def count_io_commands(string):
+    pattern = r"(\".*?\"|\'.*?\'|\`.*?\`)|" \
+              r"((.(open|send)|$.(get|post|ajax|getJSON)|fetch|axios(|.(get|post|all))|getData)\s*\()"
+    regex = re.compile(pattern, re.MULTILINE | re.DOTALL)
+
+    count = 0
+
+    for m in re.finditer(regex, string):
+        if not m.group(1) and m.groups():
+            count += 1
+
+    return count
+
+
+########################################################################################################################
+#                       OCR
+########################################################################################################################
+
+import cv2
+import pytesseract
+import numpy as np
+
+pytesseract.pytesseract.tesseract_cmd = r'C:/Program Files (x86)/Tesseract-OCR/tesseract.exe'
+
+langs = '+'.join(pytesseract.get_languages(config=''))
+
+
+def url_to_image(url):
+    resp = requests.get(url, stream=True).raw
+    image = np.asarray(bytearray(resp.read()), dtype="uint8")
+    image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+    return image
+
+
+def preprocessing_image(img):
+    img = cv2.resize(img, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
+    img = cv2.GaussianBlur(img, (5, 5), 0)
+    return img
+
+
+def image_to_text(img):
+    if type(img) == list:
+        docs = []
+
+        for item in img:
+            try:
+                txt = pytesseract.image_to_data(url_to_image(img), lang=langs)
+                if txt:
+                    docs.append(txt)
+            except:
+                continue
+
+        return ' '.join(docs)
+
+    else:
+        try:
+            txt = pytesseract.image_to_data(img, lang=langs)
+            return txt
+        except:
+            return ""
+
+
+########################################################################################################################
+#                   Relationship between image text and context
+########################################################################################################################
+
+
+@benchmark
+def ratio_Txt(dynamic, static):
+    total = len(static)
+
+    if total:
+        return min(len(dynamic) / total, 1)
+    else:
+        return 0
+
+
+########################################################################################################################
+#                   count of phish hints
+########################################################################################################################
+
+@benchmark
+def count_phish_hints(word_raw, phish_hints):
+    if type(word_raw) == list:
+        word_raw = ' '.join(word_raw)
+
+    count = 0
+    total = len(word_raw)
+
+    for hint in [item for sublist in phish_hints.values() for item in sublist]:
+        count += word_raw.lower().count(hint)
+
+    if total:
+        return count / total
+    else:
+        return 0
