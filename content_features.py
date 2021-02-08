@@ -47,7 +47,7 @@ import time
 
 def fetch(url):
     try:
-        return session.get(url, timeout=1)
+        return requests.get(url, timeout=1)
     except:
         return None
 
@@ -55,21 +55,20 @@ def fetch(url):
 import concurrent.futures
 
 
-@benchmark(60)
+@benchmark(100)
 def get_reqs_data(url_list):
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        try:
-            return_value = [future for future in executor.map(fetch, url_list, timeout=60)]
-        except:
-            return_value = -5
+        return_value = [req for req in executor.map(fetch, url_list, timeout=80)]
     return return_value
 
 
 @benchmark(2)
 def count_reqs_error(reqs):
-    count = 0
+    if type(reqs) != list:
+        return -1
 
     if len(reqs) > 0:
+        count = 0
         for req in reqs:
             if req:
                 if req.status_code >= 400:
@@ -82,9 +81,11 @@ def count_reqs_error(reqs):
 
 @benchmark(2)
 def count_reqs_redirections(reqs):
-    count = 0
+    if type(reqs) != list:
+        return -1
 
     if len(reqs) > 0:
+        count = 0
         for req in reqs:
             if req:
                 if req.is_redirect:

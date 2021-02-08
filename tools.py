@@ -49,7 +49,6 @@ def time_limit(seconds, msg=''):
     except KeyboardInterrupt:
         raise TimeoutException("Timed out for operation {}".format(msg))
     finally:
-        # if the action ends in specified time, timer is canceled
         timer.cancel()
 
 
@@ -65,7 +64,8 @@ def benchmark(func, timeout):
                     return_value = future.result()
             except Exception as e:
                 return_value = -5
-                print('Time out! : [{}]'.format(func.__name__))
+                if func.__name__ == 'url_iterator':
+                    print('Time out! : [{}]'.format(func.__name__))
 
         end = time.time()
         return return_value, end - start

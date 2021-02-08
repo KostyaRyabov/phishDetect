@@ -6,6 +6,8 @@ import time
 from tools import benchmark
 import re
 
+import threading
+
 
 OPR_key = open("OPR_key.txt").read()
 
@@ -14,7 +16,7 @@ OPR_key = open("OPR_key.txt").read()
 #               Domain registration age
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def domain_registration_length(domain):
     try:
         res = whois.whois(domain)
@@ -36,7 +38,7 @@ def domain_registration_length(domain):
 #               Domain recognized by WHOIS
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def whois_registered_domain(domain):
     try:
         hostname = whois.whois(domain).domain_name
@@ -63,7 +65,7 @@ import sys, lxml
 
 session = requests.session()
 
-@benchmark(2)
+@benchmark(5)
 def web_traffic(short_url):
     try:
         rank = BeautifulSoup(session.get("http://data.alexa.com/data?cli=10&dat=s&url=" + short_url, timeout=2).text,
@@ -73,33 +75,6 @@ def web_traffic(short_url):
 
     # return min(int(rank), 10000000)
     return int(rank)
-
-
-########################################################################################################################
-#               Google index
-########################################################################################################################
-
-
-from urllib.parse import urlencode
-
-@benchmark(2)
-def google_index(url):
-    query = {'q': 'site:' + url}
-    google = "https://www.google.com/search?" + urlencode(query)
-    try:
-        data = session.get(google,timeout=2)
-        soup = BeautifulSoup(data.content, "html.parser")
-
-        if 'Our systems have detected unusual traffic from your computer network.' in str(soup):
-            return -1
-        check = soup.find(id="rso").find("div").find("div").find("div").find("div").find("a")
-        if check and check['href']:
-            return 1
-        else:
-            return 0
-
-    except AttributeError:
-        return -1
 
 
 ########################################################################################################################
@@ -157,7 +132,7 @@ def google_index(url):
 #     except:
 #         return None
 
-@benchmark(2)
+@benchmark(5)
 def page_rank(domain):
     url = 'https://openpagerank.com/api/v1.0/getPageRank?domains%5B0%5D=' + domain
     try:
@@ -178,8 +153,10 @@ def page_rank(domain):
 
 
 from googlesearch import search
+#
+# google_search_locker = threading.Lock()
 
-@benchmark(2)
+@benchmark(30)
 def compare_search2url(url, domain, keywords):
     try:
         res = search("http://{}={}".format(domain, '+'.join(keywords)), 10)
@@ -210,8 +187,6 @@ def get_certificate(host, port=443, timeout=10):
     sock.settimeout(timeout)
     try:
         der_cert = sock.getpeercert(True)
-    except:
-        pass
     finally:
         sock.close()
     return ssl.DER_cert_to_PEM_cert(der_cert)
@@ -221,7 +196,7 @@ import threading
 
 lock_obj = threading.Lock()
 
-@benchmark(3)
+@benchmark(15)
 def get_cert(hostname):
     lock_obj.acquire()
     result = None
@@ -249,21 +224,21 @@ def get_cert(hostname):
     return result
 
 
-@benchmark(2)
+@benchmark(5)
 def count_alt_names(cert):
     try:
         return len(cert[b'subjectAltName'].split(','))
     except:
         return -1
 
-@benchmark(2)
+@benchmark(5)
 def valid_cert_period(cert):
     try:
         return (cert['notAfter'] - cert['notBefore']).days
     except:
         return -1
 
-@benchmark(2)
+@benchmark(5)
 def remainder_valid_cert(cert):
     try:
         period = cert['notAfter'] - cert['notBefore']

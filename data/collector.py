@@ -37,7 +37,7 @@ def download_phishURLS():
         phish_url_list.to_csv(filename, index=False, header=False)
         phish_url_list = phish_url_list['url'].tolist()
     except requests.exceptions.RequestException as e:
-        raise SystemExit(e)
+        raise SystemExit('Access denied')
 
     return phish_url_list
 

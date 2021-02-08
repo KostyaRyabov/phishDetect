@@ -97,7 +97,8 @@ def check_Language(text):
 key = open("OPR_key.txt").read()
 
 
-def is_URL_accessible(url, time_out=5):
+@benchmark(6)
+def is_URL_accessible(url, time_out=3):
     page = None
     try:
         page = requests.get(url, timeout=time_out)
@@ -122,7 +123,7 @@ def get_domain(url):
     o = urlsplit(url)
     return o.hostname, tldextract.extract(url).domain, o.path
 
-@benchmark(20)
+@benchmark(40)
 def extract_data_from_URL(hostname, content, domain, base_url):
     Null_format = ["", "#", "#nothing", "#doesnotexist", "#null", "#void", "#whatever",
                    "#content", "javascript::void(0)", "javascript::void(0);", "javascript::;", "javascript"]
@@ -363,7 +364,7 @@ def extract_data_from_URL(hostname, content, domain, base_url):
         docs = []
 
         for url in script_lnks:
-            state, request = is_URL_accessible(url)
+            state, request = is_URL_accessible(url)[0]
 
             if state:
                 docs.append(str(request.content))
@@ -486,7 +487,7 @@ def generate_legitimate_urls(N):
 def search_for_vulnerable_URLs(domain):
     url = 'http://' + domain
 
-    state, request = is_URL_accessible(url, 1)
+    state, request = is_URL_accessible(url)[0]
 
     if state:
         url = request.url
@@ -499,7 +500,7 @@ def search_for_vulnerable_URLs(domain):
 
         if Href:
             url = Href[randint(0, len(Href))-1]
-            state, request = is_URL_accessible(url, 1)
+            state, request = is_URL_accessible(url)[0]
             if state:
                 return request.url
 
@@ -732,7 +733,7 @@ headers = {
                     "ef.web_traffic(r_url)",
                     # "ef.google_index(r_url)",
                     "ef.page_rank(domain)",
-                    # "ef.compare_search2url(r_url,domain,TF.most_common(5)])",
+                    "ef.compare_search2url(r_url,domain,TF.most_common(5)])",
                     "ef.remainder_valid_cert(hostinfo.cert)",
                     "ef.valid_cert_period(hostinfo.cert)",
                     "ef.count_alt_names(hostinfo.cert)"
@@ -760,7 +761,7 @@ def extract_features(url, status):
                segment(list(filter(None, w_host))), \
                segment(list(filter(None, w_path)))
 
-    state, request = is_URL_accessible(url)
+    state, request = is_URL_accessible(url)[0]
 
     if state:
         r_url = request.url
@@ -1073,7 +1074,7 @@ def extract_features(url, status):
                     ef.web_traffic(r_url),
                     # ef.google_index(r_url),
                     ef.page_rank(domain),
-                    # ef.compare_search2url(r_url, domain, [t[0] for t in Counter(TF).most_common(5)]),
+                    ef.compare_search2url(r_url, domain, [t[0] for t in Counter(TF).most_common(5)]),
                     ef.remainder_valid_cert(cert),
                     ef.valid_cert_period(cert),
                     ef.count_alt_names(cert)
@@ -1082,6 +1083,7 @@ def extract_features(url, status):
 
         return record
     return None
+
 
 
 chunk_size = 10
@@ -1099,8 +1101,7 @@ def generate_dataset(url_list):
 
     pb_i = []
 
-    pb = ProgressBar(total=len(url_list), prefix='url analysis', decimals=3, length=50, fill='█',
-                     zfill='-')
+    pb = ProgressBar(total=len(url_list), prefix='url analysis', decimals=3, length=50, fill='█',  zfill='-')
     pb.print_progress_bar(0)
 
     def extraction_data(obj):
@@ -1113,18 +1114,15 @@ def generate_dataset(url_list):
         else:
             return None
 
+    @benchmark(120+chunk_size)
+    def url_iterator(lst):
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            return [item for item in executor.map(extraction_data, lst, timeout=(100+chunk_size)) if item]
 
     for chunk in chunks(url_list, chunk_size):
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-            buffer = [executor.submit(extraction_data, obj) for obj in chunk]
-            concurrent.futures.wait(buffer)
+        res = url_iterator(chunk)[0]
 
-            # buffer = executor.map(extraction_data, chunk)
-
-        res = [r.result() for r in buffer if r.result()]
-        # res = [r for r in buffer if r]
-
-        if res:
+        if res and type(res) == list:
             tmp = np.array([record['stats'] for record in res])
             metadata = np.array([[record.get(key) for key in headers['metadata']] for record in res])
             substats = np.array([[record.get(key) for key in headers['substats']] for record in res])
@@ -1155,6 +1153,10 @@ def generate_dataset(url_list):
             pandas.DataFrame(TF_IDF[0]).to_csv(dir_path+'TF-IDF (legitimate).csv', index=False, header=False)
             pandas.DataFrame(TF_IDF[1]).to_csv(dir_path+'TF-IDF (phishing).csv', index=False, header=False)
 
-            t = sum(pb_i) / len(pb_i)
-            all_t = t * len(url_list) / len(pb_i)
-            print('updated: +{}\t[time left: {} min]'.format(len(res), (all_t - t)/60))
+            tt = sum(pb_i) / len(pb_i)
+            all_t = tt * len(url_list) / len(pb_i)
+            print('updated: +{} {}%\t[time left: {} min]'.format(len(res), len(data)/(len(pb_i)*chunk_size), (all_t - tt)/60))
+        else:
+            tt = sum(pb_i) / len(pb_i)
+            all_t = tt * len(url_list) / len(pb_i)
+            print('pass: {}%\t[time left: {} min]'.format(len(data) / (len(pb_i) * chunk_size), (all_t - tt) / 60))
