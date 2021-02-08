@@ -12,14 +12,94 @@ WORDS = list(Counter(brown.words()).keys())
 ########################################################################################################################
 
 
-def benchmark(func):
+def parametrized(dec):
+    def layer(*args, **kwargs):
+        def repl(f):
+            return dec(f, *args, **kwargs)
+        return repl
+    return layer
+
+
+import concurrent.futures
+
+class Task:
+    def __init__(self, func, *args, **kwargs):
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self):
+        return self.func(*self.args, **self.kwargs)
+
+
+from contextlib import contextmanager
+import threading
+import _thread
+
+class TimeoutException(Exception):
+    def __init__(self, msg=''):
+        self.msg = msg
+
+@contextmanager
+def time_limit(seconds, msg=''):
+    timer = threading.Timer(seconds, lambda: _thread.interrupt_main())
+    timer.start()
+    try:
+        yield
+    except KeyboardInterrupt:
+        raise TimeoutException("Timed out for operation {}".format(msg))
+    finally:
+        # if the action ends in specified time, timer is canceled
+        timer.cancel()
+
+
+@parametrized
+def benchmark(func, timeout):
     def wrapper(*args, **kwargs):
         start = time.time()
-        return_value = func(*args, **kwargs)
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            task = executor.submit(func, *args, **kwargs)
+            try:
+                for future in concurrent.futures.as_completed([task], timeout=timeout):
+                    return_value = future.result()
+            except Exception as e:
+                return_value = -5
+                print('Time out! : [{}]'.format(func.__name__))
+
         end = time.time()
         return return_value, end - start
 
     return wrapper
+
+#
+# @parametrized
+# def benchmark(func, timeout):
+#     def wrapper(*args, **kwargs):
+#         start = time.time()
+#
+#         try:
+#             with time_limit(timeout, 'sleep'):
+#                 return_value = func(*args, **kwargs)
+#         except Exception:
+#             return_value = -5
+#             print('Time out! : ({})'.format(func.__name__))
+#
+#         end = time.time()
+#         return return_value, end - start
+#
+#     return wrapper
+
+
+
+# def benchmark(func):
+#     def wrapper(*args, **kwargs):
+#         start = time.time()
+#         return_value = func(*args, **kwargs)
+#         end = time.time()
+#         return return_value, end - start
+#
+#     return wrapper
 
 
 # def normalize_exp3(func):
@@ -44,9 +124,6 @@ def tokenize(text):
 
 def clear_text(word_raw):
     return [word for word in word_raw if word not in STOPWORDS]
-
-
-from nltk.stem.wordnet import WordNetLemmatizer
 
 
 ########################################################################################################################

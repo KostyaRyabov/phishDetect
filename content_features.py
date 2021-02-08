@@ -2,7 +2,7 @@ import requests
 import re
 from tools import benchmark
 
-
+session = requests.session()
 
 ########################################################################################################################
 ########################################################################################################################
@@ -22,7 +22,7 @@ def urls_ratio(urls, total_urls):
 #               ratio url-list
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def ratio_List(Arr, key):
     total = len(Arr['internals']) + len(Arr['externals'])
 
@@ -42,24 +42,30 @@ def ratio_List(Arr, key):
 ########################################################################################################################
 
 
-from requests_futures import sessions
+import time
 
 
-def fetch(url, s):
+def fetch(url):
     try:
-        req = s.get(url).result()
-        return req
+        return session.get(url, timeout=1)
     except:
         return None
 
 
-@benchmark
+import concurrent.futures
+
+
+@benchmark(60)
 def get_reqs_data(url_list):
-    ses = sessions.FuturesSession()
-    return [fetch(url, ses) for url in url_list]
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        try:
+            return_value = [future for future in executor.map(fetch, url_list, timeout=60)]
+        except:
+            return_value = -5
+    return return_value
 
 
-@benchmark
+@benchmark(2)
 def count_reqs_error(reqs):
     count = 0
 
@@ -74,7 +80,7 @@ def count_reqs_error(reqs):
         return 0
 
 
-@benchmark
+@benchmark(2)
 def count_reqs_redirections(reqs):
     count = 0
 
@@ -93,7 +99,7 @@ def count_reqs_redirections(reqs):
 #               Having login form link
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def login_form(Form):
     if len(Form['externals']) > 0 or len(Form['null']) > 0:
         return 1
@@ -109,7 +115,7 @@ def login_form(Form):
 #               Submitting to email
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def submitting_to_email(Form):
     for form in Form['internals'] + Form['externals']:
         if "mailto:" in form or "mail()" in form:
@@ -121,7 +127,7 @@ def submitting_to_email(Form):
 #               Check for empty title
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def empty_title(Title):
     if Title:
         return 0
@@ -132,7 +138,7 @@ def empty_title(Title):
 #               ratio of anchor
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def ratio_anchor(Anchor, key):
     total = len(Anchor['safe']) + len(Anchor['unsafe'])
 
@@ -146,7 +152,7 @@ def ratio_anchor(Anchor, key):
 #              IFrame Redirection
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def iframe(IFrame):
     if len(IFrame['invisible']) > 0:
         return 1
@@ -157,7 +163,7 @@ def iframe(IFrame):
 #              Onmouse action
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def onmouseover(content):
     if 'onmouseover="window.status=' in str(content).lower().replace(" ", ""):
         return 1
@@ -169,7 +175,7 @@ def onmouseover(content):
 #              Pop up window
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def popup_window(content):
     if "prompt(" in str(content).lower():
         return 1
@@ -181,7 +187,7 @@ def popup_window(content):
 #              Right_clic action
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def right_clic(content):
     if re.findall(r"event.button\s*==\s*2", content):
         return 1
@@ -193,7 +199,7 @@ def right_clic(content):
 #              Domain in page title/body
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def domain_in_text(second_level_domain, text):
     if second_level_domain.lower() in text.lower():
         return 1
@@ -204,7 +210,7 @@ def domain_in_text(second_level_domain, text):
 #              Domain after copyright logo
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def domain_with_copyright(domain, content):
     try:
         m = re.search(u'(\N{COPYRIGHT SIGN}|\N{TRADE MARK SIGN}|\N{REGISTERED SIGN})', content)
@@ -222,7 +228,7 @@ def domain_with_copyright(domain, content):
 ########################################################################################################################
 
 
-@benchmark
+@benchmark(2)
 def compression_ratio(request):
     try:
         compressed_length = int(request.headers['content-length'])
@@ -236,7 +242,7 @@ def compression_ratio(request):
 #              Count of text areas
 ########################################################################################################################
 
-@benchmark
+@benchmark(3)
 def count_textareas(content):
     soup = BeautifulSoup(content, 'html.parser')
 
@@ -257,7 +263,7 @@ def count_textareas(content):
 
 def get_html_from_js(context):
     pattern = r"([\"'`])[\s\w]*(<\s*(\w+)[^>]*>.*<\s*\/\s*\3\s*>)[\s\w]*\1"
-    return " ".join([res.group(2) for res in re.finditer(pattern, context, re.MULTILINE) if res.group(1) is not None])
+    return " ".join([res.group(2) for res in re.finditer(pattern, context, re.MULTILINE) if res.group(2) is not None])
 
 
 from bs4 import BeautifulSoup
@@ -272,7 +278,7 @@ def remove_JScomments(string):
         if match.group(2) is not None:
             return ""
         else:
-            return match.group(1)
+            return match.group(2)
     return regex.sub(_replacer, string)
 
 
@@ -280,7 +286,7 @@ def remove_JScomments(string):
 #              Ratio static/dynamic html content
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def ratio_dynamic_html(s_html, d_html):
     return max(0, min(1, len(d_html) / len(s_html)))
 
@@ -289,7 +295,7 @@ def ratio_dynamic_html(s_html, d_html):
 #              Ratio html content on js-code
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def ratio_js_on_html(html_context):
     if len(html_context):
         return len(get_html_from_js(remove_JScomments(html_context))) / len(html_context)
@@ -301,7 +307,7 @@ def ratio_js_on_html(html_context):
 #              Amount of http request operations (popular)
 ########################################################################################################################
 
-@benchmark
+@benchmark(3)
 def count_io_commands(string):
     pattern = r"(\".*?\"|\'.*?\'|\`.*?\`)|" \
               r"((.(open|send)|$.(get|post|ajax|getJSON)|fetch|axios(|.(get|post|all))|getData)\s*\()"
@@ -310,7 +316,7 @@ def count_io_commands(string):
     count = 0
 
     for m in re.finditer(regex, string):
-        if not m.group(1) and m.groups():
+        if not m.group(2) and m.groups():
             count += 1
 
     return count
@@ -330,7 +336,7 @@ langs = '+'.join(pytesseract.get_languages(config=''))
 
 
 def url_to_image(url):
-    resp = requests.get(url, stream=True).raw
+    resp = session.get(url, stream=True).raw
     image = np.asarray(bytearray(resp.read()), dtype="uint8")
     image = cv2.imdecode(image, cv2.IMREAD_COLOR)
     return image
@@ -369,7 +375,7 @@ def image_to_text(img):
 ########################################################################################################################
 
 
-@benchmark
+@benchmark(2)
 def ratio_Txt(dynamic, static):
     total = len(static)
 
@@ -383,18 +389,14 @@ def ratio_Txt(dynamic, static):
 #                   count of phish hints
 ########################################################################################################################
 
-@benchmark
+@benchmark(10)
 def count_phish_hints(word_raw, phish_hints):
     if type(word_raw) == list:
-        word_raw = ' '.join(word_raw)
+        word_raw = ' '.join(word_raw).lower()
 
-    count = 0
-    total = len(word_raw)
+    exp = '|'.join([item for sublist in phish_hints.values() for item in sublist])
 
-    for hint in [item for sublist in phish_hints.values() for item in sublist]:
-        count += word_raw.lower().count(hint)
-
-    if total:
-        return count / total
+    if exp:
+        return len(re.findall(exp, word_raw))
     else:
-        return 0
+        return -1

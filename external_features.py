@@ -14,7 +14,7 @@ OPR_key = open("OPR_key.txt").read()
 #               Domain registration age
 ########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def domain_registration_length(domain):
     try:
         res = whois.whois(domain)
@@ -32,11 +32,11 @@ def domain_registration_length(domain):
         return -1
 
 
-#################################################################################################################################
+########################################################################################################################
 #               Domain recognized by WHOIS
-#################################################################################################################################
+########################################################################################################################
 
-@benchmark
+@benchmark(2)
 def whois_registered_domain(domain):
     try:
         hostname = whois.whois(domain).domain_name
@@ -54,70 +54,45 @@ def whois_registered_domain(domain):
         return -1
 
 
-#################################################################################################################################
+########################################################################################################################
 #               Unable to get web traffic (Page Rank)
-#################################################################################################################################
+########################################################################################################################
 
 
 import sys, lxml
 
-@benchmark
+session = requests.session()
+
+@benchmark(2)
 def web_traffic(short_url):
     try:
-        rank = BeautifulSoup(requests("http://data.alexa.com/data?cli=10&dat=s&url=" + short_url).text,
+        rank = BeautifulSoup(session.get("http://data.alexa.com/data?cli=10&dat=s&url=" + short_url, timeout=2).text,
                              "xml").find("REACH")['RANK']
     except:
         return -1
 
     # return min(int(rank), 10000000)
-    return rank
+    return int(rank)
 
 
-#################################################################################################################################
-#               Domain age of a url
-#################################################################################################################################
-
-import json
-
-@benchmark
-def domain_age(domain):
-    url = domain.split("//")[-1].split("/")[0].split('?')[0]
-    show = "https://input.payapi.io/v1/api/fraud/domain/age/" + url
-    r = requests.get(show)
-
-    if r.status_code == 200:
-        data = r.text
-        jsonToPython = json.loads(data)
-        result = jsonToPython['result']
-        if result == None:
-            return -2
-        else:
-            return result
-    else:
-        return -1
-
-
-#################################################################################################################################
+########################################################################################################################
 #               Google index
-#################################################################################################################################
+########################################################################################################################
 
 
 from urllib.parse import urlencode
 
-@benchmark
+@benchmark(2)
 def google_index(url):
-    # time.sleep(.6)
-    user_agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.116 Safari/537.36'
-    headers = {'User-Agent': user_agent}
     query = {'q': 'site:' + url}
     google = "https://www.google.com/search?" + urlencode(query)
-    data = requests.get(google, headers=headers)
-    data.encoding = 'ISO-8859-1'
-    soup = BeautifulSoup(str(data.content), "html.parser")
     try:
+        data = session.get(google,timeout=2)
+        soup = BeautifulSoup(data.content, "html.parser")
+
         if 'Our systems have detected unusual traffic from your computer network.' in str(soup):
             return -1
-        check = soup.find(id="rso").find("div").find("div").find("a")
+        check = soup.find(id="rso").find("div").find("div").find("div").find("div").find("a")
         if check and check['href']:
             return 1
         else:
@@ -132,55 +107,69 @@ def google_index(url):
 ########################################################################################################################
 
 
-def http_build_query(params, topkey=''):
-    from urllib.parse import quote
+# def http_build_query(params, topkey=''):
+#     from urllib.parse import quote
+#
+#     if len(params) == 0:
+#         return ""
+#
+#     result = ""
+#
+#     # is a dictionary?
+#     if type(params) is dict:
+#         for key in params.keys():
+#             newkey = quote(key)
+#             if topkey != '':
+#                 newkey = topkey + quote('[' + key + ']')
+#
+#             if type(params[key]) is dict:
+#                 result += http_build_query(params[key], newkey)
+#
+#             elif type(params[key]) is list:
+#                 i = 0
+#                 for val in params[key]:
+#                     result += newkey + quote('[' + str(i) + ']') + "=" + quote(str(val)) + "&"
+#                     i = i + 1
+#
+#             # boolean should have special treatment as well
+#             elif type(params[key]) is bool:
+#                 result += newkey + "=" + quote(str(int(params[key]))) + "&"
+#
+#             # assume string (integers and floats work well)
+#             else:
+#                 result += newkey + "=" + quote(str(params[key])) + "&"
+#
+#     # remove the last '&'
+#     if (result) and (topkey == '') and (result[-1] == '&'):
+#         result = result[:-1]
+#
+#     return result
+#
+#
+# @benchmark
+# def page_rank(domains):
+#     url = 'https://openpagerank.com/api/v1.0/getPageRank?' + http_build_query({"domains": domains})
+#     try:
+#         request = session.get(url, headers={'API-OPR': OPR_key})
+#         result = request.json()
+#         result = [record['page_rank_decimal'] for record in result['response']]
+#         return result
+#     except:
+#         return None
 
-    if len(params) == 0:
-        return ""
-
-    result = ""
-
-    # is a dictionary?
-    if type(params) is dict:
-        for key in params.keys():
-            newkey = quote(key)
-            if topkey != '':
-                newkey = topkey + quote('[' + key + ']')
-
-            if type(params[key]) is dict:
-                result += http_build_query(params[key], newkey)
-
-            elif type(params[key]) is list:
-                i = 0
-                for val in params[key]:
-                    result += newkey + quote('[' + str(i) + ']') + "=" + quote(str(val)) + "&"
-                    i = i + 1
-
-            # boolean should have special treatment as well
-            elif type(params[key]) is bool:
-                result += newkey + "=" + quote(str(int(params[key]))) + "&"
-
-            # assume string (integers and floats work well)
-            else:
-                result += newkey + "=" + quote(str(params[key])) + "&"
-
-    # remove the last '&'
-    if (result) and (topkey == '') and (result[-1] == '&'):
-        result = result[:-1]
-
-    return result
-
-
-@benchmark
-def page_rank(domains):
-    url = 'https://openpagerank.com/api/v1.0/getPageRank?' + http_build_query({"domains": domains})
+@benchmark(2)
+def page_rank(domain):
+    url = 'https://openpagerank.com/api/v1.0/getPageRank?domains%5B0%5D=' + domain
     try:
-        request = requests.get(url, headers={'API-OPR': OPR_key})
+        request = session.get(url, headers={'API-OPR': OPR_key}, timeout=2)
         result = request.json()
-        result = [record['page_rank_decimal'] for record in result['response']]
-        return result
+        result = result['response'][0]['page_rank_integer']
+        if result:
+            return result
+        else:
+            return 0
     except:
-        return None
+        return -1
 
 
 ########################################################################################################################
@@ -190,9 +179,17 @@ def page_rank(domains):
 
 from googlesearch import search
 
-@benchmark
+@benchmark(2)
 def compare_search2url(url, domain, keywords):
-    return search("http://{0}={1}".format(domain, '+'.join(keywords), 0))[0] == url
+    try:
+        res = search("http://{}={}".format(domain, '+'.join(keywords)), 10)
+
+        for r_url in res:
+            if r_url == url:
+                return 1
+        return 0
+    except:
+        return -1
 
 
 ########################################################################################################################
@@ -200,71 +197,81 @@ def compare_search2url(url, domain, keywords):
 ########################################################################################################################
 
 
-from OpenSSL import SSL
-from cryptography import x509
-import idna
-
-from socket import socket
-from collections import namedtuple
-
-HostInfo = namedtuple(field_names='cert hostname peername', typename='HostInfo')
+import ssl
+import socket
+import OpenSSL
+from datetime import datetime
 
 
-def get_hostinfo(hostname, port):
+def get_certificate(host, port=443, timeout=10):
+    context = ssl.create_default_context()
+    conn = socket.create_connection((host, port))
+    sock = context.wrap_socket(conn, server_hostname=host)
+    sock.settimeout(timeout)
     try:
-        hostname_idna = idna.encode(hostname)
-        sock = socket()
-
-        sock.connect((hostname, port))
-        peername = sock.getpeername()
-        ctx = SSL.Context(SSL.SSLv23_METHOD) # most compatible
-        ctx.check_hostname = False
-        ctx.verify_mode = SSL.VERIFY_NONE
-
-        sock_ssl = SSL.Connection(ctx, sock)
-        sock_ssl.set_connect_state()
-        sock_ssl.set_tlsext_host_name(hostname_idna)
-        sock_ssl.do_handshake()
-        cert = sock_ssl.get_peer_certificate()
-        crypto_cert = cert.to_cryptography()
-        sock_ssl.close()
-        sock.close()
-
-        return HostInfo(cert=crypto_cert, peername=peername, hostname=hostname)
+        der_cert = sock.getpeercert(True)
     except:
-        return HostInfo
+        pass
+    finally:
+        sock.close()
+    return ssl.DER_cert_to_PEM_cert(der_cert)
 
 
-def get_alt_names(cert):
+import threading
+
+lock_obj = threading.Lock()
+
+@benchmark(3)
+def get_cert(hostname):
+    lock_obj.acquire()
+    result = None
     try:
-        ext = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
-        return ext.value.get_values_for_type(x509.DNSName)
-    except x509.ExtensionNotFound:
-        return None
+        certificate = get_certificate(hostname)
+        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, certificate)
 
-@benchmark
+        result = {
+            'subject': dict(x509.get_subject().get_components()),
+            'issuer': dict(x509.get_issuer().get_components()),
+            'serialNumber': x509.get_serial_number(),
+            'version': x509.get_version(),
+            'notBefore': datetime.strptime(x509.get_notBefore().decode('ascii'), '%Y%m%d%H%M%SZ'),
+            'notAfter': datetime.strptime(x509.get_notAfter().decode('ascii'), '%Y%m%d%H%M%SZ'),
+        }
+
+        extensions = (x509.get_extension(i) for i in range(x509.get_extension_count()))
+        extension_data = {e.get_short_name(): str(e) for e in extensions}
+        result.update(extension_data)
+    except:
+        pass
+    finally:
+        lock_obj.release()
+
+    return result
+
+
+@benchmark(2)
 def count_alt_names(cert):
     try:
-        return len(get_alt_names(cert))
+        return len(cert[b'subjectAltName'].split(','))
     except:
         return -1
 
-@benchmark
+@benchmark(2)
 def valid_cert_period(cert):
     try:
-        return (cert.not_valid_after - cert.not_valid_before).days
+        return (cert['notAfter'] - cert['notBefore']).days
     except:
         return -1
 
-@benchmark
+@benchmark(2)
 def remainder_valid_cert(cert):
     try:
-        period = cert.not_valid_after - cert.not_valid_before
+        period = cert['notAfter'] - cert['notBefore']
 
         today = time.strftime('%Y-%m-%d')
         today = datetime.strptime(today, '%Y-%m-%d')
 
-        passed_time = today - cert.not_valid_before
+        passed_time = today - cert['notBefore']
 
         return max(0, min(1, passed_time / period))
     except:

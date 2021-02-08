@@ -11,6 +11,7 @@ import io
 import numpy as np
 import time
 
+from data.collector import dir_path
 from requests import request
 
 from tools import tokenize, segment, clear_text, compute_tf, compute_idf, compute_tf_idf, benchmark
@@ -32,7 +33,7 @@ def load_phishHints():
     file_list = os.listdir(hints_dir)
 
     if file_list:
-        return [{leng[0:2]: pandas.read_csv(hints_dir + leng, header=None)[0].tolist()} for leng in file_list][0]
+        return {leng[0:2]: pandas.read_csv(hints_dir + leng, header=None)[0].tolist() for leng in file_list}
     else:
         hints = {'en': [
             'login',
@@ -81,11 +82,10 @@ def check_Language(text):
 
     language = translator.detect(str(text)[0:5000]).lang
 
-    if language not in phish_hints:
-        words = translator.translate(";".join(phish_hints['en'][0:16]), src='en',
-                                                     dest=language).text.split(";")
+    if language not in phish_hints.keys():
+        words = translator.translate(" ".join(phish_hints['en'][0:16]), src='en', dest=language).text.split(" ")
 
-        phish_hints[language] = [word.strip() for word in words]
+        phish_hints[language] = [str(word.strip()) for word in words]
 
         data = pandas.DataFrame(phish_hints[language])
         filename = "data/phish_hints/{0}.csv".format(language)
@@ -122,7 +122,7 @@ def get_domain(url):
     o = urlsplit(url)
     return o.hostname, tldextract.extract(url).domain, o.path
 
-@benchmark
+@benchmark(20)
 def extract_data_from_URL(hostname, content, domain, base_url):
     Null_format = ["", "#", "#nothing", "#doesnotexist", "#null", "#void", "#whatever",
                    "#content", "javascript::void(0)", "javascript::void(0);", "javascript::;", "javascript"]
@@ -274,8 +274,7 @@ def extract_data_from_URL(hostname, content, domain, base_url):
         else:
             CSS['externals'].append(url)
 
-
-    CSS['embedded'] = len([css for css in soup.find_all('style', type='text/css') if len(css.contents[0]) > 0])
+    CSS['embedded'] = len([css for css in soup.find_all('style', type='text/css') if len(css.contents) > 0])
 
     # collect all form actions
     for form in soup.findAll('form', action=True):
@@ -367,7 +366,7 @@ def extract_data_from_URL(hostname, content, domain, base_url):
             state, request = is_URL_accessible(url)
 
             if state:
-                docs.append(request.content.decode('utf-8'))
+                docs.append(str(request.content))
 
         return "\n".join(docs)
 
@@ -377,7 +376,7 @@ def extract_data_from_URL(hostname, content, domain, base_url):
     internals_script_doc = ' '.join(
         [internals_script_doc] + [script.contents[0] for script in soup.find_all('script', src=False) if
                                   len(script.contents) > 0])
-    SCRIPT['embedded'] = len([script.contents[0] for script in soup.find_all('script', src=False) if len(script.contents) > 0])
+    SCRIPT['embedded'] = len([script.contents for script in soup.find_all('script', src=False) if len(script.contents) > 0])
 
     return Href, Link, Anchor, Media, Img, Form, CSS, Favicon, IFrame, SCRIPT, Title, Text, internals_script_doc, externals_script_doc
 
@@ -515,6 +514,8 @@ headers = {
                     'uf.having_ip_address(url)',
                     'uf.shortening_service(url)',
 
+                    "cert!=None",
+
                     'uf.url_length(r_url)',
 
                     'uf.count_at(r_url)',
@@ -596,22 +597,27 @@ headers = {
                     'cf.urls_ratio(iUrl_s,iUrl_s+eUrl_s+nUrl_s)',
                     'cf.urls_ratio(eUrl_s,iUrl_s+eUrl_s+nUrl_s)',
                     'cf.urls_ratio(nUrl_s,iUrl_s+eUrl_s+nUrl_s)',
+                    "cf.ratio_List(CSS,'internals')",
                     "cf.ratio_List(CSS,'externals')",
                     "cf.ratio_List(CSS,'embedded')",
+                    "cf.ratio_List(SCRIPT,'internals')",
                     "cf.ratio_List(SCRIPT,'externals')",
                     "cf.ratio_List(SCRIPT,'embedded')",
                     "cf.ratio_List(Img,'externals')",
+                    "cf.ratio_List(Img,'internals')",
                     "cf.count_reqs_redirections(reqs_iData_s)",
                     "cf.count_reqs_redirections(reqs_eData_s)",
                     "cf.count_reqs_error(reqs_iData_s)",
                     "cf.count_reqs_error(reqs_eData_s)",
                     "cf.login_form(Form)",
                     "cf.ratio_List(Favicon,'externals')",
+                    "cf.ratio_List(Favicon,'internals')",
                     "cf.submitting_to_email(Form)",
                     "cf.ratio_List(Media,'internals')",
                     "cf.ratio_List(Media,'externals')",
                     "cf.empty_title(Title)",
                     "cf.ratio_anchor(Anchor,'unsafe')",
+                    "cf.ratio_anchor(Anchor,'safe')",
                     "cf.ratio_List(Link,'internals')",
                     "cf.ratio_List(Link,'externals')",
                     "cf.iframe(IFrame)",
@@ -641,22 +647,27 @@ headers = {
                     "cf.urls_ratio(iUrl_di,iUrl_di+eUrl_di+nUrl_di)",
                     "cf.urls_ratio(eUrl_di,iUrl_di+eUrl_di+nUrl_di)",
                     "cf.urls_ratio(nUrl_di,iUrl_di+eUrl_di+nUrl_di)",
+                    "cf.ratio_List(CSS_di,'internals')",
                     "cf.ratio_List(CSS_di,'externals')",
                     "cf.ratio_List(CSS_di,'embedded')",
+                    "cf.ratio_List(SCRIPT_di,'internals')",
                     "cf.ratio_List(SCRIPT_di,'externals')",
                     "cf.ratio_List(SCRIPT_di,'embedded')",
                     "cf.ratio_List(Img_di,'externals')",
+                    "cf.ratio_List(Img_di,'internals')",
                     "cf.count_reqs_redirections(reqs_iData_di)",
                     "cf.count_reqs_redirections(reqs_eData_di)",
                     "cf.count_reqs_error(reqs_iData_di)",
                     "cf.count_reqs_error(reqs_eData_di)",
                     "cf.login_form(Form_di)",
                     "cf.ratio_List(Favicon_di,'externals')",
+                    "cf.ratio_List(Favicon_di,'internals')",
                     "cf.submitting_to_email(Form_di)",
                     "cf.ratio_List(Media_di,'internals')",
                     "cf.ratio_List(Media_di,'externals')",
                     "cf.empty_title(Title_di)",
                     "cf.ratio_anchor(Anchor_di,'unsafe')",
+                    "cf.ratio_anchor(Anchor_di,'safe')",
                     "cf.ratio_List(Link_di,'internals')",
                     "cf.ratio_List(Link_di,'externals')",
                     "cf.iframe(IFrame_di)",
@@ -680,22 +691,27 @@ headers = {
                     "cf.urls_ratio(iUrl_de,iUrl_de+eUrl_de+nUrl_de)",
                     "cf.urls_ratio(eUrl_de,iUrl_de+eUrl_de+nUrl_de)",
                     "cf.urls_ratio(nUrl_de,iUrl_de+eUrl_de+nUrl_de)",
+                    "cf.ratio_List(CSS_de,'internals')",
                     "cf.ratio_List(CSS_de,'externals')",
                     "cf.ratio_List(CSS_de,'embedded')",
+                    "cf.ratio_List(SCRIPT_de,'internals')",
                     "cf.ratio_List(SCRIPT_de,'externals')",
                     "cf.ratio_List(SCRIPT_de,'embedded')",
                     "cf.ratio_List(Img_de,'externals')",
+                    "cf.ratio_List(Img_de,'internals')",
                     "cf.count_reqs_redirections(reqs_iData_de)",
                     "cf.count_reqs_redirections(reqs_eData_de)",
                     "cf.count_reqs_error(reqs_iData_de)",
                     "cf.count_reqs_error(reqs_eData_de)",
                     "cf.login_form(Form_de)",
                     "cf.ratio_List(Favicon_de,'externals')",
+                    "cf.ratio_List(Favicon_de,'internals')",
                     "cf.submitting_to_email(Form_de)",
                     "cf.ratio_List(Media_de,'internals')",
                     "cf.ratio_List(Media_de,'externals')",
                     "cf.empty_title(Title_de)",
                     "cf.ratio_anchor(Anchor_de,'unsafe')",
+                    "cf.ratio_anchor(Anchor_de,'safe')",
                     "cf.ratio_List(Link_de,'internals')",
                     "cf.ratio_List(Link_de,'externals')",
                     "cf.iframe(IFrame_de)",
@@ -714,9 +730,9 @@ headers = {
                     'ef.domain_registration_length(domain)',
                     "ef.whois_registered_domain(domain)",
                     "ef.web_traffic(r_url)",
-                    "ef.domain_age(domain)",
-                    "ef.google_index(r_url)",
-                    "ef.compare_search2url(r_url,domain,TF.most_common(5)])",
+                    # "ef.google_index(r_url)",
+                    "ef.page_rank(domain)",
+                    # "ef.compare_search2url(r_url,domain,TF.most_common(5)])",
                     "ef.remainder_valid_cert(hostinfo.cert)",
                     "ef.valid_cert_period(hostinfo.cert)",
                     "ef.count_alt_names(hostinfo.cert)"
@@ -726,15 +742,13 @@ headers = {
         'lang',
         'status'
     ],
-    'group_stat': [
-        'openpagerank'
-    ],
     'substats': [
         'extraction-contextData-time',
         'image-recognition-time'
     ]
 }
 
+@benchmark(200)
 def extract_features(url, status):
     def words_raw_extraction(domain, subdomain, path):
         w_domain = re.split("\-|\.|\/|\?|\=|\@|\&|\%|\:|\_", domain.lower())
@@ -750,7 +764,7 @@ def extract_features(url, status):
 
     if state:
         r_url = request.url
-        content = request.content.decode('utf-8')
+        content = str(request.content)
         hostname, second_level_domain, path = get_domain(r_url)
         extracted_domain = tldextract.extract(r_url)
         domain = extracted_domain.domain + '.' + extracted_domain.suffix
@@ -763,7 +777,7 @@ def extract_features(url, status):
         parsed = urlparse(r_url)
         scheme = parsed.scheme
 
-        hostinfo = ef.get_hostinfo(domain, 443)
+        cert, time_cert = ef.get_cert(domain)
 
         (Href, Link, Anchor, Media, Img, Form, CSS, Favicon, IFrame, SCRIPT, Title, Text, internals_script_doc,
          externals_script_doc), extraction_data_time = extract_data_from_URL(hostname, content, domain, r_url)
@@ -840,6 +854,8 @@ def extract_features(url, status):
 
                     uf.having_ip_address(url),
                     uf.shortening_service(url),
+
+                    (cert != None, time_cert),
 
                     uf.url_length(r_url),
 
@@ -922,22 +938,27 @@ def extract_features(url, status):
                     (cf.urls_ratio(iUrl_s, iUrl_s + eUrl_s + nUrl_s), reqs_iTime_s),
                     (cf.urls_ratio(eUrl_s, iUrl_s + eUrl_s + nUrl_s), reqs_eTime_s),
                     (cf.urls_ratio(nUrl_s, iUrl_s + eUrl_s + nUrl_s), 0),
+                    cf.ratio_List(CSS, 'internals'),
                     cf.ratio_List(CSS, 'externals'),
                     cf.ratio_List(CSS, 'embedded'),
+                    cf.ratio_List(SCRIPT, 'internals'),
                     cf.ratio_List(SCRIPT, 'externals'),
                     cf.ratio_List(SCRIPT, 'embedded'),
                     cf.ratio_List(Img, 'externals'),
+                    cf.ratio_List(Img, 'internals'),
                     cf.count_reqs_redirections(reqs_iData_s),
                     cf.count_reqs_redirections(reqs_eData_s),
                     cf.count_reqs_error(reqs_iData_s),
                     cf.count_reqs_error(reqs_eData_s),
                     cf.login_form(Form),
                     cf.ratio_List(Favicon, 'externals'),
+                    cf.ratio_List(Favicon, 'internals'),
                     cf.submitting_to_email(Form),
                     cf.ratio_List(Media, 'internals'),
                     cf.ratio_List(Media, 'externals'),
                     cf.empty_title(Title),
                     cf.ratio_anchor(Anchor, 'unsafe'),
+                    cf.ratio_anchor(Anchor, 'safe'),
                     cf.ratio_List(Link, 'internals'),
                     cf.ratio_List(Link, 'externals'),
                     cf.iframe(IFrame),
@@ -964,25 +985,30 @@ def extract_features(url, status):
                     cf.count_textareas(content_di),
 
                     (len(iUrl_di) + len(eUrl_di), reqs_iTime_de + reqs_eTime_de),
-                    (cf.urls_ratio(iUrl_di, iUrl_di + eUrl_di + nUrl_di), reqs_iTime_di),
+                    (cf.urls_ratio(iUrl_di, iUrl_di + eUrl_di + nUrl_di + nUrl_di), reqs_iTime_di),
                     (cf.urls_ratio(eUrl_di, iUrl_di + eUrl_di + nUrl_di), reqs_eTime_di),
                     (cf.urls_ratio(nUrl_di, iUrl_di + eUrl_di + nUrl_di), 0),
+                    cf.ratio_List(CSS_di, 'internals'),
                     cf.ratio_List(CSS_di, 'externals'),
                     cf.ratio_List(CSS_di, 'embedded'),
+                    cf.ratio_List(SCRIPT_di, 'internals'),
                     cf.ratio_List(SCRIPT_di, 'externals'),
                     cf.ratio_List(SCRIPT_di, 'embedded'),
                     cf.ratio_List(Img_di, 'externals'),
+                    cf.ratio_List(Img_di, 'internals'),
                     cf.count_reqs_redirections(reqs_iData_di),
-                    cf.count_reqs_redirections(reqs_eData_di),
+                    cf.count_reqs_redirections(reqs_iData_di),
                     cf.count_reqs_error(reqs_iData_di),
-                    cf.count_reqs_error(reqs_eData_di),
+                    cf.count_reqs_error(reqs_iData_di),
                     cf.login_form(Form_di),
                     cf.ratio_List(Favicon_di, 'externals'),
+                    cf.ratio_List(Favicon_di, 'internals'),
                     cf.submitting_to_email(Form_di),
                     cf.ratio_List(Media_di, 'internals'),
                     cf.ratio_List(Media_di, 'externals'),
                     cf.empty_title(Title_di),
                     cf.ratio_anchor(Anchor_di, 'unsafe'),
+                    cf.ratio_anchor(Anchor_di, 'safe'),
                     cf.ratio_List(Link_di, 'internals'),
                     cf.ratio_List(Link_di, 'externals'),
                     cf.iframe(IFrame_di),
@@ -1006,22 +1032,27 @@ def extract_features(url, status):
                     (cf.urls_ratio(iUrl_de, iUrl_de + eUrl_de + nUrl_de), reqs_iTime_de),
                     (cf.urls_ratio(eUrl_de, iUrl_de + eUrl_de + nUrl_de), reqs_eTime_de),
                     (cf.urls_ratio(nUrl_de, iUrl_de + eUrl_de + nUrl_de), 0),
+                    cf.ratio_List(CSS_de, 'internals'),
                     cf.ratio_List(CSS_de, 'externals'),
                     cf.ratio_List(CSS_de, 'embedded'),
+                    cf.ratio_List(SCRIPT_de, 'internals'),
                     cf.ratio_List(SCRIPT_de, 'externals'),
                     cf.ratio_List(SCRIPT_de, 'embedded'),
                     cf.ratio_List(Img_de, 'externals'),
+                    cf.ratio_List(Img_de, 'internals'),
                     cf.count_reqs_redirections(reqs_iData_de),
                     cf.count_reqs_redirections(reqs_eData_de),
                     cf.count_reqs_error(reqs_iData_de),
                     cf.count_reqs_error(reqs_eData_de),
                     cf.login_form(Form_de),
                     cf.ratio_List(Favicon_de, 'externals'),
+                    cf.ratio_List(Favicon_de, 'internals'),
                     cf.submitting_to_email(Form_de),
                     cf.ratio_List(Media_de, 'internals'),
                     cf.ratio_List(Media_de, 'externals'),
                     cf.empty_title(Title_de),
                     cf.ratio_anchor(Anchor_de, 'unsafe'),
+                    cf.ratio_anchor(Anchor_de, 'safe'),
                     cf.ratio_List(Link_de, 'internals'),
                     cf.ratio_List(Link_de, 'externals'),
                     cf.iframe(IFrame_de),
@@ -1037,15 +1068,15 @@ def extract_features(url, status):
 
                     #   EXTERNAL FEATURES
 
-                    ef.domain_registration_length(domain),
+                    ef.domain_registration_length(domain),  # do not use VPN: Error trying to connect to socket: closing socket
                     ef.whois_registered_domain(domain),
                     ef.web_traffic(r_url),
-                    ef.domain_age(domain),
-                    ef.google_index(r_url),
-                    ef.compare_search2url(r_url, domain, [t[0] for t in Counter(TF).most_common(5)]),
-                    ef.remainder_valid_cert(hostinfo.cert),
-                    ef.valid_cert_period(hostinfo.cert),
-                    ef.count_alt_names(hostinfo.cert)
+                    # ef.google_index(r_url),
+                    ef.page_rank(domain),
+                    # ef.compare_search2url(r_url, domain, [t[0] for t in Counter(TF).most_common(5)]),
+                    ef.remainder_valid_cert(cert),
+                    ef.valid_cert_period(cert),
+                    ef.count_alt_names(cert)
                 ]
         }
 
@@ -1053,15 +1084,11 @@ def extract_features(url, status):
     return None
 
 
-chunk_size = 100
+chunk_size = 10
 
 
 def generate_dataset(url_list):
-    pb = ProgressBar(total=len(url_list), prefix='url analysis', decimals=2, length=50, fill='█',
-                     zfill='-')
-
     data = []
-    buffer = []
     counter = []
 
     TF = {0: [], 1: []}
@@ -1070,61 +1097,64 @@ def generate_dataset(url_list):
         for i in range(0, len(lst), n):
             yield lst[i:i + n]
 
-    def extraction_data(obj):
-        try:
-            res = extract_features(obj[0], obj[1])
+    pb_i = []
 
-            if res:
-                buffer.append(res)
-                pb.print_progress_bar(len(buffer) + len(data))
-        except Exception as e:
-            print('[{0}] - error: {1}'.format(obj[0], e))
-
+    pb = ProgressBar(total=len(url_list), prefix='url analysis', decimals=3, length=50, fill='█',
+                     zfill='-')
     pb.print_progress_bar(0)
 
+    def extraction_data(obj):
+        res, t = extract_features(obj[0], obj[1])
+        pb_i.append(t)
+        pb.print_progress_bar(len(pb_i))
+
+        if type(res) is dict:
+            return res
+        else:
+            return None
+
+
     for chunk in chunks(url_list, chunk_size):
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            executor.map(extraction_data, chunk)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+            buffer = [executor.submit(extraction_data, obj) for obj in chunk]
+            concurrent.futures.wait(buffer)
 
-        clmn, rank_time = ef.page_rank([record['domain'] for record in buffer])
+            # buffer = executor.map(extraction_data, chunk)
 
-        tmp = np.array([record['stats'] for record in buffer])
-        metadata = np.array([[record.get(key) for key in headers['metadata']] for record in buffer])
-        substats = np.array([[record.get(key) for key in headers['substats']] for record in buffer])
+        res = [r.result() for r in buffer if r.result()]
+        # res = [r for r in buffer if r]
 
-        for record in buffer:
-            TF[record['status']].append(record['TF'])
+        if res:
+            tmp = np.array([record['stats'] for record in res])
+            metadata = np.array([[record.get(key) for key in headers['metadata']] for record in res])
+            substats = np.array([[record.get(key) for key in headers['substats']] for record in res])
 
-        data += np.c_[metadata, np.c_[tmp[:, :, 0], clmn]].tolist()
-        counter += np.c_[substats, np.c_[tmp[:, :, 1], [rank_time] * tmp.shape[0]]].tolist()
+            for record in res:
+                TF[record['status']].append(record['TF'])
 
-        times = np.average(np.array(counter), axis=0)
+            data += np.c_[metadata, tmp[:, :, 0]].tolist()
+            counter += np.c_[substats, tmp[:, :, 1]].tolist()
 
-        pandas.DataFrame(data).to_csv('data/datasets/high_pack/{0}.csv'.format(date.today().strftime("%d-%m-%Y")),
-                                      index=False, header=headers['metadata']+headers['stats']+headers['group_stat'])
+            pandas.DataFrame(counter).to_csv(dir_path+'feature_times.csv',
+                index=False, header=headers['substats'] + headers['stats'])
 
-        pandas.DataFrame(times.reshape(1, len(times))).to_csv('data/feature_times/high_pack/{0}.csv'.format(date.today().strftime("%d-%m-%Y")),
-                                       index=False, header=headers['substats']+headers['stats']+headers['group_stat'])
+            pandas.DataFrame(data).to_csv(dir_path+'dataset.csv',
+                                          index=False, header=headers['metadata'] + headers['stats'])
+            pandas.DataFrame([['{}={}'.format(k, tf_list[k]) for k in tf_list] for tf_list in TF[0]]).to_csv(
+                dir_path+'TF (legitimate).csv', index=False, header=False)
+            pandas.DataFrame([['{}={}'.format(k, tf_list[k]) for k in tf_list] for tf_list in TF[1]]).to_csv(
+                dir_path+'TF (phishing).csv', index=False, header=False)
 
-        pandas.DataFrame([['{}={}'.format(k, tf_list[k]) for k in tf_list] for tf_list in TF[0]]).to_csv(
-            'data/TF/legitimate/{0}.csv'.format(date.today().strftime("%d-%m-%Y")), index=False, header=False)
-        pandas.DataFrame([['{}={}'.format(k, tf_list[k]) for k in tf_list] for tf_list in TF[1]]).to_csv(
-            'data/TF/phishing/{0}.csv'.format(date.today().strftime("%d-%m-%Y")), index=False, header=False)
+            IDF = {0: compute_idf(TF[0]), 1: compute_idf(TF[1])}
+            TF_IDF = {0: [], 1: []}
 
-    IDF = {0: compute_idf(TF[0]), 1: compute_idf(TF[0])}
-    TF_IDF = {0: [], 1: []}
+            for s, tf_list in TF.items():
+                for tf in tf_list:
+                    TF_IDF[s].append(compute_tf_idf(tf, IDF[s]))
 
-    pb = ProgressBar(total=sum([len(tf_list) for tf_list in TF.values()]), prefix='compute TF-IDF', decimals=2, length=50, fill='█', zfill='-')
-    i = 0
-    pb.print_progress_bar(i)
+            pandas.DataFrame(TF_IDF[0]).to_csv(dir_path+'TF-IDF (legitimate).csv', index=False, header=False)
+            pandas.DataFrame(TF_IDF[1]).to_csv(dir_path+'TF-IDF (phishing).csv', index=False, header=False)
 
-    for s, tf_list in TF.items():
-        for tf in tf_list:
-            i += 1
-            pb.print_progress_bar(i)
-            TF_IDF[s].append(compute_tf_idf(tf, IDF[s]))
-
-    pandas.DataFrame(TF_IDF[0]).to_csv('data/TF-IDF/legitimate/{0}.csv'.format(date.today().strftime("%d-%m-%Y")),
-                                      index=False, header=False)
-    pandas.DataFrame(TF_IDF[1]).to_csv('data/TF-IDF/phishing/{0}.csv'.format(date.today().strftime("%d-%m-%Y")),
-                                      index=False, header=False)
+            t = sum(pb_i) / len(pb_i)
+            all_t = t * len(url_list) / len(pb_i)
+            print('updated: +{}\t[time left: {} min]'.format(len(res), (all_t - t)/60))
