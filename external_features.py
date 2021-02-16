@@ -6,8 +6,6 @@ import time
 from tools import benchmark
 import re
 
-import threading
-
 
 OPR_key = open("OPR_key.txt").read()
 
@@ -16,7 +14,7 @@ OPR_key = open("OPR_key.txt").read()
 #               Domain registration age
 ########################################################################################################################
 
-@benchmark(5)
+@benchmark(10)
 def domain_registration_length(domain):
     try:
         res = whois.whois(domain)
@@ -38,7 +36,7 @@ def domain_registration_length(domain):
 #               Domain recognized by WHOIS
 ########################################################################################################################
 
-@benchmark(5)
+@benchmark(10)
 def whois_registered_domain(domain):
     try:
         hostname = whois.whois(domain).domain_name
@@ -62,13 +60,12 @@ def whois_registered_domain(domain):
 
 
 import sys, lxml
-
 session = requests.session()
 
-@benchmark(5)
+@benchmark(12)
 def web_traffic(short_url):
     try:
-        rank = BeautifulSoup(session.get("http://data.alexa.com/data?cli=10&dat=s&url=" + short_url, timeout=2).text,
+        rank = BeautifulSoup(session.get("http://data.alexa.com/data?cli=10&dat=s&url=" + short_url, timeout=10).text,
                              "xml").find("REACH")['RANK']
     except:
         return -1
@@ -77,94 +74,17 @@ def web_traffic(short_url):
     return int(rank)
 
 
-########################################################################################################################
-#               Page Rank from OPR
-########################################################################################################################
-
-
-# def http_build_query(params, topkey=''):
-#     from urllib.parse import quote
-#
-#     if len(params) == 0:
-#         return ""
-#
-#     result = ""
-#
-#     # is a dictionary?
-#     if type(params) is dict:
-#         for key in params.keys():
-#             newkey = quote(key)
-#             if topkey != '':
-#                 newkey = topkey + quote('[' + key + ']')
-#
-#             if type(params[key]) is dict:
-#                 result += http_build_query(params[key], newkey)
-#
-#             elif type(params[key]) is list:
-#                 i = 0
-#                 for val in params[key]:
-#                     result += newkey + quote('[' + str(i) + ']') + "=" + quote(str(val)) + "&"
-#                     i = i + 1
-#
-#             # boolean should have special treatment as well
-#             elif type(params[key]) is bool:
-#                 result += newkey + "=" + quote(str(int(params[key]))) + "&"
-#
-#             # assume string (integers and floats work well)
-#             else:
-#                 result += newkey + "=" + quote(str(params[key])) + "&"
-#
-#     # remove the last '&'
-#     if (result) and (topkey == '') and (result[-1] == '&'):
-#         result = result[:-1]
-#
-#     return result
-#
-#
-# @benchmark
-# def page_rank(domains):
-#     url = 'https://openpagerank.com/api/v1.0/getPageRank?' + http_build_query({"domains": domains})
-#     try:
-#         request = session.get(url, headers={'API-OPR': OPR_key})
-#         result = request.json()
-#         result = [record['page_rank_decimal'] for record in result['response']]
-#         return result
-#     except:
-#         return None
-
-@benchmark(5)
+@benchmark(10)
 def page_rank(domain):
     url = 'https://openpagerank.com/api/v1.0/getPageRank?domains%5B0%5D=' + domain
     try:
-        request = session.get(url, headers={'API-OPR': OPR_key}, timeout=2)
+        request = session.get(url, headers={'API-OPR': OPR_key}, timeout=7)
         result = request.json()
         result = result['response'][0]['page_rank_integer']
         if result:
             return result
         else:
             return 0
-    except:
-        return -1
-
-
-########################################################################################################################
-#               Google search by keywords
-########################################################################################################################
-
-
-from googlesearch import search
-#
-# google_search_locker = threading.Lock()
-
-@benchmark(30)
-def compare_search2url(url, domain, keywords):
-    try:
-        res = search("http://{}={}".format(domain, '+'.join(keywords)), 10)
-
-        for r_url in res:
-            if r_url == url:
-                return 1
-        return 0
     except:
         return -1
 
@@ -196,7 +116,7 @@ import threading
 
 lock_obj = threading.Lock()
 
-@benchmark(15)
+@benchmark(20)
 def get_cert(hostname):
     lock_obj.acquire()
     result = None
@@ -224,21 +144,21 @@ def get_cert(hostname):
     return result
 
 
-@benchmark(5)
+@benchmark(3)
 def count_alt_names(cert):
     try:
         return len(cert[b'subjectAltName'].split(','))
     except:
         return -1
 
-@benchmark(5)
+@benchmark(3)
 def valid_cert_period(cert):
     try:
         return (cert['notAfter'] - cert['notBefore']).days
     except:
         return -1
 
-@benchmark(5)
+@benchmark(3)
 def remainder_valid_cert(cert):
     try:
         period = cert['notAfter'] - cert['notBefore']
@@ -251,3 +171,17 @@ def remainder_valid_cert(cert):
         return max(0, min(1, passed_time / period))
     except:
         return -1
+
+
+########################################################################################################################
+#               DNS record
+########################################################################################################################
+
+
+@benchmark(7)
+def good_netloc(netloc):
+    try:
+        socket.gethostbyname(netloc)
+        return 1
+    except:
+        return 0

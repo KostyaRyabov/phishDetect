@@ -2,16 +2,44 @@ import feature_extractor as fe
 import data.collector as dc
 
 
+state = 7
+seed_l = 13023
+seed_p = 1000
+
+
+# 0 - download phish_urls
+# 1 - search leg urls from popular domains
+# 2 - run only leg sites
+# 3 - run only phish sites
+# 4 - run all sites
+# 5 - run example with shield and save data
+# 6 - run example without shield
+# 7 - collect all datasets
+
+
 if __name__ == "__main__":
-    # fe.generate_legitimate_urls(20000)
-
-    # dc.download_phishURLS()   # use VPN!!!
-
-    legitimate_url_list = dc.load_legitimateURLS()
-    phish_url_list = dc.load_phishURLS()
-    url_list = dc.set_lable_to_list(phish_url_list, 1) + dc.set_lable_to_list(legitimate_url_list, 0)
-    # url_list = set_lable_to_list(legitimate_url_list, 0)
-    fe.generate_dataset(url_list[1000:])
-
-    # fe.generate_dataset([('http://mail.ru', 0)])
-    # fe.extract_features('http://mail.ru', 0)
+    if state == 0:
+        dc.download_phishURLS()  # use VPN!!!
+    elif state == 1:
+        fe.generate_legitimate_urls(20000)
+    elif state == 2:
+        legitimate_url_list = dc.load_legitimateURLS('30-01-2021')
+        url_list = dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
+        fe.generate_dataset(url_list)
+    elif state == 3:
+        phish_url_list = dc.load_phishURLS('15-02-2021')
+        url_list = dc.set_lable_to_list(phish_url_list[seed_p:], 1)
+        fe.generate_dataset(url_list)
+    elif state == 4:
+        legitimate_url_list = dc.load_legitimateURLS('30-01-2021')
+        phish_url_list = dc.load_phishURLS('15-02-2021')
+        url_list = []
+        url_list += dc.set_lable_to_list(phish_url_list[seed_p:], 1)
+        url_list += dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
+        fe.generate_dataset(url_list)
+    elif state == 5:
+        fe.generate_dataset([('http://mail.ru', 0)])
+    elif state == 6:
+        fe.extract_features('http://mail.ru', 0)
+    elif state == 7:
+        fe.combine_datasets()

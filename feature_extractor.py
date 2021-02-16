@@ -38,6 +38,7 @@ def load_phishHints():
         hints = {'en': [
             'login',
             'logon',
+            'sign',
             'account',
             'authorization',
             'registration',
@@ -83,7 +84,7 @@ def check_Language(text):
     language = translator.detect(str(text)[0:5000]).lang
 
     if language not in phish_hints.keys():
-        words = translator.translate(" ".join(phish_hints['en'][0:16]), src='en', dest=language).text.split(" ")
+        words = translator.translate(" ".join(phish_hints['en'][:25]), src='en', dest=language).text.split(" ")
 
         phish_hints[language] = [str(word.strip()) for word in words]
 
@@ -97,8 +98,8 @@ def check_Language(text):
 key = open("OPR_key.txt").read()
 
 
-@benchmark(6)
-def is_URL_accessible(url, time_out=3):
+@benchmark(10)
+def is_URL_accessible(url, time_out=5):
     page = None
     try:
         page = requests.get(url, timeout=time_out)
@@ -121,9 +122,9 @@ def is_URL_accessible(url, time_out=3):
 
 def get_domain(url):
     o = urlsplit(url)
-    return o.hostname, tldextract.extract(url).domain, o.path
+    return o.hostname, tldextract.extract(url).domain, o.path, o.netloc
 
-@benchmark(40)
+@benchmark(100)
 def extract_data_from_URL(hostname, content, domain, base_url):
     Null_format = ["", "#", "#nothing", "#doesnotexist", "#null", "#void", "#whatever",
                    "#content", "javascript::void(0)", "javascript::void(0);", "javascript::;", "javascript"]
@@ -374,10 +375,13 @@ def extract_data_from_URL(hostname, content, domain, base_url):
     internals_script_doc = merge_scripts(SCRIPT['internals'])
     externals_script_doc = merge_scripts(SCRIPT['externals'])
 
-    internals_script_doc = ' '.join(
-        [internals_script_doc] + [script.contents[0] for script in soup.find_all('script', src=False) if
-                                  len(script.contents) > 0])
-    SCRIPT['embedded'] = len([script.contents for script in soup.find_all('script', src=False) if len(script.contents) > 0])
+    try:
+        internals_script_doc = ' '.join(
+            [internals_script_doc] + [script.contents[0] for script in soup.find_all('script', src=False) if
+                                      len(script.contents) > 0])
+        SCRIPT['embedded'] = len([script.contents[0] for script in soup.find_all('script', src=False) if len(script.contents) > 0])
+    except:
+        pass
 
     return Href, Link, Anchor, Media, Img, Form, CSS, Favicon, IFrame, SCRIPT, Title, Text, internals_script_doc, externals_script_doc
 
@@ -492,7 +496,7 @@ def search_for_vulnerable_URLs(domain):
     if state:
         url = request.url
         content = request.content
-        hostname, domain, path = get_domain(url)
+        hostname, domain, path, netloc = get_domain(url)
         extracted_domain = tldextract.extract(url)
         domain = extracted_domain.domain + '.' + extracted_domain.suffix
 
@@ -508,236 +512,473 @@ def search_for_vulnerable_URLs(domain):
 
 headers = {
     'stats': [
-        'word_ratio',
+        'коэффициент уникальности всех слов',
 
-                    #   URL FEATURES
+        #   URL FEATURES
 
-                    'uf.having_ip_address(url)',
-                    'uf.shortening_service(url)',
+        'наличие ip-адреса в url',
+        'использование сервисов сокраения url',
 
-                    "cert!=None",
+        "наличие сертификата",
+        "хороший netloc",
 
-                    'uf.url_length(r_url)',
+        'длина url',
 
-                    'uf.count_at(r_url)',
-                    'uf.count_exclamation(r_url)',
-                    'uf.count_plust(r_url)',
-                    'uf.count_sBrackets(r_url)',
-                    'uf.count_rBrackets(r_url)',
-                    'uf.count_comma(r_url)',
-                    'uf.count_dollar(r_url)',
-                    'uf.count_semicolumn(r_url)',
-                    'uf.count_space(r_url)',
-                    'uf.count_and(r_url)',
-                    'uf.count_double_slash(r_url)',
-                    'uf.count_slash(r_url)',
-                    'uf.count_equal(r_url)',
-                    'uf.count_percentage(r_url)',
-                    'uf.count_question(r_url)',
-                    'uf.count_underscore(r_url)',
-                    'uf.count_hyphens(r_url)',
-                    'uf.count_dots(r_url)',
-                    'uf.count_colon(r_url)',
-                    'uf.count_star(r_url)',
-                    'uf.count_or(r_url)',
-                    'uf.count_tilde(r_url)',
-                    'uf.count_http_token(r_url)',
+        'кол-во @ в url',
+        'кол-во ! в url',
+        'кол-во + в url',
+        'кол-во [ и ] в url',
+        'кол-во ( и ) в url',
+        'кол-во , в url',
+        'кол-во $ в url',
+        'кол-во ; в url',
+        'кол-во пропусков в url',
+        'кол-во & в url',
+        'кол-во // в url',
+        'кол-во / в url',
+        'кол-во = в url',
+        'кол-во % в url',
+        'кол-во ? в url',
+        'кол-во _ в url',
+        'кол-во - в url',
+        'кол-во . в url',
+        'кол-во : в url',
+        'кол-во * в url',
+        'кол-во | в url',
+        'кол-во ~ в url',
+        'кол-во http токенов в url',
 
-                    'uf.https_token(scheme)',
+        'https',
 
-                    'uf.ratio_digits(r_url)',
-                    'uf.count_digits(r_url)',
+        'соотношение цифр в url',
+        'кол-во цифр в url',
 
-                    'cf.count_phish_hints(r_url,phish_hints)',
+        "кол-во фишинговых слов в url",
+        "кол-во слов в url",
 
-                    'uf.tld_in_path(tld,path)',
-                    'uf.tld_in_subdomain(tld,subdomain)',
-                    'uf.tld_in_bad_position(tld,subdomain,path)',
-                    'uf.abnormal_subdomain(r_url)',
+        'tld в пути url',
+        'tld в поддомене url',
+        'tld на плохой позиции url',
+        'ненормальный поддомен url',
 
-                    'uf.count_redirection(request)',
-                    'uf.count_external_redirection(request,domain)',
+        'кол-во перенаправлений на сайт',
+        'кол-во перенаправлений на другие домены',
 
-                    'uf.random_domain(second_level_domain)',
+        'случайный домен',
 
-                    'uf.random_words(words_raw)',
-                    'uf.random_words(words_raw_host)',
-                    'uf.random_words(words_raw_path)',
+        'кол-во случайных слов в url',
+        'кол-во случайных слов в хосте url',
+        'кол-во случайных слов в пути url',
 
-                    'uf.char_repeat(words_raw)',
-                    'uf.char_repeat(words_raw_host)',
-                    'uf.char_repeat(words_raw_path)',
+        'кол-во повторяющих последовательностей в url',
+        'кол-во повторяющих последовательностей в хосте url',
+        'кол-во повторяющих последовательностей в пути url',
 
-                    'uf.punycode(r_url)',
-                    'uf.domain_in_brand(second_level_domain)',
-                    'uf.brand_in_path(second_level_domain, words_raw_path)',
-                    'uf.check_www(words_raw)',
-                    'uf.check_com(words_raw)',
+        'наличие punycode',
+        'домен в брендах',
+        'юренд в пути url',
+        'кол-во www в url',
+        'кол-во com в url',
 
-                    'uf.port(r_url)',
+        'наличие порта в url',
 
-                    'uf.length_word_raw(words_raw)',
-                    'uf.average_word_length(words_raw)',
-                    'uf.longest_word_length(words_raw)',
-                    'uf.shortest_word_length(words_raw)',
+        'кол-во слов в url',
+        'средняя длина слова в url',
+        'максимальная длина слова в url',
+        'минимальная длина слова в url',
 
-                    'uf.prefix_suffix(r_url)',
+        'префикс суффикс в url',
 
-                    'uf.count_subdomain(r_url)',
+        'кол-во поддоменов',
 
-                    'uf.count_visual_similarity_domains(second_level_domain)',
+        'кол-во визульно схожих доменов',
 
-                    #   CONTENT FEATURE
-                    #       (static)
+        #   CONTENT FEATURE
+        #       (static)
 
-                    'cf.compression_ratio(request)',
-                    'cf.count_textareas(content)',
-                    'cf.ratio_js_on_html(Text)',
+        'степень сжатия страницы',
+        'кол-во полей ввода/вывода в основном контексте страницы',
+        'соотношение кода в странице в основном контексте страницы',
 
-                    'len(iUrl_s)+len(eUrl_s)',
-                    'cf.urls_ratio(iUrl_s,iUrl_s+eUrl_s+nUrl_s)',
-                    'cf.urls_ratio(eUrl_s,iUrl_s+eUrl_s+nUrl_s)',
-                    'cf.urls_ratio(nUrl_s,iUrl_s+eUrl_s+nUrl_s)',
-                    "cf.ratio_List(CSS,'internals')",
-                    "cf.ratio_List(CSS,'externals')",
-                    "cf.ratio_List(CSS,'embedded')",
-                    "cf.ratio_List(SCRIPT,'internals')",
-                    "cf.ratio_List(SCRIPT,'externals')",
-                    "cf.ratio_List(SCRIPT,'embedded')",
-                    "cf.ratio_List(Img,'externals')",
-                    "cf.ratio_List(Img,'internals')",
-                    "cf.count_reqs_redirections(reqs_iData_s)",
-                    "cf.count_reqs_redirections(reqs_eData_s)",
-                    "cf.count_reqs_error(reqs_iData_s)",
-                    "cf.count_reqs_error(reqs_eData_s)",
-                    "cf.login_form(Form)",
-                    "cf.ratio_List(Favicon,'externals')",
-                    "cf.ratio_List(Favicon,'internals')",
-                    "cf.submitting_to_email(Form)",
-                    "cf.ratio_List(Media,'internals')",
-                    "cf.ratio_List(Media,'externals')",
-                    "cf.empty_title(Title)",
-                    "cf.ratio_anchor(Anchor,'unsafe')",
-                    "cf.ratio_anchor(Anchor,'safe')",
-                    "cf.ratio_List(Link,'internals')",
-                    "cf.ratio_List(Link,'externals')",
-                    "cf.iframe(IFrame)",
-                    "cf.onmouseover(content)",
-                    "cf.popup_window(content)",
-                    "cf.right_clic(content)",
-                    "cf.domain_in_text(second_level_domain,Text)",
-                    "cf.domain_in_text(second_level_domain,Title)",
-                    "cf.domain_with_copyright(domain,content)",
-                    "cf.count_phish_hints(Text,phish_hints)",
-                    "cf.ratio_Txt(iImgTxt_words+eImgTxt_words,sContent_words)",
-                    "cf.ratio_Txt(iImgTxt_words,sContent_words)",
-                    "cf.ratio_Txt(eImgTxt_words,sContent_words)",
-                    "cf.ratio_Txt(eImgTxt_words,iImgTxt_words)",
+        'кол-во всех ссылок в основном контексте страницы',
+        'соотношение внутренних ссылок на сайты со всеми в основном контексте страницы',
+        'соотношение внешних ссылок на сайты со всеми в основном контексте страницы',
+        'соотношение пустых ссылок на сайты со всеми в основном контексте страницы',
+        "соотношение внутренних CSS со всеми в основном контексте страницы",
+        "соотношение внешних CSS со всеми в основном контексте страницы",
+        "соотношение встроенных CSS со всеми в основном контексте страницы",
+        "соотношение внутренних скриптов со всеми в основном контексте страницы",
+        "соотношение внешних скриптов со всеми в основном контексте страницы",
+        "соотношение встроенных скриптов со всеми в основном контексте страницы",
+        "соотношение внешних изображений со всеми в основном контексте страницы",
+        "соотношение внутренних изображений со всеми в основном контексте страницы",
+        "общее кол-во перенаправлений по внутренним ссылкам в основном контексте страницы",
+        "общее кол-во перенаправлений по внешним ссылкам в основном контексте страницы",
+        "общее кол-во ошибок по внутренним ссылкам в основном контексте страницы",
+        "общее кол-во ошибок по внешним ссылкам в основном контексте страницы",
+        "форма входа в основном контексте страницы",
+        "соотношение внешних Favicon со всеми в основном контексте страницы",
+        "соотношение внутренних Favicon со всеми в основном контексте страницы",
+        "наличие отправки на почту в основном контексте страницы",
+        "соотношение внешних медиа со всеми в основном контексте страницы",
+        "соотношение внешних медиа со всеми в основном контексте страницы",
+        "пустой титульник в основном контексте страницы",
+        "соотношение небезопасных якорей со всеми в основном контексте страницы",
+        "соотношение безопасных якорей со всеми в основном контексте страницы",
+        "соотношение внутренних ссылок на ресурсы со всеми в основном контексте страницы",
+        "соотношение внешних ссылок на ресурсы со всеми в основном контексте страницы",
+        "наличие невидимых в основном контексте страницы",
+        "наличие onmouseover в основном контексте страницы",
+        "наличие всплывающих окон в основном контексте страницы",
+        "наличие событий правой мыши в основном контексте страницы",
+        "наличие домена в тексте в основном контексте страницы",
+        "наличие домена в титульнике в основном контексте страницы",
+        "домен с авторскими правами в основном контексте страницы",
+        "кол-во фишинговых слов в тексте в основном контексте страницы",
+        "кол-во слов в тексте в основном контексте страницы",
+        "соотношение текста со всех изображений с основным текстом в основном контексте страницы",
+        "соотношение текста внутренних изображений с основным текстом в основном контексте страницы",
+        "соотношение текста внешних изображений с основным текстом в основном контексте страницы",
+        "соотношение текста внешних изображений с текстом внутренних изображений в основном контексте страницы",
 
-                    #       (dynamic)
+        #       (dynamic)
 
-                    "cf.ratio_dynamic_html(Text,"".join([Text_di,Text_de]))",
+        "соотношение основного текста с динамически добавляемым текстом страницы",
 
-                    #       (dynamic internals)
+        #       (dynamic internals)
 
-                    "cf.ratio_dynamic_html(Text,Text_di)",
-                    "cf.ratio_js_on_html(Text_di)",
-                    "cf.count_textareas(content_di)",
+        "соотношение основного текста с внутреннее добавляемым текстом страницы",
+        "соотношение кода в внутренне добавляемом контексте страницы",
+        "кол-во полей ввода/вывода в внутренне добавляемом контексте страницы",
 
-                    "len(iUrl_di)+len(eUrl_di)",
-                    "cf.urls_ratio(iUrl_di,iUrl_di+eUrl_di+nUrl_di)",
-                    "cf.urls_ratio(eUrl_di,iUrl_di+eUrl_di+nUrl_di)",
-                    "cf.urls_ratio(nUrl_di,iUrl_di+eUrl_di+nUrl_di)",
-                    "cf.ratio_List(CSS_di,'internals')",
-                    "cf.ratio_List(CSS_di,'externals')",
-                    "cf.ratio_List(CSS_di,'embedded')",
-                    "cf.ratio_List(SCRIPT_di,'internals')",
-                    "cf.ratio_List(SCRIPT_di,'externals')",
-                    "cf.ratio_List(SCRIPT_di,'embedded')",
-                    "cf.ratio_List(Img_di,'externals')",
-                    "cf.ratio_List(Img_di,'internals')",
-                    "cf.count_reqs_redirections(reqs_iData_di)",
-                    "cf.count_reqs_redirections(reqs_eData_di)",
-                    "cf.count_reqs_error(reqs_iData_di)",
-                    "cf.count_reqs_error(reqs_eData_di)",
-                    "cf.login_form(Form_di)",
-                    "cf.ratio_List(Favicon_di,'externals')",
-                    "cf.ratio_List(Favicon_di,'internals')",
-                    "cf.submitting_to_email(Form_di)",
-                    "cf.ratio_List(Media_di,'internals')",
-                    "cf.ratio_List(Media_di,'externals')",
-                    "cf.empty_title(Title_di)",
-                    "cf.ratio_anchor(Anchor_di,'unsafe')",
-                    "cf.ratio_anchor(Anchor_di,'safe')",
-                    "cf.ratio_List(Link_di,'internals')",
-                    "cf.ratio_List(Link_di,'externals')",
-                    "cf.iframe(IFrame_di)",
-                    "cf.onmouseover(content_di)",
-                    "cf.popup_window(content_di)",
-                    "cf.right_clic(content_di)",
-                    "cf.domain_in_text(second_level_domain,Text_di)",
-                    "cf.domain_in_text(second_level_domain,Title_di)",
-                    "cf.domain_with_copyright(domain,content_di)",
+        'кол-во всех ссылок во внутренне добавляемом контексте страницы',
+        'соотношение внутренних ссылок на сайты со всеми во внутренне добавляемом контексте страницы',
+        'соотношение внешних ссылок на сайты со всеми во внутренне добавляемом контексте страницы',
+        'соотношение пустых ссылок на сайты со всеми во внутренне добавляемом контексте страницы',
+        "соотношение внутренних CSS со всеми во внутренне добавляемом контексте страницы",
+        "соотношение внешних CSS со всеми во внутренне добавляемом контексте страницы",
+        "соотношение встроенных CSS со всеми во внутренне добавляемом контексте страницы",
+        "соотношение внутренних скриптов со всеми во внутренне добавляемом контексте страницы",
+        "соотношение внешних скриптов со всеми во внутренне добавляемом контексте страницы",
+        "соотношение встроенных скриптов со всеми во внутренне добавляемом контексте страницы",
+        "соотношение внешних изображений со всеми во внутренне добавляемом контексте страницы",
+        "соотношение внутренних изображений со всеми во внутренне добавляемом контексте страницы",
+        "общее кол-во перенаправлений по внутренним ссылкам во внутренне добавляемом контексте страницы",
+        "общее кол-во перенаправлений по внешним ссылкам во внутренне добавляемом контексте страницы",
+        "общее кол-во ошибок по внутренним ссылкам во внутренне добавляемом контексте страницы",
+        "общее кол-во ошибок по внешним ссылкам во внутренне добавляемом контексте страницы",
+        "форма входа во внутренне добавляемом контексте страницы",
+        "соотношение внешних Favicon со всеми во внутренне добавляемом контексте страницы",
+        "соотношение внутренних Favicon со всеми во внутренне добавляемом контексте страницы",
+        "наличие отправки на почту во внутренне добавляемом контексте страницы",
+        "соотношение внешних медиа со всеми во внутренне добавляемом контексте страницы",
+        "соотношение внешних медиа со всеми во внутренне добавляемом контексте страницы",
+        "пустой титульник во внутренне добавляемом контексте страницы",
+        "соотношение небезопасных якорей со всеми во внутренне добавляемом контексте страницы",
+        "соотношение безопасных якорей со всеми во внутренне добавляемом контексте страницы",
+        "соотношение внутренних ссылок на ресурсы со всеми во внутренне добавляемом контексте страницы",
+        "соотношение внешних ссылок на ресурсы со всеми во внутренне добавляемом контексте страницы",
+        "наличие невидимых во внутренне добавляемом контексте страницы",
+        "наличие onmouseover во внутренне добавляемом контексте страницы",
+        "наличие всплывающих окон во внутренне добавляемом контексте страницы",
+        "наличие событий правой мыши во внутренне добавляемом контексте страницы",
+        "наличие домена в тексте во внутренне добавляемом контексте страницы",
+        "наличие домена в титульнике во внутренне добавляемом контексте страницы",
+        "домен с авторскими правами во внутренне добавляемом контексте страницы",
 
-                    "cf.count_io_commands(internals_script_doc)",
-                    "cf.count_phish_hints(Text_di,phish_hints)",
+        "кол-во операций ввода/вывода во внутренне добавляемом коде страницы",
+        "кол-во фишинговых слов во внутренне добавляемом контексте страницы",
+        "кол-во слов во внутренне добавляемом контексте страницы",
 
-                    #       (dynamic externals)
+        #       (dynamic externals)
 
-                    "cf.ratio_dynamic_html(Text,Text_de)",
-                    "cf.ratio_js_on_html(Text_de)",
-                    "cf.count_textareas(content_de)",
+        "соотношение основного текста с внешне добавляемым текстом страницы",
+        "соотношение кода в внешне добавляемом контексте страницы",
+        "кол-во полей ввода/вывода в внешне добавляемом контексте страницы",
 
-                    "len(iUrl_de)+len(eUrl_de)",
-                    "cf.urls_ratio(iUrl_de,iUrl_de+eUrl_de+nUrl_de)",
-                    "cf.urls_ratio(eUrl_de,iUrl_de+eUrl_de+nUrl_de)",
-                    "cf.urls_ratio(nUrl_de,iUrl_de+eUrl_de+nUrl_de)",
-                    "cf.ratio_List(CSS_de,'internals')",
-                    "cf.ratio_List(CSS_de,'externals')",
-                    "cf.ratio_List(CSS_de,'embedded')",
-                    "cf.ratio_List(SCRIPT_de,'internals')",
-                    "cf.ratio_List(SCRIPT_de,'externals')",
-                    "cf.ratio_List(SCRIPT_de,'embedded')",
-                    "cf.ratio_List(Img_de,'externals')",
-                    "cf.ratio_List(Img_de,'internals')",
-                    "cf.count_reqs_redirections(reqs_iData_de)",
-                    "cf.count_reqs_redirections(reqs_eData_de)",
-                    "cf.count_reqs_error(reqs_iData_de)",
-                    "cf.count_reqs_error(reqs_eData_de)",
-                    "cf.login_form(Form_de)",
-                    "cf.ratio_List(Favicon_de,'externals')",
-                    "cf.ratio_List(Favicon_de,'internals')",
-                    "cf.submitting_to_email(Form_de)",
-                    "cf.ratio_List(Media_de,'internals')",
-                    "cf.ratio_List(Media_de,'externals')",
-                    "cf.empty_title(Title_de)",
-                    "cf.ratio_anchor(Anchor_de,'unsafe')",
-                    "cf.ratio_anchor(Anchor_de,'safe')",
-                    "cf.ratio_List(Link_de,'internals')",
-                    "cf.ratio_List(Link_de,'externals')",
-                    "cf.iframe(IFrame_de)",
-                    "cf.onmouseover(content_de)",
-                    'cf.popup_window(content_de)',
-                    "cf.right_clic(content_de)",
-                    "cf.domain_in_text(second_level_domain,Text_de)",
-                    "cf.domain_in_text(second_level_domain,Title_de)",
-                    "cf.domain_with_copyright(domain,content_de)",
+        'кол-во всех ссылок во внешне добавляемом контексте страницы',
+        'соотношение внутренних ссылок на сайты со всеми во внешне добавляемом контексте страницы',
+        'соотношение внешних ссылок на сайты со всеми во внешне добавляемом контексте страницы',
+        'соотношение пустых ссылок на сайты со всеми во внешне добавляемом контексте страницы',
+        "соотношение внутренних CSS со всеми во внешне добавляемом контексте страницы",
+        "соотношение внешних CSS со всеми во внешне добавляемом контексте страницы",
+        "соотношение встроенных CSS со всеми во внешне добавляемом контексте страницы",
+        "соотношение внутренних скриптов со всеми во внешне добавляемом контексте страницы",
+        "соотношение внешних скриптов со всеми во внешне добавляемом контексте страницы",
+        "соотношение встроенных скриптов со всеми во внешне добавляемом контексте страницы",
+        "соотношение внешних изображений со всеми во внешне добавляемом контексте страницы",
+        "соотношение внутренних изображений со всеми во внешне добавляемом контексте страницы",
+        "общее кол-во перенаправлений по внутренним ссылкам во внешне добавляемом контексте страницы",
+        "общее кол-во перенаправлений по внешним ссылкам во внешне добавляемом контексте страницы",
+        "общее кол-во ошибок по внутренним ссылкам во внешне добавляемом контексте страницы",
+        "общее кол-во ошибок по внешним ссылкам во внешне добавляемом контексте страницы",
+        "форма входа во внешне добавляемом контексте страницы",
+        "соотношение внешних Favicon со всеми во внешне добавляемом контексте страницы",
+        "соотношение внутренних Favicon со всеми во внешне добавляемом контексте страницы",
+        "наличие отправки на почту во внешне добавляемом контексте страницы",
+        "соотношение внешних медиа со всеми во внешне добавляемом контексте страницы",
+        "соотношение внешних медиа со всеми во внешне добавляемом контексте страницы",
+        "пустой титульник во внешне добавляемом контексте страницы",
+        "соотношение небезопасных якорей со всеми во внешне добавляемом контексте страницы",
+        "соотношение безопасных якорей со всеми во внешне добавляемом контексте страницы",
+        "соотношение внутренних ссылок на ресурсы со всеми во внешне добавляемом контексте страницы",
+        "соотношение внешних ссылок на ресурсы со всеми во внешне добавляемом контексте страницы",
+        "наличие невидимых во внешне добавляемом контексте страницы",
+        "наличие onmouseover во внешне добавляемом контексте страницы",
+        "наличие всплывающих окон во внешне добавляемом контексте страницы",
+        "наличие событий правой мыши во внешне добавляемом контексте страницы",
+        "наличие домена в тексте во внешне добавляемом контексте страницы",
+        "наличие домена в титульнике во внешне добавляемом контексте страницы",
+        "домен с авторскими правами во внешне добавляемом контексте страницы",
 
-                    "cf.count_io_commands(externals_script_doc)",
-                    "cf.count_phish_hints(Text_de,phish_hints)",
+        "кол-во операций ввода/вывода во внешне добавляемом коде страницы",
+        "кол-во фишинговых слов во внешне добавляемом контексте страницы",
+        "кол-во слов во внешне добавляемом контексте страницы",
 
-                    #   EXTERNAL FEATURES
+        #   EXTERNAL FEATURES
 
-                    'ef.domain_registration_length(domain)',
-                    "ef.whois_registered_domain(domain)",
-                    "ef.web_traffic(r_url)",
-                    # "ef.google_index(r_url)",
-                    "ef.page_rank(domain)",
-                    "ef.compare_search2url(r_url,domain,TF.most_common(5)])",
-                    "ef.remainder_valid_cert(hostinfo.cert)",
-                    "ef.valid_cert_period(hostinfo.cert)",
-                    "ef.count_alt_names(hostinfo.cert)"
+        'срок регистрации домена',
+        "домен зарегестрирован",
+        "рейтинг по Alexa",
+        "рейтинг по openpagerank",
+        "соотношение оставшегося времени действия сертификата",
+        "срок действия сертификата",
+        "кол-во альтернативных имен в сертификате"
     ],
+    # 'stats': [
+    #     'word_ratio',
+    #
+    #                 #   URL FEATURES
+    #
+    #                 'uf.having_ip_address(url)',
+    #                 'uf.shortening_service(url)',
+    #
+    #                 "cert!=None",
+    #                 "good_netloc",
+    #
+    #                 'uf.url_length(r_url)',
+    #
+    #                 'uf.count_at(r_url)',
+    #                 'uf.count_exclamation(r_url)',
+    #                 'uf.count_plust(r_url)',
+    #                 'uf.count_sBrackets(r_url)',
+    #                 'uf.count_rBrackets(r_url)',
+    #                 'uf.count_comma(r_url)',
+    #                 'uf.count_dollar(r_url)',
+    #                 'uf.count_semicolumn(r_url)',
+    #                 'uf.count_space(r_url)',
+    #                 'uf.count_and(r_url)',
+    #                 'uf.count_double_slash(r_url)',
+    #                 'uf.count_slash(r_url)',
+    #                 'uf.count_equal(r_url)',
+    #                 'uf.count_percentage(r_url)',
+    #                 'uf.count_question(r_url)',
+    #                 'uf.count_underscore(r_url)',
+    #                 'uf.count_hyphens(r_url)',
+    #                 'uf.count_dots(r_url)',
+    #                 'uf.count_colon(r_url)',
+    #                 'uf.count_star(r_url)',
+    #                 'uf.count_or(r_url)',
+    #                 'uf.count_tilde(r_url)',
+    #                 'uf.count_http_token(r_url)',
+    #
+    #                 'uf.https_token(scheme)',
+    #
+    #                 'uf.ratio_digits(r_url)',
+    #                 'uf.count_digits(r_url)',
+    #
+    #                 "cf.count_phish_hints(url_words, phish_hints)",
+    #                 "(len(url_words), 0)",
+    #
+    #                 'uf.tld_in_path(tld,path)',
+    #                 'uf.tld_in_subdomain(tld,subdomain)',
+    #                 'uf.tld_in_bad_position(tld,subdomain,path)',
+    #                 'uf.abnormal_subdomain(r_url)',
+    #
+    #                 'uf.count_redirection(request)',
+    #                 'uf.count_external_redirection(request,domain)',
+    #
+    #                 'uf.random_domain(second_level_domain)',
+    #
+    #                 'uf.random_words(words_raw)',
+    #                 'uf.random_words(words_raw_host)',
+    #                 'uf.random_words(words_raw_path)',
+    #
+    #                 'uf.char_repeat(words_raw)',
+    #                 'uf.char_repeat(words_raw_host)',
+    #                 'uf.char_repeat(words_raw_path)',
+    #
+    #                 'uf.punycode(r_url)',
+    #                 'uf.domain_in_brand(second_level_domain)',
+    #                 'uf.brand_in_path(second_level_domain, words_raw_path)',
+    #                 'uf.check_www(words_raw)',
+    #                 'uf.check_com(words_raw)',
+    #
+    #                 'uf.port(r_url)',
+    #
+    #                 'uf.length_word_raw(words_raw)',
+    #                 'uf.average_word_length(words_raw)',
+    #                 'uf.longest_word_length(words_raw)',
+    #                 'uf.shortest_word_length(words_raw)',
+    #
+    #                 'uf.prefix_suffix(r_url)',
+    #
+    #                 'uf.count_subdomain(r_url)',
+    #
+    #                 'uf.count_visual_similarity_domains(second_level_domain)',
+    #
+    #                 #   CONTENT FEATURE
+    #                 #       (static)
+    #
+    #                 'cf.compression_ratio(request)',
+    #                 'cf.count_textareas(content)',
+    #                 'cf.ratio_js_on_html(Text)',
+    #
+    #                 'len(iUrl_s)+len(eUrl_s)',
+    #                 'cf.urls_ratio(iUrl_s,iUrl_s+eUrl_s+nUrl_s)',
+    #                 'cf.urls_ratio(eUrl_s,iUrl_s+eUrl_s+nUrl_s)',
+    #                 'cf.urls_ratio(nUrl_s,iUrl_s+eUrl_s+nUrl_s)',
+    #                 "cf.ratio_List(CSS,'internals')",
+    #                 "cf.ratio_List(CSS,'externals')",
+    #                 "cf.ratio_List(CSS,'embedded')",
+    #                 "cf.ratio_List(SCRIPT,'internals')",
+    #                 "cf.ratio_List(SCRIPT,'externals')",
+    #                 "cf.ratio_List(SCRIPT,'embedded')",
+    #                 "cf.ratio_List(Img,'externals')",
+    #                 "cf.ratio_List(Img,'internals')",
+    #                 "cf.count_reqs_redirections(reqs_iData_s)",
+    #                 "cf.count_reqs_redirections(reqs_eData_s)",
+    #                 "cf.count_reqs_error(reqs_iData_s)",
+    #                 "cf.count_reqs_error(reqs_eData_s)",
+    #                 "cf.login_form(Form)",
+    #                 "cf.ratio_List(Favicon,'externals')",
+    #                 "cf.ratio_List(Favicon,'internals')",
+    #                 "cf.submitting_to_email(Form)",
+    #                 "cf.ratio_List(Media,'internals')",
+    #                 "cf.ratio_List(Media,'externals')",
+    #                 "cf.empty_title(Title)",
+    #                 "cf.ratio_anchor(Anchor,'unsafe')",
+    #                 "cf.ratio_anchor(Anchor,'safe')",
+    #                 "cf.ratio_List(Link,'internals')",
+    #                 "cf.ratio_List(Link,'externals')",
+    #                 "cf.iframe(IFrame)",
+    #                 "cf.onmouseover(content)",
+    #                 "cf.popup_window(content)",
+    #                 "cf.right_clic(content)",
+    #                 "cf.domain_in_text(second_level_domain,Text)",
+    #                 "cf.domain_in_text(second_level_domain,Title)",
+    #                 "cf.domain_with_copyright(domain,content)",
+    #                 "cf.count_phish_hints(Text, phish_hints)",
+    #                 "(len(sContent_words), 0)",
+    #                 "cf.ratio_Txt(iImgTxt_words+eImgTxt_words,sContent_words)",
+    #                 "cf.ratio_Txt(iImgTxt_words,sContent_words)",
+    #                 "cf.ratio_Txt(eImgTxt_words,sContent_words)",
+    #                 "cf.ratio_Txt(eImgTxt_words,iImgTxt_words)",
+    #
+    #                 #       (dynamic)
+    #
+    #                 "cf.ratio_dynamic_html(Text,"".join([Text_di,Text_de]))",
+    #
+    #                 #       (dynamic internals)
+    #
+    #                 "cf.ratio_dynamic_html(Text,Text_di)",
+    #                 "cf.ratio_js_on_html(Text_di)",
+    #                 "cf.count_textareas(content_di)",
+    #
+    #                 "len(iUrl_di)+len(eUrl_di)",
+    #                 "cf.urls_ratio(iUrl_di,iUrl_di+eUrl_di+nUrl_di)",
+    #                 "cf.urls_ratio(eUrl_di,iUrl_di+eUrl_di+nUrl_di)",
+    #                 "cf.urls_ratio(nUrl_di,iUrl_di+eUrl_di+nUrl_di)",
+    #                 "cf.ratio_List(CSS_di,'internals')",
+    #                 "cf.ratio_List(CSS_di,'externals')",
+    #                 "cf.ratio_List(CSS_di,'embedded')",
+    #                 "cf.ratio_List(SCRIPT_di,'internals')",
+    #                 "cf.ratio_List(SCRIPT_di,'externals')",
+    #                 "cf.ratio_List(SCRIPT_di,'embedded')",
+    #                 "cf.ratio_List(Img_di,'externals')",
+    #                 "cf.ratio_List(Img_di,'internals')",
+    #                 "cf.count_reqs_redirections(reqs_iData_di)",
+    #                 "cf.count_reqs_redirections(reqs_eData_di)",
+    #                 "cf.count_reqs_error(reqs_iData_di)",
+    #                 "cf.count_reqs_error(reqs_eData_di)",
+    #                 "cf.login_form(Form_di)",
+    #                 "cf.ratio_List(Favicon_di,'externals')",
+    #                 "cf.ratio_List(Favicon_di,'internals')",
+    #                 "cf.submitting_to_email(Form_di)",
+    #                 "cf.ratio_List(Media_di,'internals')",
+    #                 "cf.ratio_List(Media_di,'externals')",
+    #                 "cf.empty_title(Title_di)",
+    #                 "cf.ratio_anchor(Anchor_di,'unsafe')",
+    #                 "cf.ratio_anchor(Anchor_di,'safe')",
+    #                 "cf.ratio_List(Link_di,'internals')",
+    #                 "cf.ratio_List(Link_di,'externals')",
+    #                 "cf.iframe(IFrame_di)",
+    #                 "cf.onmouseover(content_di)",
+    #                 "cf.popup_window(content_di)",
+    #                 "cf.right_clic(content_di)",
+    #                 "cf.domain_in_text(second_level_domain,Text_di)",
+    #                 "cf.domain_in_text(second_level_domain,Title_di)",
+    #                 "cf.domain_with_copyright(domain,content_di)",
+    #
+    #                 "cf.count_io_commands(internals_script_doc)",
+    #                 "cf.count_phish_hints(Text_di,phish_hints)",
+    #                 "(len(diContent_words), 0)",
+    #
+    #                 #       (dynamic externals)
+    #
+    #                 "cf.ratio_dynamic_html(Text,Text_de)",
+    #                 "cf.ratio_js_on_html(Text_de)",
+    #                 "cf.count_textareas(content_de)",
+    #
+    #                 "len(iUrl_de)+len(eUrl_de)",
+    #                 "cf.urls_ratio(iUrl_de,iUrl_de+eUrl_de+nUrl_de)",
+    #                 "cf.urls_ratio(eUrl_de,iUrl_de+eUrl_de+nUrl_de)",
+    #                 "cf.urls_ratio(nUrl_de,iUrl_de+eUrl_de+nUrl_de)",
+    #                 "cf.ratio_List(CSS_de,'internals')",
+    #                 "cf.ratio_List(CSS_de,'externals')",
+    #                 "cf.ratio_List(CSS_de,'embedded')",
+    #                 "cf.ratio_List(SCRIPT_de,'internals')",
+    #                 "cf.ratio_List(SCRIPT_de,'externals')",
+    #                 "cf.ratio_List(SCRIPT_de,'embedded')",
+    #                 "cf.ratio_List(Img_de,'externals')",
+    #                 "cf.ratio_List(Img_de,'internals')",
+    #                 "cf.count_reqs_redirections(reqs_iData_de)",
+    #                 "cf.count_reqs_redirections(reqs_eData_de)",
+    #                 "cf.count_reqs_error(reqs_iData_de)",
+    #                 "cf.count_reqs_error(reqs_eData_de)",
+    #                 "cf.login_form(Form_de)",
+    #                 "cf.ratio_List(Favicon_de,'externals')",
+    #                 "cf.ratio_List(Favicon_de,'internals')",
+    #                 "cf.submitting_to_email(Form_de)",
+    #                 "cf.ratio_List(Media_de,'internals')",
+    #                 "cf.ratio_List(Media_de,'externals')",
+    #                 "cf.empty_title(Title_de)",
+    #                 "cf.ratio_anchor(Anchor_de,'unsafe')",
+    #                 "cf.ratio_anchor(Anchor_de,'safe')",
+    #                 "cf.ratio_List(Link_de,'internals')",
+    #                 "cf.ratio_List(Link_de,'externals')",
+    #                 "cf.iframe(IFrame_de)",
+    #                 "cf.onmouseover(content_de)",
+    #                 'cf.popup_window(content_de)',
+    #                 "cf.right_clic(content_de)",
+    #                 "cf.domain_in_text(second_level_domain,Text_de)",
+    #                 "cf.domain_in_text(second_level_domain,Title_de)",
+    #                 "cf.domain_with_copyright(domain,content_de)",
+    #
+    #                 "cf.count_io_commands(externals_script_doc)",
+    #                 "cf.count_phish_hints(Text_de,phish_hints)",
+    #                 "(len(deContent_words), 0)",
+    #
+    #                 #   EXTERNAL FEATURES
+    #
+    #                 'ef.domain_registration_length(domain)',
+    #                 "ef.whois_registered_domain(domain)",
+    #                 "ef.web_traffic(r_url)",
+    #                 "ef.page_rank(domain)",
+    #                 "ef.remainder_valid_cert(hostinfo.cert)",
+    #                 "ef.valid_cert_period(hostinfo.cert)",
+    #                 "ef.count_alt_names(hostinfo.cert)"
+    # ],
     'metadata': [
         'url',
         'lang',
@@ -749,7 +990,13 @@ headers = {
     ]
 }
 
-@benchmark(200)
+import threading
+
+requests_sem = threading.Semaphore(5)
+OCR_sem = threading.Semaphore(3)
+run_sem = threading.Semaphore(5)
+
+
 def extract_features(url, status):
     def words_raw_extraction(domain, subdomain, path):
         w_domain = re.split("\-|\.|\/|\?|\=|\@|\&|\%|\:|\_", domain.lower())
@@ -761,12 +1008,17 @@ def extract_features(url, status):
                segment(list(filter(None, w_host))), \
                segment(list(filter(None, w_path)))
 
-    state, request = is_URL_accessible(url)[0]
+    with requests_sem:
+        resolve = is_URL_accessible(url)[0]
+    if type(resolve) == tuple:
+        (state, request) = resolve
+    else:
+        return None
 
     if state:
         r_url = request.url
         content = str(request.content)
-        hostname, second_level_domain, path = get_domain(r_url)
+        hostname, second_level_domain, path, netloc = get_domain(r_url)
         extracted_domain = tldextract.extract(r_url)
         domain = extracted_domain.domain + '.' + extracted_domain.suffix
         subdomain = extracted_domain.subdomain
@@ -778,385 +1030,455 @@ def extract_features(url, status):
         parsed = urlparse(r_url)
         scheme = parsed.scheme
 
-        cert, time_cert = ef.get_cert(domain)
+        with requests_sem:
+            cert, time_cert = ef.get_cert(domain)
 
-        (Href, Link, Anchor, Media, Img, Form, CSS, Favicon, IFrame, SCRIPT, Title, Text, internals_script_doc,
-         externals_script_doc), extraction_data_time = extract_data_from_URL(hostname, content, domain, r_url)
+        extraction_data, extraction_data_time = extract_data_from_URL(hostname, content, domain, r_url)
+
+        if type(extraction_data) == tuple:
+            (Href, Link, Anchor, Media, Img, Form, CSS, Favicon, IFrame, SCRIPT, Title, Text, internals_script_doc,
+             externals_script_doc) = extraction_data
+        else:
+            return None
 
         content_di = cf.get_html_from_js(cf.remove_JScomments(internals_script_doc))
         content_de = cf.get_html_from_js(cf.remove_JScomments(externals_script_doc))
 
-        (Href_di, Link_di, Anchor_di, Media_di, Img_di, Form_di, CSS_di, Favicon_di, IFrame_di, SCRIPT_di, Title_di,
-         Text_di, internals_script_doc_di, externals_script_doc_di), extraction_data_di_time = extract_data_from_URL(
+        extraction_data_di, extraction_data_di_time = extract_data_from_URL(
             hostname, content_di, domain, r_url)
 
-        (Href_de, Link_de, Anchor_de, Media_de, Img_de, Form_de, CSS_de, Favicon_de, IFrame_de, SCRIPT_de, Title_de,
-         Text_de, internals_script_doc_de, externals_script_doc_de), extraction_data_de_time = extract_data_from_URL(
+        if type(extraction_data_di) == tuple:
+            (Href_di, Link_di, Anchor_di, Media_di, Img_di, Form_di, CSS_di, Favicon_di, IFrame_di, SCRIPT_di, Title_di,
+             Text_di, internals_script_doc_di, externals_script_doc_di) = extraction_data_di
+        else:
+            return None
+
+        extraction_data_de, extraction_data_de_time = extract_data_from_URL(
             hostname, content_de, domain, r_url)
 
+        if type(extraction_data_de) == tuple:
+            (Href_de, Link_de, Anchor_de, Media_de, Img_de, Form_de, CSS_de, Favicon_de, IFrame_de, SCRIPT_de, Title_de,
+             Text_de, internals_script_doc_de, externals_script_doc_de) = extraction_data_de
+        else:
+            return None
 
-        start = time.time()
-        internals_img_txt = cf.image_to_text(Img['internals'])
-        externals_img_txt = cf.image_to_text(Img['externals'])
-        extracting_ImgTxt_time = time.time() - start
+        lang = check_Language(content)
+
+        with OCR_sem:
+            start = time.time()
+            internals_img_txt = cf.image_to_text(Img['internals'], lang)
+            externals_img_txt = cf.image_to_text(Img['externals'], lang)
+            extracting_ImgTxt_time = time.time() - start
+
+            vsd = uf.count_visual_similarity_domains(second_level_domain)
 
 
         start = time.time()
         iImgTxt_words = clear_text(tokenize(internals_img_txt.lower()))
         eImgTxt_words = clear_text(tokenize(externals_img_txt.lower()))
 
+        url_words = uf.tokenize_url(words_raw)
         sContent_words = clear_text(tokenize(Text.lower()))
         diContent_words = clear_text(tokenize(Text_di.lower()))
         deContent_words = clear_text(tokenize(Text_de.lower()))
 
         Text_words = iImgTxt_words + eImgTxt_words + sContent_words + diContent_words + deContent_words
         TF = compute_tf(Text_words)
-        word_ratio = len(TF) / len(Text_words)
+        if Text_words:
+            word_ratio = len(TF) / len(Text_words)
+        else:
+            word_ratio = 0
         preparing_words_time = time.time() - start
-
-        lang = check_Language(content)
 
         iUrl_s = Href['internals'] + Link['internals'] + Media['internals'] + Form['internals']
         eUrl_s = Href['externals'] + Link['externals'] + Media['externals'] + Form['externals']
         nUrl_s = Href['null'] + Link['null'] + Media['null'] + Form['null']
 
-        reqs_iData_s, reqs_iTime_s = cf.get_reqs_data(iUrl_s)
-        reqs_eData_s, reqs_eTime_s = cf.get_reqs_data(eUrl_s)
+        with requests_sem:
+            reqs_iData_s, reqs_iTime_s = cf.get_reqs_data(iUrl_s)
+            reqs_eData_s, reqs_eTime_s = cf.get_reqs_data(eUrl_s)
 
 
         iUrl_di = Href_di['internals'] + Link_di['internals'] + Media_di['internals'] + Form_di['internals']
         eUrl_di = Href_di['externals'] + Link_di['externals'] + Media_di['externals'] + Form_di['externals']
         nUrl_di = Href_di['null'] + Link_di['null'] + Media_di['null'] + Form_di['null']
 
-        reqs_iData_di, reqs_iTime_di = cf.get_reqs_data(iUrl_di)
-        reqs_eData_di, reqs_eTime_di = cf.get_reqs_data(eUrl_di)
+        with requests_sem:
+            reqs_iData_di, reqs_iTime_di = cf.get_reqs_data(iUrl_di)
+            reqs_eData_di, reqs_eTime_di = cf.get_reqs_data(eUrl_di)
 
 
         iUrl_de = Href_de['internals'] + Link_de['internals'] + Media_de['internals'] + Form_de['internals']
         eUrl_de = Href_de['externals'] + Link_de['externals'] + Media_de['externals'] + Form_de['externals']
         nUrl_de = Href_de['null'] + Link_de['null'] + Media_de['null'] + Form_de['null']
 
-        reqs_iData_de, reqs_iTime_de = cf.get_reqs_data(iUrl_de)
-        reqs_eData_de, reqs_eTime_de = cf.get_reqs_data(eUrl_de)
+        with requests_sem:
+            reqs_iData_de, reqs_iTime_de = cf.get_reqs_data(iUrl_de)
+            reqs_eData_de, reqs_eTime_de = cf.get_reqs_data(eUrl_de)
 
-        record = {
-            'url': url,
-            'domain': domain,
-            'lang': lang,
-            'TF': TF,
-            'status': status,
-            'extraction-contextData-time': extraction_data_time + extraction_data_di_time + extraction_data_de_time,
-            'image-recognition-time': extracting_ImgTxt_time,
-            'stats':
-                [
-                    (word_ratio, preparing_words_time),
+        with run_sem:
+            record = {
+                'url': url,
+                'domain': domain,
+                'lang': lang,
+                'TF': TF,
+                'status': status,
+                'extraction-contextData-time': extraction_data_time + extraction_data_di_time + extraction_data_de_time,
+                'image-recognition-time': extracting_ImgTxt_time,
+                'stats':
+                    [
+                        (word_ratio, preparing_words_time),
 
-                    #   URL FEATURES
+                        #   URL FEATURES
 
-                    uf.having_ip_address(url),
-                    uf.shortening_service(url),
+                        uf.having_ip_address(url),
+                        uf.shortening_service(url),
 
-                    (cert != None, time_cert),
+                        (int(cert != None), time_cert),
+                        ef.good_netloc(netloc),
 
-                    uf.url_length(r_url),
+                        uf.url_length(r_url),
 
-                    uf.count_at(r_url),
-                    uf.count_exclamation(r_url),
-                    uf.count_plust(r_url),
-                    uf.count_sBrackets(r_url),
-                    uf.count_rBrackets(r_url),
-                    uf.count_comma(r_url),
-                    uf.count_dollar(r_url),
-                    uf.count_semicolumn(r_url),
-                    uf.count_space(r_url),
-                    uf.count_and(r_url),
-                    uf.count_double_slash(r_url),
-                    uf.count_slash(r_url),
-                    uf.count_equal(r_url),
-                    uf.count_percentage(r_url),
-                    uf.count_question(r_url),
-                    uf.count_underscore(r_url),
-                    uf.count_hyphens(r_url),
-                    uf.count_dots(r_url),
-                    uf.count_colon(r_url),
-                    uf.count_star(r_url),
-                    uf.count_or(r_url),
-                    uf.count_tilde(r_url),
-                    uf.count_http_token(r_url),
+                        uf.count_at(r_url),
+                        uf.count_exclamation(r_url),
+                        uf.count_plust(r_url),
+                        uf.count_sBrackets(r_url),
+                        uf.count_rBrackets(r_url),
+                        uf.count_comma(r_url),
+                        uf.count_dollar(r_url),
+                        uf.count_semicolumn(r_url),
+                        uf.count_space(r_url),
+                        uf.count_and(r_url),
+                        uf.count_double_slash(r_url),
+                        uf.count_slash(r_url),
+                        uf.count_equal(r_url),
+                        uf.count_percentage(r_url),
+                        uf.count_question(r_url),
+                        uf.count_underscore(r_url),
+                        uf.count_hyphens(r_url),
+                        uf.count_dots(r_url),
+                        uf.count_colon(r_url),
+                        uf.count_star(r_url),
+                        uf.count_or(r_url),
+                        uf.count_tilde(r_url),
+                        uf.count_http_token(r_url),
 
-                    uf.https_token(scheme),
+                        uf.https_token(scheme),
 
-                    uf.ratio_digits(r_url),
-                    uf.count_digits(r_url),
+                        uf.ratio_digits(r_url),
+                        uf.count_digits(r_url),
 
-                    cf.count_phish_hints(r_url, phish_hints),
+                        cf.count_phish_hints(url_words, phish_hints, 'en'),
+                        (len(url_words), 0),
 
-                    uf.tld_in_path(tld, path),
-                    uf.tld_in_subdomain(tld, subdomain),
-                    uf.tld_in_bad_position(tld, subdomain, path),
-                    uf.abnormal_subdomain(r_url),
+                        uf.tld_in_path(tld, path),
+                        uf.tld_in_subdomain(tld, subdomain),
+                        uf.tld_in_bad_position(tld, subdomain, path),
+                        uf.abnormal_subdomain(r_url),
 
-                    uf.count_redirection(request),
-                    uf.count_external_redirection(request, domain),
+                        uf.count_redirection(request),
+                        uf.count_external_redirection(request, domain),
 
-                    uf.random_domain(second_level_domain),
+                        uf.random_domain(second_level_domain),
 
-                    uf.random_words(words_raw),
-                    uf.random_words(words_raw_host),
-                    uf.random_words(words_raw_path),
+                        uf.random_words(words_raw),
+                        uf.random_words(words_raw_host),
+                        uf.random_words(words_raw_path),
 
-                    uf.char_repeat(words_raw),
-                    uf.char_repeat(words_raw_host),
-                    uf.char_repeat(words_raw_path),
+                        uf.char_repeat(words_raw),
+                        uf.char_repeat(words_raw_host),
+                        uf.char_repeat(words_raw_path),
 
-                    uf.punycode(r_url),
-                    uf.domain_in_brand(second_level_domain),
-                    uf.brand_in_path(second_level_domain, words_raw_path),
-                    uf.check_www(words_raw),
-                    uf.check_com(words_raw),
+                        uf.punycode(r_url),
+                        uf.domain_in_brand(second_level_domain),
+                        uf.brand_in_path(second_level_domain, words_raw_path),
+                        uf.check_www(words_raw),
+                        uf.check_com(words_raw),
 
-                    uf.port(r_url),
+                        uf.port(r_url),
 
-                    uf.length_word_raw(words_raw),
-                    uf.average_word_length(words_raw),
-                    uf.longest_word_length(words_raw),
-                    uf.shortest_word_length(words_raw),
+                        uf.length_word_raw(words_raw),
+                        uf.average_word_length(words_raw),
+                        uf.longest_word_length(words_raw),
+                        uf.shortest_word_length(words_raw),
 
-                    uf.prefix_suffix(r_url),
 
-                    uf.count_subdomain(r_url),
+                        uf.prefix_suffix(r_url),
 
-                    uf.count_visual_similarity_domains(second_level_domain),
+                        uf.count_subdomain(r_url),
 
-                    #   CONTENT FEATURE
-                    #       (static)
+                        vsd,
 
-                    cf.compression_ratio(request),
-                    cf.count_textareas(content),
-                    cf.ratio_js_on_html(Text),
+                        #   CONTENT FEATURE
+                        #       (static)
 
-                    (len(iUrl_s) + len(eUrl_s), reqs_iTime_s + reqs_eTime_s),
-                    (cf.urls_ratio(iUrl_s, iUrl_s + eUrl_s + nUrl_s), reqs_iTime_s),
-                    (cf.urls_ratio(eUrl_s, iUrl_s + eUrl_s + nUrl_s), reqs_eTime_s),
-                    (cf.urls_ratio(nUrl_s, iUrl_s + eUrl_s + nUrl_s), 0),
-                    cf.ratio_List(CSS, 'internals'),
-                    cf.ratio_List(CSS, 'externals'),
-                    cf.ratio_List(CSS, 'embedded'),
-                    cf.ratio_List(SCRIPT, 'internals'),
-                    cf.ratio_List(SCRIPT, 'externals'),
-                    cf.ratio_List(SCRIPT, 'embedded'),
-                    cf.ratio_List(Img, 'externals'),
-                    cf.ratio_List(Img, 'internals'),
-                    cf.count_reqs_redirections(reqs_iData_s),
-                    cf.count_reqs_redirections(reqs_eData_s),
-                    cf.count_reqs_error(reqs_iData_s),
-                    cf.count_reqs_error(reqs_eData_s),
-                    cf.login_form(Form),
-                    cf.ratio_List(Favicon, 'externals'),
-                    cf.ratio_List(Favicon, 'internals'),
-                    cf.submitting_to_email(Form),
-                    cf.ratio_List(Media, 'internals'),
-                    cf.ratio_List(Media, 'externals'),
-                    cf.empty_title(Title),
-                    cf.ratio_anchor(Anchor, 'unsafe'),
-                    cf.ratio_anchor(Anchor, 'safe'),
-                    cf.ratio_List(Link, 'internals'),
-                    cf.ratio_List(Link, 'externals'),
-                    cf.iframe(IFrame),
-                    cf.onmouseover(content),
-                    cf.popup_window(content),
-                    cf.right_clic(content),
-                    cf.domain_in_text(second_level_domain, Text),
-                    cf.domain_in_text(second_level_domain, Title),
-                    cf.domain_with_copyright(domain, content),
-                    cf.count_phish_hints(Text, phish_hints),
-                    cf.ratio_Txt(iImgTxt_words + eImgTxt_words, sContent_words),
-                    cf.ratio_Txt(iImgTxt_words, sContent_words),
-                    cf.ratio_Txt(eImgTxt_words, sContent_words),
-                    cf.ratio_Txt(eImgTxt_words, iImgTxt_words),
+                        cf.compression_ratio(request),
+                        cf.count_textareas(content),
+                        cf.ratio_js_on_html(Text),
 
-                    #       (dynamic)
+                        (len(iUrl_s) + len(eUrl_s), reqs_iTime_s + reqs_eTime_s),
+                        (cf.urls_ratio(iUrl_s, iUrl_s + eUrl_s + nUrl_s), reqs_iTime_s),
+                        (cf.urls_ratio(eUrl_s, iUrl_s + eUrl_s + nUrl_s), reqs_eTime_s),
+                        (cf.urls_ratio(nUrl_s, iUrl_s + eUrl_s + nUrl_s), 0),
+                        cf.ratio_List(CSS, 'internals'),
+                        cf.ratio_List(CSS, 'externals'),
+                        cf.ratio_List(CSS, 'embedded'),
+                        cf.ratio_List(SCRIPT, 'internals'),
+                        cf.ratio_List(SCRIPT, 'externals'),
+                        cf.ratio_List(SCRIPT, 'embedded'),
+                        cf.ratio_List(Img, 'externals'),
+                        cf.ratio_List(Img, 'internals'),
+                        cf.count_reqs_redirections(reqs_iData_s),
+                        cf.count_reqs_redirections(reqs_eData_s),
+                        cf.count_reqs_error(reqs_iData_s),
+                        cf.count_reqs_error(reqs_eData_s),
+                        cf.login_form(Form),
+                        cf.ratio_List(Favicon, 'externals'),
+                        cf.ratio_List(Favicon, 'internals'),
+                        cf.submitting_to_email(Form),
+                        cf.ratio_List(Media, 'internals'),
+                        cf.ratio_List(Media, 'externals'),
+                        cf.empty_title(Title),
+                        cf.ratio_anchor(Anchor, 'unsafe'),
+                        cf.ratio_anchor(Anchor, 'safe'),
+                        cf.ratio_List(Link, 'internals'),
+                        cf.ratio_List(Link, 'externals'),
+                        cf.iframe(IFrame),
+                        cf.onmouseover(content),
+                        cf.popup_window(content),
+                        cf.right_clic(content),
+                        cf.domain_in_text(second_level_domain, Text),
+                        cf.domain_in_text(second_level_domain, Title),
+                        cf.domain_with_copyright(domain, content),
+                        cf.count_phish_hints(Text, phish_hints, lang),
+                        (len(sContent_words), 0),
+                        cf.ratio_Txt(iImgTxt_words + eImgTxt_words, sContent_words),
+                        cf.ratio_Txt(iImgTxt_words, sContent_words),
+                        cf.ratio_Txt(eImgTxt_words, sContent_words),
+                        cf.ratio_Txt(eImgTxt_words, iImgTxt_words),
 
-                    cf.ratio_dynamic_html(Text, "".join([Text_di, Text_de])),
+                        #       (dynamic)
 
-                    #       (dynamic internals)
+                        cf.ratio_dynamic_html(Text, "".join([Text_di, Text_de])),
 
-                    cf.ratio_dynamic_html(Text, Text_di),
-                    cf.ratio_js_on_html(Text_di),
-                    cf.count_textareas(content_di),
+                        #       (dynamic internals)
 
-                    (len(iUrl_di) + len(eUrl_di), reqs_iTime_de + reqs_eTime_de),
-                    (cf.urls_ratio(iUrl_di, iUrl_di + eUrl_di + nUrl_di + nUrl_di), reqs_iTime_di),
-                    (cf.urls_ratio(eUrl_di, iUrl_di + eUrl_di + nUrl_di), reqs_eTime_di),
-                    (cf.urls_ratio(nUrl_di, iUrl_di + eUrl_di + nUrl_di), 0),
-                    cf.ratio_List(CSS_di, 'internals'),
-                    cf.ratio_List(CSS_di, 'externals'),
-                    cf.ratio_List(CSS_di, 'embedded'),
-                    cf.ratio_List(SCRIPT_di, 'internals'),
-                    cf.ratio_List(SCRIPT_di, 'externals'),
-                    cf.ratio_List(SCRIPT_di, 'embedded'),
-                    cf.ratio_List(Img_di, 'externals'),
-                    cf.ratio_List(Img_di, 'internals'),
-                    cf.count_reqs_redirections(reqs_iData_di),
-                    cf.count_reqs_redirections(reqs_iData_di),
-                    cf.count_reqs_error(reqs_iData_di),
-                    cf.count_reqs_error(reqs_iData_di),
-                    cf.login_form(Form_di),
-                    cf.ratio_List(Favicon_di, 'externals'),
-                    cf.ratio_List(Favicon_di, 'internals'),
-                    cf.submitting_to_email(Form_di),
-                    cf.ratio_List(Media_di, 'internals'),
-                    cf.ratio_List(Media_di, 'externals'),
-                    cf.empty_title(Title_di),
-                    cf.ratio_anchor(Anchor_di, 'unsafe'),
-                    cf.ratio_anchor(Anchor_di, 'safe'),
-                    cf.ratio_List(Link_di, 'internals'),
-                    cf.ratio_List(Link_di, 'externals'),
-                    cf.iframe(IFrame_di),
-                    cf.onmouseover(content_di),
-                    cf.popup_window(content_di),
-                    cf.right_clic(content_di),
-                    cf.domain_in_text(second_level_domain, Text_di),
-                    cf.domain_in_text(second_level_domain, Title_di),
-                    cf.domain_with_copyright(domain, content_di),
+                        cf.ratio_dynamic_html(Text, Text_di),
+                        cf.ratio_js_on_html(Text_di),
+                        cf.count_textareas(content_di),
 
-                    cf.count_io_commands(internals_script_doc),
-                    cf.count_phish_hints(Text_di, phish_hints),
+                        (len(iUrl_di) + len(eUrl_di), reqs_iTime_de + reqs_eTime_de),
+                        (cf.urls_ratio(iUrl_di, iUrl_di + eUrl_di + nUrl_di + nUrl_di), reqs_iTime_di),
+                        (cf.urls_ratio(eUrl_di, iUrl_di + eUrl_di + nUrl_di), reqs_eTime_di),
+                        (cf.urls_ratio(nUrl_di, iUrl_di + eUrl_di + nUrl_di), 0),
+                        cf.ratio_List(CSS_di, 'internals'),
+                        cf.ratio_List(CSS_di, 'externals'),
+                        cf.ratio_List(CSS_di, 'embedded'),
+                        cf.ratio_List(SCRIPT_di, 'internals'),
+                        cf.ratio_List(SCRIPT_di, 'externals'),
+                        cf.ratio_List(SCRIPT_di, 'embedded'),
+                        cf.ratio_List(Img_di, 'externals'),
+                        cf.ratio_List(Img_di, 'internals'),
+                        cf.count_reqs_redirections(reqs_iData_di),
+                        cf.count_reqs_redirections(reqs_iData_di),
+                        cf.count_reqs_error(reqs_iData_di),
+                        cf.count_reqs_error(reqs_iData_di),
+                        cf.login_form(Form_di),
+                        cf.ratio_List(Favicon_di, 'externals'),
+                        cf.ratio_List(Favicon_di, 'internals'),
+                        cf.submitting_to_email(Form_di),
+                        cf.ratio_List(Media_di, 'internals'),
+                        cf.ratio_List(Media_di, 'externals'),
+                        cf.empty_title(Title_di),
+                        cf.ratio_anchor(Anchor_di, 'unsafe'),
+                        cf.ratio_anchor(Anchor_di, 'safe'),
+                        cf.ratio_List(Link_di, 'internals'),
+                        cf.ratio_List(Link_di, 'externals'),
+                        cf.iframe(IFrame_di),
+                        cf.onmouseover(content_di),
+                        cf.popup_window(content_di),
+                        cf.right_clic(content_di),
+                        cf.domain_in_text(second_level_domain, Text_di),
+                        cf.domain_in_text(second_level_domain, Title_di),
+                        cf.domain_with_copyright(domain, content_di),
 
-                    #       (dynamic externals)
+                        cf.count_io_commands(internals_script_doc),
+                        cf.count_phish_hints(Text_di, phish_hints, lang),
+                        (len(diContent_words), 0),
 
-                    cf.ratio_dynamic_html(Text, Text_de),
-                    cf.ratio_js_on_html(Text_de),
-                    cf.count_textareas(content_de),
+                        #       (dynamic externals)
 
-                    (len(iUrl_de) + len(eUrl_de), reqs_iTime_de + reqs_eTime_de),
-                    (cf.urls_ratio(iUrl_de, iUrl_de + eUrl_de + nUrl_de), reqs_iTime_de),
-                    (cf.urls_ratio(eUrl_de, iUrl_de + eUrl_de + nUrl_de), reqs_eTime_de),
-                    (cf.urls_ratio(nUrl_de, iUrl_de + eUrl_de + nUrl_de), 0),
-                    cf.ratio_List(CSS_de, 'internals'),
-                    cf.ratio_List(CSS_de, 'externals'),
-                    cf.ratio_List(CSS_de, 'embedded'),
-                    cf.ratio_List(SCRIPT_de, 'internals'),
-                    cf.ratio_List(SCRIPT_de, 'externals'),
-                    cf.ratio_List(SCRIPT_de, 'embedded'),
-                    cf.ratio_List(Img_de, 'externals'),
-                    cf.ratio_List(Img_de, 'internals'),
-                    cf.count_reqs_redirections(reqs_iData_de),
-                    cf.count_reqs_redirections(reqs_eData_de),
-                    cf.count_reqs_error(reqs_iData_de),
-                    cf.count_reqs_error(reqs_eData_de),
-                    cf.login_form(Form_de),
-                    cf.ratio_List(Favicon_de, 'externals'),
-                    cf.ratio_List(Favicon_de, 'internals'),
-                    cf.submitting_to_email(Form_de),
-                    cf.ratio_List(Media_de, 'internals'),
-                    cf.ratio_List(Media_de, 'externals'),
-                    cf.empty_title(Title_de),
-                    cf.ratio_anchor(Anchor_de, 'unsafe'),
-                    cf.ratio_anchor(Anchor_de, 'safe'),
-                    cf.ratio_List(Link_de, 'internals'),
-                    cf.ratio_List(Link_de, 'externals'),
-                    cf.iframe(IFrame_de),
-                    cf.onmouseover(content_de),
-                    cf.popup_window(content_de),
-                    cf.right_clic(content_de),
-                    cf.domain_in_text(second_level_domain, Text_de),
-                    cf.domain_in_text(second_level_domain, Title_de),
-                    cf.domain_with_copyright(domain, content_de),
+                        cf.ratio_dynamic_html(Text, Text_de),
+                        cf.ratio_js_on_html(Text_de),
+                        cf.count_textareas(content_de),
 
-                    cf.count_io_commands(externals_script_doc),
-                    cf.count_phish_hints(Text_de, phish_hints),
+                        (len(iUrl_de) + len(eUrl_de), reqs_iTime_de + reqs_eTime_de),
+                        (cf.urls_ratio(iUrl_de, iUrl_de + eUrl_de + nUrl_de), reqs_iTime_de),
+                        (cf.urls_ratio(eUrl_de, iUrl_de + eUrl_de + nUrl_de), reqs_eTime_de),
+                        (cf.urls_ratio(nUrl_de, iUrl_de + eUrl_de + nUrl_de), 0),
+                        cf.ratio_List(CSS_de, 'internals'),
+                        cf.ratio_List(CSS_de, 'externals'),
+                        cf.ratio_List(CSS_de, 'embedded'),
+                        cf.ratio_List(SCRIPT_de, 'internals'),
+                        cf.ratio_List(SCRIPT_de, 'externals'),
+                        cf.ratio_List(SCRIPT_de, 'embedded'),
+                        cf.ratio_List(Img_de, 'externals'),
+                        cf.ratio_List(Img_de, 'internals'),
+                        cf.count_reqs_redirections(reqs_iData_de),
+                        cf.count_reqs_redirections(reqs_eData_de),
+                        cf.count_reqs_error(reqs_iData_de),
+                        cf.count_reqs_error(reqs_eData_de),
+                        cf.login_form(Form_de),
+                        cf.ratio_List(Favicon_de, 'externals'),
+                        cf.ratio_List(Favicon_de, 'internals'),
+                        cf.submitting_to_email(Form_de),
+                        cf.ratio_List(Media_de, 'internals'),
+                        cf.ratio_List(Media_de, 'externals'),
+                        cf.empty_title(Title_de),
+                        cf.ratio_anchor(Anchor_de, 'unsafe'),
+                        cf.ratio_anchor(Anchor_de, 'safe'),
+                        cf.ratio_List(Link_de, 'internals'),
+                        cf.ratio_List(Link_de, 'externals'),
+                        cf.iframe(IFrame_de),
+                        cf.onmouseover(content_de),
+                        cf.popup_window(content_de),
+                        cf.right_clic(content_de),
+                        cf.domain_in_text(second_level_domain, Text_de),
+                        cf.domain_in_text(second_level_domain, Title_de),
+                        cf.domain_with_copyright(domain, content_de),
 
-                    #   EXTERNAL FEATURES
+                        cf.count_io_commands(externals_script_doc),
+                        cf.count_phish_hints(Text_de, phish_hints, lang),
+                        (len(deContent_words), 0),
 
-                    ef.domain_registration_length(domain),  # do not use VPN: Error trying to connect to socket: closing socket
-                    ef.whois_registered_domain(domain),
-                    ef.web_traffic(r_url),
-                    # ef.google_index(r_url),
-                    ef.page_rank(domain),
-                    ef.compare_search2url(r_url, domain, [t[0] for t in Counter(TF).most_common(5)]),
-                    ef.remainder_valid_cert(cert),
-                    ef.valid_cert_period(cert),
-                    ef.count_alt_names(cert)
-                ]
-        }
+                        #   EXTERNAL FEATURES
+
+                        ef.domain_registration_length(domain),  # do not use VPN: Error trying to connect to socket: closing socket
+                        ef.whois_registered_domain(domain),
+                        ef.web_traffic(r_url),
+                        ef.page_rank(domain),
+                        ef.remainder_valid_cert(cert),
+                        ef.valid_cert_period(cert),
+                        ef.count_alt_names(cert)
+                    ]
+            }
 
         return record
     return None
 
 
+import asyncio
+from tg_tqdm import tg_tqdm
 
-chunk_size = 10
-
+log_event = threading.Event()
+work_event = threading.Event()
+save_obj = threading.Lock()
 
 def generate_dataset(url_list):
-    data = []
-    counter = []
+    def init():
+        h1 = headers['metadata']+headers['substats']+headers['stats']
+        h2 = headers['metadata']+headers['stats'] + ['TF']
 
-    TF = {0: [], 1: []}
+        pandas.DataFrame(np.array(h1).reshape(1,len(h1))).to_csv(dir_path + 'feature_times.csv', index=False, header=False)
+        pandas.DataFrame(np.array(h2).reshape(1,len(h2))).to_csv(dir_path + 'dataset.csv', index=False, header=False)
 
-    def chunks(lst, n):
-        for i in range(0, len(lst), n):
-            yield lst[i:i + n]
+    async def actual_work():
+        telegram_info = pandas.read_csv('telegram_client.csv')
 
-    pb_i = []
+        for _ in tg_tqdm(range(len(url_list)), telegram_info['BOT_token'][0], int(telegram_info['CHAT_ID'][0])):
+            log_event.wait()
+            log_event.clear()
+            work_event.set()
 
-    pb = ProgressBar(total=len(url_list), prefix='url analysis', decimals=3, length=50, fill='█',  zfill='-')
-    pb.print_progress_bar(0)
+    def go():
+        asyncio.run(actual_work())
+
+    init()
 
     def extraction_data(obj):
-        res, t = extract_features(obj[0], obj[1])
-        pb_i.append(t)
-        pb.print_progress_bar(len(pb_i))
+        try:
+            res = extract_features(obj[0], obj[1])
 
-        if type(res) is dict:
-            return res
-        else:
-            return None
+            if type(res) is dict:
+                with save_obj:
+                    tmp = res['stats']
+                    metadata = [res[key] for key in headers['metadata']]
+                    substats = [res[key] for key in headers['substats']]
+                    TF = ';'.join(['{}={}'.format(k, res['TF'][k]) for k in res['TF']])
+                    data = metadata + [data[0] for data in tmp] + [TF]
+                    counter = metadata + substats + [data[1] for data in tmp]
 
-    @benchmark(120+chunk_size)
-    def url_iterator(lst):
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            return [item for item in executor.map(extraction_data, lst, timeout=(100+chunk_size)) if item]
+                    pandas.DataFrame(data).T.to_csv(dir_path + 'dataset.csv', mode='a',
+                                                                                  index=False, header=False)
+                    pandas.DataFrame(counter).T.to_csv(dir_path + 'feature_times.csv',
+                                                                                        mode='a',
+                                                                                        index=False, header=False)
+        except Exception as e:
+            print('\t\tERROR: {}'.format(e))
+        finally:
+            work_event.wait()
+            log_event.set()
 
-    for chunk in chunks(url_list, chunk_size):
-        res = url_iterator(chunk)[0]
+    work_event.set()
+    t = threading.Thread(target=go)
+    t.start()
 
-        if res and type(res) == list:
-            tmp = np.array([record['stats'] for record in res])
-            metadata = np.array([[record.get(key) for key in headers['metadata']] for record in res])
-            substats = np.array([[record.get(key) for key in headers['substats']] for record in res])
+    # max_workers = 14
 
-            for record in res:
-                TF[record['status']].append(record['TF'])
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        executor.map(extraction_data, url_list)
 
-            data += np.c_[metadata, tmp[:, :, 0]].tolist()
-            counter += np.c_[substats, tmp[:, :, 1]].tolist()
+    t.join()
 
-            pandas.DataFrame(counter).to_csv(dir_path+'feature_times.csv',
-                index=False, header=headers['substats'] + headers['stats'])
 
-            pandas.DataFrame(data).to_csv(dir_path+'dataset.csv',
-                                          index=False, header=headers['metadata'] + headers['stats'])
-            pandas.DataFrame([['{}={}'.format(k, tf_list[k]) for k in tf_list] for tf_list in TF[0]]).to_csv(
-                dir_path+'TF (legitimate).csv', index=False, header=False)
-            pandas.DataFrame([['{}={}'.format(k, tf_list[k]) for k in tf_list] for tf_list in TF[1]]).to_csv(
-                dir_path+'TF (phishing).csv', index=False, header=False)
+def combine_datasets():
+    lst_files = list(map(int, os.listdir(os.getcwd() + '/data/datasets/RAW')))
+    lst_files.sort()
 
-            IDF = {0: compute_idf(TF[0]), 1: compute_idf(TF[1])}
-            TF_IDF = {0: [], 1: []}
+    df = [pandas.read_csv("data/datasets/RAW/{}/dataset.csv".format(i)) for i in lst_files]
+    frame = pandas.concat(df, axis=0)
+    frame.drop_duplicates(subset=['url'], keep='last')
 
-            for s, tf_list in TF.items():
-                for tf in tf_list:
-                    TF_IDF[s].append(compute_tf_idf(tf, IDF[s]))
+    nunique = frame.apply(pandas.Series.nunique)
+    cols_to_drop = nunique[nunique == 1].index
+    frame = frame.drop(cols_to_drop, axis=1)
 
-            pandas.DataFrame(TF_IDF[0]).to_csv(dir_path+'TF-IDF (legitimate).csv', index=False, header=False)
-            pandas.DataFrame(TF_IDF[1]).to_csv(dir_path+'TF-IDF (phishing).csv', index=False, header=False)
+    # TF = {
+    #     0: [{w.split('=')[0]:float(w.split('=')[-1]) for w in str(raw).split(';')} for raw in frame.loc[frame['status'] == 0]['TF'].tolist()],
+    #     1: [{w.split('=')[0]:float(w.split('=')[-1]) for w in str(raw).split(';')} for raw in frame.loc[frame['status'] == 1]['TF'].tolist()]
+    # }
+    #
+    # IDF = {0: compute_idf(TF[0]), 1: compute_idf(TF[1])}
+    #
+    # pandas.DataFrame([0] + list(IDF[0].values())).T.to_csv('data/datasets/PROCESS/IDF.csv', header=['status']+list(IDF[0].keys()), index=False)
+    # pandas.DataFrame([1] + list(IDF[1].values())).T.to_csv('data/datasets/PROCESS/IDF.csv', header=False, mode='a', index=False)
 
-            tt = sum(pb_i) / len(pb_i)
-            all_t = tt * len(url_list) / len(pb_i)
-            print('updated: +{} {}%\t[time left: {} min]'.format(len(res), len(data)/(len(pb_i)*chunk_size), (all_t - tt)/60))
-        else:
-            tt = sum(pb_i) / len(pb_i)
-            all_t = tt * len(url_list) / len(pb_i)
-            print('pass: {}%\t[time left: {} min]'.format(len(data) / (len(pb_i) * chunk_size), (all_t - tt) / 60))
+
+    # pb = ProgressBar(total=len(TF[0]) + len(TF[1]), prefix='load TF_IDF', decimals=2, length=50, fill='█', zfill='-')
+    # i = 0
+    #
+    # for s, tf_list in TF.items():
+    #     for tf in tf_list:
+    #         TF_IDF = compute_tf_idf(tf, IDF[s])
+    #
+    #         if i == 0:
+    #             pandas.DataFrame([i, s] + list(TF_IDF.values())).T.to_csv('data/datasets/PROCESS/TF-IDF.csv',
+    #                                                                    header=['ID','status'] + list(TF_IDF.keys()), index=False)
+    #         else:
+    #             pandas.DataFrame([i, s] + list(TF_IDF.values())).T.to_csv('data/datasets/PROCESS/TF-IDF.csv',
+    #                                                          header=False, mode='a', index=False)
+    #         i += 1
+    #         pb.print_progress_bar(i)
+
+    # frame.drop('TF', axis=1, inplace=True)
+    # frame.to_csv("data/datasets/PROCESS/dataset.csv", index_label='id')
+
+    df = [pandas.read_csv("data/datasets/RAW/{}/feature_times.csv".format(i)) for i in lst_files]
+    frame = pandas.concat(df, axis=0)
+    frame = frame.drop(cols_to_drop.to_list() + ['Unnamed: 0', 'url', 'lang', 'status'], axis=1)
+    head = list(frame)
+    max = frame.max().to_list()
+    min = frame.min().to_list()
+    mean = frame.mean().to_list()
+    pandas.DataFrame([head, max, min, mean]).T.to_csv("data/datasets/PROCESS/feature_times.csv", index=False,
+                                                    header=['feature', 'max', 'min', 'mean'])

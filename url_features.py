@@ -7,6 +7,10 @@ from tools import benchmark, segment, WORDS
 from data.collector import brand_list
 
 
+def tokenize_url(word_raw):
+    return segment(' '.join(word_raw))
+
+
 ########################################################################################################################
 #               Having IP address in hostname
 ########################################################################################################################
@@ -29,7 +33,7 @@ def having_ip_address(url):
 #               URL hostname length
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def url_length(url):
     return len(url)
 
@@ -38,7 +42,7 @@ def url_length(url):
 #               URL shortening
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def shortening_service(full_url):
     match = re.search('bit\.ly|goo\.gl|shorte\.st|go2l\.ink|x\.co|ow\.ly|t\.co|tr\.im|is\.gd|cli\.gs|yfrog\.com|'
                       'migre\.me|ff\.im|tiny\.cc|url4\.eu|twit\.ac|su\.pr|twurl\.nl|snipurl\.com|short\.to|BudURL\.com|'
@@ -62,7 +66,7 @@ def shortening_service(full_url):
 #               Count at ('@') symbol at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_at(base_url):
     return base_url.count('@')
 
@@ -71,7 +75,7 @@ def count_at(base_url):
 #               Count exclamation mark ('!') symbol at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_exclamation(base_url):
     return base_url.count('!')
 
@@ -80,7 +84,7 @@ def count_exclamation(base_url):
 #               Count plus ('+') symbol at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_plust(base_url):
     return base_url.count('+')
 
@@ -89,7 +93,7 @@ def count_plust(base_url):
 #               Count square brackets ( '[', ']' ) symbols at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_sBrackets(base_url):
     return len(re.findall('[\[\]]', base_url))
 
@@ -98,7 +102,7 @@ def count_sBrackets(base_url):
 #               Count round brackets ( '(', ')' ) symbols at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_rBrackets(base_url):
     return len(re.findall('[()]', base_url))
 
@@ -107,7 +111,7 @@ def count_rBrackets(base_url):
 #               Count comma ( ',' ) symbol at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_comma(base_url):
     return base_url.count(',')
 
@@ -116,7 +120,7 @@ def count_comma(base_url):
 #               Count dollar ($) symbol at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_dollar(base_url):
     return base_url.count('$')
 
@@ -125,7 +129,7 @@ def count_dollar(base_url):
 #               Having semicolumn (;) symbol at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_semicolumn(url):
     return url.count(';')
 
@@ -134,7 +138,7 @@ def count_semicolumn(url):
 #               Count (space, %20) symbol at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_space(base_url):
     return base_url.count(' ') + base_url.count('%20')
 
@@ -143,7 +147,7 @@ def count_space(base_url):
 #               Count and (&) symbol at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_and(base_url):
     return base_url.count('&')
 
@@ -152,7 +156,7 @@ def count_and(base_url):
 #               Count redirection (//) symbol at full url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_double_slash(full_url):
     list = [x.start(0) for x in re.finditer('//', full_url)]
     if list[len(list) - 1] > 6:
@@ -165,7 +169,7 @@ def count_double_slash(full_url):
 #               Count slash (/) symbol at full url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_slash(full_url):
     return full_url.count('/')
 
@@ -174,7 +178,7 @@ def count_slash(full_url):
 #               Count equal (=) symbol at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_equal(base_url):
     return base_url.count('=')
 
@@ -183,7 +187,7 @@ def count_equal(base_url):
 #               Count percentage (%) symbol at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_percentage(base_url):
     return base_url.count('%')
 
@@ -192,7 +196,7 @@ def count_percentage(base_url):
 #               Count question mark (?) symbol at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_question(base_url):
     return base_url.count('?')
 
@@ -201,7 +205,7 @@ def count_question(base_url):
 #               Count underscore (_) symbol at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_underscore(base_url):
     return base_url.count('_')
 
@@ -210,7 +214,7 @@ def count_underscore(base_url):
 #               Count dash (-) symbol at base url
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_hyphens(base_url):
     return base_url.count('-')
 
@@ -219,7 +223,7 @@ def count_hyphens(base_url):
 #              Count number of dots in hostname
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_dots(hostname):
     return hostname.count('.')
 
@@ -228,7 +232,7 @@ def count_dots(hostname):
 #              Count number of colon (:) symbol
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_colon(url):
     return url.count(':')
 
@@ -237,7 +241,7 @@ def count_colon(url):
 #               Count number of stars (*) symbol
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_star(url):
     return url.count('*')
 
@@ -246,7 +250,7 @@ def count_star(url):
 #               Count number of OR (|) symbol
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_or(url):
     return url.count('|')
 
@@ -255,7 +259,7 @@ def count_or(url):
 #               Having multiple http or https in url path
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_http_token(url_path):
     return url_path.count('http')
 
@@ -264,7 +268,7 @@ def count_http_token(url_path):
 #               Uses https protocol
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def https_token(scheme):
     if scheme == 'https':
         return 0
@@ -275,7 +279,7 @@ def https_token(scheme):
 #               Ratio of digits in hostname
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def ratio_digits(hostname):
     return len(re.sub("[^0-9]", "", hostname)) / len(hostname)
 
@@ -284,7 +288,7 @@ def ratio_digits(hostname):
 #               Count number of digits in domain/subdomain/path
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_digits(line):
     return len(re.sub("[^0-9]", "", line))
 
@@ -293,7 +297,7 @@ def count_digits(line):
 #              Checks if tilde symbol exist in webpage URL
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_tilde(full_url):
     if full_url.count('~') > 0:
         return 1
@@ -304,7 +308,7 @@ def count_tilde(full_url):
 #               number of phish-hints in url path
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def phish_hints(url_path, phish_hints):
     count = 0
     for hint in [item for sublist in phish_hints.values() for item in sublist]:
@@ -316,7 +320,7 @@ def phish_hints(url_path, phish_hints):
 #               Check if TLD exists in the path
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def tld_in_path(tld, path):
     if path.lower().count(tld) > 0:
         return 1
@@ -327,7 +331,7 @@ def tld_in_path(tld, path):
 #               Check if tld is used in the subdomain
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def tld_in_subdomain(tld, subdomain):
     if subdomain.count(tld) > 0:
         return 1
@@ -338,7 +342,7 @@ def tld_in_subdomain(tld, subdomain):
 #               Check if TLD in bad position
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def tld_in_bad_position(tld, subdomain, path):
     if tld_in_path(tld, path)[0] == 1 or tld_in_subdomain(tld, subdomain)[0] == 1:
         return 1
@@ -349,7 +353,7 @@ def tld_in_bad_position(tld, subdomain, path):
 #               Abnormal subdomain starting with wwww-, wwNN
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def abnormal_subdomain(url):
     if re.search('(http[s]?://(w[w]?|\d))([w]?(\d|-))', url):
         return 1
@@ -360,7 +364,7 @@ def abnormal_subdomain(url):
 #               Number of redirection
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_redirection(page):
     return len(page.history)
 
@@ -369,7 +373,7 @@ def count_redirection(page):
 #               Number of redirection to different domains
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_external_redirection(page, domain):
     count = 0
     if len(page.history) == 0:
@@ -385,16 +389,16 @@ def count_external_redirection(page, domain):
 #               Is the registered domain created with random characters
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def random_domain(second_level_domain):
-    return len([word for word in segment(second_level_domain) if word not in WORDS + brand_list]) > 0
+    return int(len([word for word in segment(second_level_domain) if word not in WORDS + brand_list]) > 0)
 
 
-########################################################################################################################
+###############################tld_in_path#########################################################################################
 #               Presence of words with random characters
 ########################################################################################################################
 
-@benchmark(20)
+@benchmark(15)
 def random_words(words_raw):
     return len([word for str in [segment(word) for word in words_raw] for word in str if
             word not in WORDS + brand_list])
@@ -426,7 +430,7 @@ def char_repeat(words_raw):
 #               puny code in domain
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def punycode(url):
     if url.startswith("http://xn--") or url.startswith("http://xn--"):
         return 1
@@ -441,7 +445,7 @@ def punycode(url):
 
 import Levenshtein
 
-@benchmark(10)
+@benchmark(20)
 def domain_in_brand(second_level_domain):
     word = second_level_domain.lower()
 
@@ -459,7 +463,7 @@ def domain_in_brand(second_level_domain):
 ########################################################################################################################
 
 
-@benchmark(2)
+@benchmark(20)
 def brand_in_path(second_level_domain, path):
     for idx, b in enumerate(brand_list):
         if b in path and b not in second_level_domain:
@@ -471,7 +475,7 @@ def brand_in_path(second_level_domain, path):
 #               count www in url words
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def check_www(words_raw):
     count = 0
     for word in words_raw:
@@ -484,7 +488,7 @@ def check_www(words_raw):
 #               count com in url words
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def check_com(words_raw):
     count = 0
     for word in words_raw:
@@ -497,7 +501,7 @@ def check_com(words_raw):
 #               check port presence in domain
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def port(url):
     if re.search(
             "^[a-z][a-z0-9+\-.]*://([a-z0-9\-._~%!$&'()*+,;=]+@)?([a-z0-9\-._~%]+|\[[a-z0-9\-._~%!$&'()*+,;=:]+\]):([0-9]+)",
@@ -510,7 +514,7 @@ def port(url):
 #               length of raw word list
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def length_word_raw(words_raw):
     return len(words_raw)
 
@@ -519,7 +523,7 @@ def length_word_raw(words_raw):
 #               count average word length in raw word list
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def average_word_length(words_raw):
     if len(words_raw) == 0:
         return 0
@@ -530,7 +534,7 @@ def average_word_length(words_raw):
 #               longest word length in raw word list
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def longest_word_length(words_raw):
     if len(words_raw) == 0:
         return 0
@@ -541,7 +545,7 @@ def longest_word_length(words_raw):
 #               shortest word length in raw word list
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def shortest_word_length(words_raw):
     if len(words_raw) == 0:
         return 0
@@ -552,7 +556,7 @@ def shortest_word_length(words_raw):
 #               prefix suffix
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def prefix_suffix(url):
     if re.findall(r"https?://[^\-]+-[^\-]+/", url):
         return 1
@@ -563,7 +567,7 @@ def prefix_suffix(url):
 #               count subdomain
 ########################################################################################################################
 
-@benchmark(2)
+@benchmark(5)
 def count_subdomain(url):
     return len(re.findall("\.", url))
 
@@ -601,7 +605,7 @@ from functools import reduce
 from operator import mul
 
 
-@benchmark(15)
+@benchmark(20)
 def count_visual_similarity_domains(second_level_domain):
     finded = {}
 

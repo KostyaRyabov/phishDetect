@@ -46,60 +46,32 @@ def time_limit(seconds, msg=''):
     timer.start()
     try:
         yield
-    except KeyboardInterrupt:
+    except Exception:
         raise TimeoutException("Timed out for operation {}".format(msg))
     finally:
         timer.cancel()
 
 
 @parametrized
-def benchmark(func, timeout):
+def benchmark(func, timeout=None):
+    timeout = None
+
     def wrapper(*args, **kwargs):
         start = time.time()
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            task = executor.submit(func, *args, **kwargs)
             try:
+                task = executor.submit(func, *args, **kwargs)
                 for future in concurrent.futures.as_completed([task], timeout=timeout):
                     return_value = future.result()
             except Exception as e:
                 return_value = -5
-                if func.__name__ == 'url_iterator':
-                    print('Time out! : [{}]'.format(func.__name__))
+                # print('Time out! : [{} : {}]'.format(func.__name__, e))
 
         end = time.time()
         return return_value, end - start
 
     return wrapper
-
-#
-# @parametrized
-# def benchmark(func, timeout):
-#     def wrapper(*args, **kwargs):
-#         start = time.time()
-#
-#         try:
-#             with time_limit(timeout, 'sleep'):
-#                 return_value = func(*args, **kwargs)
-#         except Exception:
-#             return_value = -5
-#             print('Time out! : ({})'.format(func.__name__))
-#
-#         end = time.time()
-#         return return_value, end - start
-#
-#     return wrapper
-
-
-
-# def benchmark(func):
-#     def wrapper(*args, **kwargs):
-#         start = time.time()
-#         return_value = func(*args, **kwargs)
-#         end = time.time()
-#         return return_value, end - start
-#
-#     return wrapper
 
 
 # def normalize_exp3(func):
@@ -119,11 +91,11 @@ STOPWORDS = stopwords.words()
 
 
 def tokenize(text):
-    return RegexpTokenizer(r'[^\W\d]+').tokenize(text)      # without numbers
+    return RegexpTokenizer(r'[^\W\d_]+').tokenize(text)      # without numbers
 
 
 def clear_text(word_raw):
-    return [word for word in word_raw if word not in STOPWORDS]
+    return [word for word in word_raw if word not in STOPWORDS and len(word) > 2]
 
 
 ########################################################################################################################
@@ -155,7 +127,7 @@ def compute_idf(TF_list):
 
 
 def compute_tf_idf(tf, idf):
-    tf_idf = dict.fromkeys(tf.keys(), 0)
+    tf_idf = dict.fromkeys(idf.keys(), 0)
     for word, v in tf.items():
         tf_idf[word] = v * idf[word]
     return tf_idf

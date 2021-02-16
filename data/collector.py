@@ -5,24 +5,30 @@ from datetime import date
 import os
 
 
-def get_dir_path():
-    lst = os.listdir(os.getcwd() + '/data/datasets')
-    if lst:
-        n = int(max(list(map(int, lst)))) + 1
-        dir_path = "data/datasets/{}/".format(n)
-        os.mkdir(os.getcwd() + '/' + dir_path)
-    else:
-        dir_path = "data/datasets/1/"
-        os.mkdir(os.getcwd()+'/'+dir_path)
+create_dir = False
 
-    return dir_path
+
+def get_dir_path():
+    if create_dir:
+        lst = os.listdir(os.getcwd() + '/data/datasets/RAW')
+        if lst:
+            n = int(max(list(map(int, lst)))) + 1
+            dir_path = "data/datasets/RAW/{}/".format(n)
+            os.mkdir(os.getcwd() + '/' + dir_path)
+        else:
+            dir_path = "data/datasets/RAW/1/"
+            os.mkdir(os.getcwd()+'/'+dir_path)
+
+        return dir_path
+    else:
+        return "-1"
 
 
 dir_path = get_dir_path()
 
 
 brand_list = [brand.split('.')[0] for brand in
-                  pandas.read_csv("data/ranked_domains/14-1-2021.csv", header=None)[1].tolist()]
+                  pandas.read_csv("data/ranked_domains/14-1-2021.csv", header=None)[1].tolist()][:100000]
 
 
 def set_lable_to_list(lst, lable):
@@ -37,15 +43,15 @@ def download_phishURLS():
         phish_url_list.to_csv(filename, index=False, header=False)
         phish_url_list = phish_url_list['url'].tolist()
     except requests.exceptions.RequestException as e:
-        raise SystemExit('Access denied')
+        raise SystemExit('Access denied [PHISHTANK]')
 
     return phish_url_list
 
 
-def load_legitimateURLS():
-    legitimate_url_list = pandas.read_csv("data/urls/legitimate/30-01-2021.csv", header=None)[0].tolist()
+def load_legitimateURLS(date):
+    legitimate_url_list = pandas.read_csv("data/urls/legitimate/{}.csv".format(date), header=None)[0].tolist()
     return legitimate_url_list
 
-def load_phishURLS():
-    phish_url_list = pandas.read_csv("data/urls/phish/08-02-2021.csv", header=None)[0].tolist()
+def load_phishURLS(date):
+    phish_url_list = pandas.read_csv("data/urls/phish/{}.csv".format(date), header=None)[0].tolist()
     return phish_url_list
