@@ -1,11 +1,4 @@
-import feature_extractor as fe
-import data.collector as dc
-
-
-state = 7
-seed_l = 13023
-seed_p = 1000
-
+state = 9
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -15,6 +8,15 @@ seed_p = 1000
 # 5 - run example with shield and save data
 # 6 - run example without shield
 # 7 - collect all datasets
+# 8 - select features
+# 9 - machine learning
+
+import feature_extractor as fe
+import data.collector as dc
+
+if state in range(2, 6):
+    seed_l = 13023
+    seed_p = 1000
 
 
 if __name__ == "__main__":
@@ -43,3 +45,7 @@ if __name__ == "__main__":
         fe.extract_features('http://mail.ru', 0)
     elif state == 7:
         fe.combine_datasets()
+    elif state == 8:
+        fe.select_features(40)
+    elif state == 9:
+        fe.learning()
