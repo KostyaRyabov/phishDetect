@@ -49,3 +49,4 @@ if __name__ == "__main__":
         fe.select_features(40)
     elif state == 9:
         fe.learning()
+

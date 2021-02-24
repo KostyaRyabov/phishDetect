@@ -1454,7 +1454,7 @@ if state == 7:
         frame.loc[frame['рейтинг по Alexa'] > 1, 'рейтинг по Alexa'] = 1
 
         frame = frame.replace(-5, 0)
-        # frame = frame.replace([-5, -1], 0)
+        # frame = frame.replace([-5, -2, -1], 0)
 
         #
 
@@ -1529,25 +1529,378 @@ if state == 8:
 
         X['status'] = Y
         X.to_csv("data/datasets/OUTPUT/dataset.csv",
-                     index_label='id')
+                     index=False)
 
 
 if state == 9:
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
     import numpy as np
+    import tensorflow as tf
+    from tensorflow.keras import layers, models, optimizers, losses
+    from matplotlib import pyplot as plt
+    from sklearn.model_selection import train_test_split
+    from hyperopt import hp, fmin, tpe, STATUS_OK, Trials
+    from sklearn.model_selection import KFold
+    import json
+    import pickle
+    import hashlib
+    import math
+
+    tf.compat.v1.enable_eager_execution()
+
 
     def learning():
         frame = pandas.read_csv('data/datasets/OUTPUT/dataset.csv')
 
         cols = [col for col in headers['stats'] if col in list(frame)]
 
-        X = frame[cols]
-        Y = frame['status']
+        X = frame[cols].to_numpy()
+        Y = frame['status'].to_numpy()
 
-        # Инициализация весов
-        # np.random.normal(0, sqrt(2 / 10), 10)
+        Y[np.where(Y == 0)] = -1
+        x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.1, random_state=42)
 
-        # "отбеливание" входов
-        # обучаемые параметры: yk = [np.var(x)], bk = [x.mean()]
-        # eps = 0.0001
+        try:
+            with open("data/trials/results.pkl", 'rb') as file:
+                trials = pickle.load(file)
+        except:
+            trials = Trials()
 
-        # x_ = yk * (x - x.mean())/(sqrt(np.var(x))+eps) + bk
+        space = {
+            'decay_steps': hp.choice('decay_steps', [1e1, 1e2, 1e3, 1e4, 1e5, 1e6]),
+            'layers': hp.choice('layer_0', [
+                None,
+                {
+                    'activation': hp.choice('activation_0', [
+                            None,
+                            'selu',
+                            'relu',
+                            'softmax',
+                            'sigmoid',
+                            'softplus',
+                            'softsign',
+                            'tanh',
+                            'elu',
+                            'exponential'
+                        ]),
+                    'nodes_count': hp.choice('nodes_count_0', [2] + [i for i in range(5, 301, 5)]),
+                    'dropout': hp.choice('dropout_0', [i/10 for i in range(0, 7)]),
+                    'BatchNormalization': hp.choice('BatchNormalization_0', [False, True]),
+                    'next': hp.choice('layer_1', [
+                None,
+                {
+                    'activation': hp.choice('activation_1', [
+                            None,
+                            'selu',
+                            'relu',
+                            'softmax',
+                            'sigmoid',
+                            'softplus',
+                            'softsign',
+                            'tanh',
+                            'elu',
+                            'exponential'
+                        ]),
+                    'nodes_count': hp.choice('nodes_count_1', [2] + [i for i in range(5, 301, 5)]),
+                    'dropout': hp.choice('dropout_1', [i/10 for i in range(0, 7)]),
+                    'BatchNormalization': hp.choice('BatchNormalization_1', [False, True]),
+                    'next': hp.choice('layer_2', [
+                None,
+                {
+                    'activation': hp.choice('activation_2', [
+                            None,
+                            'selu',
+                            'relu',
+                            'softmax',
+                            'sigmoid',
+                            'softplus',
+                            'softsign',
+                            'tanh',
+                            'elu',
+                            'exponential'
+                        ]),
+                    'nodes_count': hp.choice('nodes_count_2', [2] + [i for i in range(5, 301, 5)]),
+                    'dropout': hp.choice('dropout_2', [i/10 for i in range(0, 7)]),
+                    'BatchNormalization': hp.choice('BatchNormalization_2', [False, True]),
+                    'next': hp.choice('layer_3', [
+                None,
+                {
+                    'activation': hp.choice('activation_3', [
+                            None,
+                            'selu',
+                            'relu',
+                            'softmax',
+                            'sigmoid',
+                            'softplus',
+                            'softsign',
+                            'tanh',
+                            'elu',
+                            'exponential'
+                        ]),
+                    'nodes_count': hp.choice('nodes_count_3', [2] + [i for i in range(5, 301, 5)]),
+                    'dropout': hp.choice('dropout_3', [i/10 for i in range(0, 7)]),
+                    'BatchNormalization': hp.choice('BatchNormalization_3', [False, True]),
+                    'next': hp.choice('layer_4', [
+                None,
+                {
+                    'activation': hp.choice('activation_4', [
+                            None,
+                            'selu',
+                            'relu',
+                            'softmax',
+                            'sigmoid',
+                            'softplus',
+                            'softsign',
+                            'tanh',
+                            'elu',
+                            'exponential'
+                        ]),
+                    'nodes_count': hp.choice('nodes_count_4', [2] + [i for i in range(5, 301, 5)]),
+                    'dropout': hp.choice('dropout_4', [i/10 for i in range(0, 7)]),
+                    'BatchNormalization': hp.choice('BatchNormalization_4', [False, True]),
+                    'next': hp.choice('layer_5', [
+                None,
+                {
+                    'activation': hp.choice('activation_5', [
+                            None,
+                            'selu',
+                            'relu',
+                            'softmax',
+                            'sigmoid',
+                            'softplus',
+                            'softsign',
+                            'tanh',
+                            'elu',
+                            'exponential'
+                        ]),
+                    'nodes_count': hp.choice('nodes_count_5', [2] + [i for i in range(5, 301, 5)]),
+                    'dropout': hp.choice('dropout_5', [i/10 for i in range(0, 7)]),
+                    'BatchNormalization': hp.choice('BatchNormalization_5', [False, True]),
+                    'next': hp.choice('layer_6', [
+                None,
+                {
+                    'activation': hp.choice('activation_6', [
+                            None,
+                            'selu',
+                            'relu',
+                            'softmax',
+                            'sigmoid',
+                            'softplus',
+                            'softsign',
+                            'tanh',
+                            'elu',
+                            'exponential'
+                        ]),
+                    'nodes_count': hp.choice('nodes_count_6', [2] + [i for i in range(5, 301, 5)]),
+                    'dropout': hp.choice('dropout_6', [i/10 for i in range(0, 7)]),
+                    'BatchNormalization': hp.choice('BatchNormalization_6', [False, True]),
+                    'next': None
+                }
+            ])
+                }
+            ])
+                }
+            ])
+                }
+            ])
+                }
+            ])
+                }
+            ])
+                }
+            ]),
+            'optimizer': hp.choice('optimizer', [
+                {
+                    'type': 'Adadelta',
+                    'learning_rate': hp.choice('Adadelta_lr', [1/math.exp(i/3) for i in range(1, 15)]),
+                },
+                {
+                    'type': 'Adagrad',
+                    'learning_rate': hp.choice('Adagrad_lr', [1/math.exp(i/3) for i in range(1, 15)]),
+                },
+                {
+                    'type': 'Adam',
+                    'learning_rate': hp.choice('Adam_lr', [1/math.exp(i/3) for i in range(1, 15)]),
+                    'amsgrad': hp.choice('Adam_amsgrad', [False, True])
+                },
+                {
+                    'type': 'Adamax',
+                    'learning_rate': hp.choice('Adamax_lr', [1/math.exp(i/3) for i in range(1, 15)]),
+                },
+                {
+                    'type': 'Ftrl',
+                    'learning_rate': hp.choice('Ftrl_lr', [1/math.exp(i/3) for i in range(1, 15)]),
+                },
+                {
+                    'type': 'Nadam',
+                    'learning_rate': hp.choice('Nadam_lr', [1/math.exp(i/3) for i in range(1, 15)]),
+                },
+                {
+                    'type': 'RMSprop',
+                    'learning_rate': hp.choice('RMSprop_lr', [1/math.exp(i/3) for i in range(1, 15)]),
+                    'centered': hp.choice('RMSprop_centered', [False, True]),
+                    'momentum': hp.choice('RMSprop_momentum', [1/math.exp(i/3) for i in range(1, 15)])
+                },
+                {
+                    'type': 'SGD',
+                    'learning_rate': hp.choice('SGD_lr', [1/math.exp(i/3) for i in range(1, 15)]),
+                    'nesterov': hp.choice('SGD_nesterov', [False, True]),
+                    'momentum': hp.choice('SGD_momentum', [1/math.exp(i/3) for i in range(1, 15)])
+                }
+            ]),
+            'batch_size': hp.choice('batch_size', [
+                None,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024,
+                2048,
+                4096
+            ]),
+            'init': hp.choice('init', [
+                    'glorot_normal',
+                    'random_normal',
+                    'random_uniform',
+                    'truncated_normal',
+                    'glorot_uniform'
+                ]),
+            'trainable_BatchNormalization': hp.choice('trainable_BatchNormalization', [False, True]),
+            'trainable_dropouts': hp.choice('trainable_dropouts', [False, True]),
+            'shuffle': hp.choice('shuffle', [False, True])
+        }
+
+        def objective(space):
+            model = models.Sequential()
+
+            layer = space['layers']
+
+            while layer:
+                model.add(layers.Dense(
+                    layer['nodes_count'],
+                    kernel_initializer=space['init'],
+                    activation=layer['activation'])
+                )
+                if layer['dropout'] >= 0.01:
+                    model.add(layers.Dropout(layer['dropout'], trainable=space['trainable_dropouts']))
+                if layer['BatchNormalization']:
+                    model.add(layers.BatchNormalization(trainable=space['trainable_BatchNormalization']))
+
+                layer = layer['next']
+
+            model.add(layers.Dense(1, kernel_initializer=space['init'], activation='sigmoid'))
+
+            def scheduler(epoch, lr):
+                return lr * tf.math.exp(-epoch/space['decay_steps'])
+
+            def tf_callbacks():
+                clb_lst = [
+                    tf.keras.callbacks.EarlyStopping(
+                        monitor='val_accuracy',
+                        patience=10,
+                        mode='max', min_delta=0.005,
+                        verbose=0),
+                    tf.keras.callbacks.EarlyStopping(
+                        monitor='val_loss',
+                        patience=10,
+                        mode='min', min_delta=0.005,
+                        verbose=0)
+                    # tf.keras.callbacks.ModelCheckpoint(
+                    #     'data/models/NN_{}.h5'.format(hashlib.sha1(str(space).encode("utf-8")).hexdigest()),
+                    #     monitor='accuracy',
+                    #     mode='max',
+                    #     verbose=0,
+                    #     save_best_only=True
+                    # )
+                ]
+
+                clb_lst.append(tf.keras.callbacks.LearningRateScheduler(scheduler))
+
+                return clb_lst
+
+            if space['optimizer']['type'] == 'Adadelta':
+                optimizer = optimizers.Adadelta(learning_rate=space['optimizer']['learning_rate'])
+            elif space['optimizer']['type'] == 'Adagrad':
+                optimizer = optimizers.Adagrad(learning_rate=space['optimizer']['learning_rate'],)
+            elif space['optimizer']['type'] == 'Adam':
+                optimizer = optimizers.Adam(learning_rate=space['optimizer']['learning_rate'],
+                                            amsgrad=space['optimizer']['amsgrad'])
+            elif space['optimizer']['type'] == 'Adamax':
+                optimizer = optimizers.Adamax(learning_rate=space['optimizer']['learning_rate'])
+            elif space['optimizer']['type'] == 'Ftrl':
+                optimizer = optimizers.Ftrl(learning_rate=space['optimizer']['learning_rate'])
+            elif space['optimizer']['type'] == 'Nadam':
+                optimizer = optimizers.Nadam(learning_rate=space['optimizer']['learning_rate'])
+            elif space['optimizer']['type'] == 'RMSprop':
+                optimizer = optimizers.RMSprop(learning_rate=space['optimizer']['learning_rate'],
+                                               centered=space['optimizer']['centered'],
+                                               momentum=space['optimizer']['momentum'])
+            elif space['optimizer']['type'] == 'SGD':
+                optimizer = optimizers.SGD(learning_rate=space['optimizer']['learning_rate'],
+                                           nesterov=space['optimizer']['nesterov'],
+                                           momentum=space['optimizer']['momentum'])
+
+
+            model.compile(
+                optimizer=optimizer,
+                loss=losses.BinaryCrossentropy(),
+                metrics=['accuracy']
+            )
+
+            model.fit(
+                x_train, y_train,
+                validation_split=0.25,
+                epochs=1000,
+                callbacks=tf_callbacks(),
+                verbose=0,
+                batch_size=space['batch_size'],
+                shuffle=space['shuffle']
+            )
+
+            score, acc = model.evaluate(x_test, y_test, verbose=0)
+
+            return {'loss': -acc, 'status': STATUS_OK, 'score': score}
+
+        best = fmin(
+            objective,
+            space,
+            algo=tpe.suggest,
+            max_evals=100+len(trials),
+            trials=trials
+        )
+
+        def typer(o):
+            if isinstance(o, np.int32): return int(o)
+            return o
+
+        with open("data/trials/best.json", "w") as outfile:
+            json.dump(best, outfile, default=typer)
+
+        with open("data/trials/results.pkl", 'wb') as output:
+            pickle.dump(trials, output)
+
+
+        # plt.plot(history.history['acc'])
+        # plt.plot(history.history['val_acc'])
+        # plt.title('model accuracy')
+        # plt.ylabel('accuracy')
+        # plt.xlabel('epoch')
+        # plt.legend(['train', 'test'], loc='upper left')
+        # plt.show()
+        #
+        #
+        # plt.plot(history.history['loss'])
+        # plt.plot(history.history['val_loss'])
+        # plt.title('model loss')
+        # plt.ylabel('loss')
+        # plt.xlabel('epoch')
+        # plt.legend(['train', 'test'], loc='upper left')
+        # plt.show()
+
+
+        # predictions
+        # lst = (np.expand_dims(item, 0))
+        # predictions_single = probability_model.predict(lst)
