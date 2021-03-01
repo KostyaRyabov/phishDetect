@@ -48,5 +48,6 @@ if __name__ == "__main__":
     elif state == 8:
         fe.select_features(40)
     elif state == 9:
-        fe.learning()
+        from ml_algs import NN
+        NN()
 
