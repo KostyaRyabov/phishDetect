@@ -1520,8 +1520,8 @@ if state == 8:
         Y = frame['status']
 
         # X = (X - X.min()) / ((X.max() - X.min())/2) - 1
-        # X = (X - X.min()) / (X.max() - X.min())
-        X = (X - X.mean()) / (X.max() - X.min())
+        X = (X - X.min()) / (X.max() - X.min())
+        # X = (X - X.mean()) / (X.max() - X.min())
 
         # сокращение числа параметров
 

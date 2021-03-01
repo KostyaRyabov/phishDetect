@@ -481,54 +481,58 @@ headers = {
     ]
 }
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras import layers, models, optimizers, losses
-from matplotlib import pyplot as plt
-from sklearn.model_selection import train_test_split
 from hyperopt import hp, fmin, tpe, STATUS_OK, Trials
+from matplotlib import pyplot as plt
+import numpy as np
+
 import json
 import pickle
 from shutil import move
 
-import telepot
 
-telegram_info = pandas.read_csv('telegram_client.csv')
-bot = telepot.Bot(telegram_info['BOT_token'][0])
-
-def handle(msg):
-    chat_id = msg['chat']['id']
-    # command = msg['text']
-
-    try:
-        with open("data/trials/metric.txt") as f:
-            bot.sendMessage(chat_id, float(f.read().strip()))
-        for metric in ['accuracy', 'loss']:
-            bot.sendPhoto(chat_id, photo=open('data/trials/{}.png'.format(metric), 'rb'))
-        with open("data/trials/space.json") as f:
-            bot.sendMessage(chat_id, str(f.read()))
-    except:
-        bot.sendMessage(chat_id, 'error')
-
-bot.message_loop(handle)
-
-tf.compat.v1.enable_eager_execution()
+frame = pandas.read_csv('data/datasets/OUTPUT/dataset.csv')
+cols = [col for col in headers['stats'] if col in list(frame)]
+X = frame[cols].to_numpy()
+Y = frame['status'].to_numpy()
 
 
-def NN():
-    frame = pandas.read_csv('data/datasets/OUTPUT/dataset.csv')
+from sklearn.model_selection import train_test_split
 
-    cols = [col for col in headers['stats'] if col in list(frame)]
 
-    X = frame[cols].to_numpy()
-    Y = frame['status'].to_numpy()
+def neural_networks():
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+    import tensorflow as tf
+    from tensorflow.keras import layers, models, optimizers, losses
+
+    import telepot
+
+    telegram_info = pandas.read_csv('telegram_client.csv')
+    bot = telepot.Bot(telegram_info['BOT_token'][0])
+
+    def handle(msg):
+        chat_id = msg['chat']['id']
+        # command = msg['text']
+
+        try:
+            with open("data/trials/neural_networks/metric.txt") as f:
+                bot.sendMessage(chat_id, float(f.read().strip()))
+            for metric in ['accuracy', 'loss']:
+                bot.sendPhoto(chat_id, photo=open('data/trials/{}.png'.format(metric), 'rb'))
+            with open("data/trials/neural_networks/space.json") as f:
+                bot.sendMessage(chat_id, str(f.read()))
+        except:
+            bot.sendMessage(chat_id, 'error')
+
+    bot.message_loop(handle)
+
+    tf.compat.v1.enable_eager_execution()
 
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
 
     try:
-        with open("data/trials/results.pkl", 'rb') as file:
+        with open("data/trials/neural_networks/results.pkl", 'rb') as file:
             trials = pickle.load(file)
     except:
         trials = Trials()
@@ -640,7 +644,7 @@ def NN():
         def tf_callbacks():
             return [
                 tf.keras.callbacks.ModelCheckpoint(
-                    'data/models/NN/tmp.h5',
+                    'data/models/neural_networks/tmp.h5',
                     monitor='accuracy',
                     mode='max',
                     verbose=0,
@@ -693,7 +697,7 @@ def NN():
         history = model.fit(
             x_train, y_train,
             validation_split=0.3,
-            epochs=2000,
+            epochs=500,
             callbacks=tf_callbacks(),
             verbose=0,
             batch_size=space['batch_size'],
@@ -711,19 +715,19 @@ def NN():
         loss, acc = model.evaluate(x_test, y_test, verbose=0)
 
         try:
-            with open("data/trials/metric.txt") as f:
+            with open("data/trials/neural_networks/metric.txt") as f:
                 max_acc = float(f.read().strip())  # read best metric,
         except FileNotFoundError:
             max_acc = -1
 
         if acc > max_acc:
-            model.save("data/models/NN/nn1.h5")
-            move('data/models/NN/tmp.h5', "data/models/NN/nn2.h5")
-            with open("data/trials/space.json", "w") as f:
+            model.save("data/models/neural_networks/nn1.h5")
+            move('data/models/neural_networks/tmp.h5', "data/models/neural_networks/nn2.h5")
+            with open("data/trials/neural_networks/space.json", "w") as f:
                 f.write(str(space))
-            with open("data/trials/metric.txt", "w") as f:
+            with open("data/trials/neural_networks/metric.txt", "w") as f:
                 f.write(str(acc))
-            with open("data/trials/history.pkl", 'wb') as f:
+            with open("data/trials/neural_networks/history.pkl", 'wb') as f:
                 pickle.dump(history.history, f)
 
             for metric in ['accuracy', 'loss']:
@@ -735,19 +739,188 @@ def NN():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=2000+len(trials),
+        max_evals=2+len(trials),
         trials=trials,
-        timeout=60*60*10
+        timeout=60*60*1
     )
 
     def typer(o):
         if isinstance(o, np.int32): return int(o)
         return o
 
-    with open("data/trials/best.json", "w") as f:
+    with open("data/trials/neural_networks/best.json", "w") as f:
         json.dump(best, f, default=typer)
 
-    with open("data/trials/results.pkl", 'wb') as output:
+    with open("data/trials/neural_networks/results.pkl", 'wb') as output:
+        pickle.dump(trials, output)
+
+
+def DT():
+    pass
+
+
+def SVM():
+    from sklearn.metrics import accuracy_score
+    from sklearn.svm import SVC
+    from sklearn.model_selection import train_test_split
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+
+    try:
+        with open("data/trials/SVM/results.pkl", 'rb') as file:
+            trials = pickle.load(file)
+    except:
+        trials = Trials()
+
+    space = {
+        'C': hp.uniform('C', 0, 100000),
+        'random_state': 42,
+        'kernel': hp.choice('kernel', [
+            {
+                'type': 'linear',
+            },
+            {
+                'type': 'poly',
+                'degree': hp.randint('degree_poly', 360),
+                'coef0': hp.uniform('coef0_poly', -10, 10)
+            },
+            {
+                'type': 'rbf',
+                'gamma': hp.choice('gamma_rbf', ['scale', 'auto'])
+            },
+            {
+                'type': 'sigmoid',
+                'gamma': hp.choice('gamma_sigmoid', ['scale', 'auto']),
+                'coef0': hp.uniform('coef0_sigmoid', -10, 10)
+            },
+            {
+                'type': 'precomputed',
+                'gamma': hp.choice('gamma_precomputed', ['scale', 'auto'])
+            }
+        ]),
+    }
+
+    def objective(space):
+        clf = SVC(
+            C=space['C'],
+            random_state=space['random_state'],
+            kernel=space['kernel']['type'],
+            max_iter=1000000,
+            # tol=1e-2
+        )
+
+        if 'coef0' in space['kernel']:
+            clf.coef0 = space['kernel']['coef0']
+        if 'degree' in space['kernel']:
+            clf.degree = space['kernel']['degree']
+        if 'gamma' in space['kernel']:
+            clf.gamma = space['kernel']['gamma']
+
+        try:
+            clf.fit(x_train, y_train)
+            y_pred = clf.predict(x_test)
+            acc = accuracy_score(y_true=y_test, y_pred=y_pred)
+        except:
+            acc = -1
+
+        try:
+            with open("data/trials/SVM/metric.txt") as f:
+                max_acc = float(f.read().strip())  # read best metric,
+        except FileNotFoundError:
+            max_acc = -1
+
+        if acc > max_acc:
+            pickle.dump(clf, open('data/models/SVM/SVM.pkl', 'wb'))
+            with open("data/trials/SVM/space.json", "w") as f:
+                f.write(str(space))
+            with open("data/trials/SVM/metric.txt", "w") as f:
+                f.write(str(acc))
+
+        return {'loss': -acc, 'status': STATUS_OK, 'space': space}
+
+    best = fmin(
+        objective,
+        space,
+        algo=tpe.suggest,
+        max_evals=50+len(trials),
+        trials=trials,
+        timeout=60*60*1
+    )
+
+    def typer(o):
+        if isinstance(o, np.int32): return int(o)
+        return o
+
+    with open("data/trials/SVM/best.json", "w") as f:
+        json.dump(best, f, default=typer)
+
+    with open("data/trials/SVM/results.pkl", 'wb') as output:
+        pickle.dump(trials, output)
+
+
+def KNN():
+    from sklearn.metrics import accuracy_score
+    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.model_selection import train_test_split
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+
+    try:
+        with open("data/trials/kNN/results.pkl", 'rb') as file:
+            trials = pickle.load(file)
+    except:
+        trials = Trials()
+
+    space = {
+        'k': hp.randint('k', 50)+1,
+        'p': hp.randint('p', 10) + 1,
+        'weights': hp.choice('weights', ['uniform', 'distance']),
+        'algorithm': hp.choice('algorithm', ['ball_tree', 'kd_tree', 'brute', 'auto'])
+    }
+
+    def objective(space):
+        clf = KNeighborsClassifier(
+            n_neighbors=space['k'],
+            p=space['p'],
+            weights=space['weights'],
+            algorithm=space['algorithm']
+        )
+        clf.fit(x_train, y_train)
+        y_pred = clf.predict(x_test)
+        acc = accuracy_score(y_true=y_test, y_pred=y_pred)
+
+        try:
+            with open("data/trials/kNN/metric.txt") as f:
+                max_acc = float(f.read().strip())  # read best metric,
+        except FileNotFoundError:
+            max_acc = -1
+
+        if acc > max_acc:
+            pickle.dump(clf, open('data/models/kNN/{}NN.pkl'.format(space['k']), 'wb'))
+            with open("data/trials/kNN/space.json", "w") as f:
+                f.write(str(space))
+            with open("data/trials/kNN/metric.txt", "w") as f:
+                f.write(str(acc))
+
+        return {'loss': -acc, 'status': STATUS_OK, 'space': space}
+
+    best = fmin(
+        objective,
+        space,
+        algo=tpe.suggest,
+        max_evals=50+len(trials),
+        trials=trials,
+        timeout=60*60*1
+    )
+
+    def typer(o):
+        if isinstance(o, np.int32): return int(o)
+        return o
+
+    with open("data/trials/kNN/best.json", "w") as f:
+        json.dump(best, f, default=typer)
+
+    with open("data/trials/kNN/results.pkl", 'wb') as output:
         pickle.dump(trials, output)
 
 
