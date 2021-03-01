@@ -1,4 +1,4 @@
-state = 9
+state = 11
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -9,7 +9,10 @@ state = 9
 # 6 - run example without shield
 # 7 - collect all datasets
 # 8 - select features
-# 9 - machine learning
+# 9 - generate hyperoptions for neural_networks
+# 10 - generate hyperoptions for kNN
+# 10 - generate hyperoptions for SVM
+
 
 import feature_extractor as fe
 import data.collector as dc
@@ -48,6 +51,11 @@ if __name__ == "__main__":
     elif state == 8:
         fe.select_features(40)
     elif state == 9:
-        from ml_algs import NN
-        NN()
-
+        from ml_algs import neural_networks
+        neural_networks()
+    elif state == 10:
+        from ml_algs import KNN
+        KNN()
+    elif state == 11:
+        from ml_algs import SVM
+        SVM()
