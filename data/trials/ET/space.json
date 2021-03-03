@@ -1,0 +1,8 @@
+{
+  'bootstrap': False,
+  'class_weight': None,
+  'criterion': 'gini',
+  'max_features': 'sqrt',
+  'n_estimators': 80,
+  'oob_score': False
+}

@@ -1,0 +1,1 @@
+{'bootstrap': False, 'class_weight': None, 'criterion': 'gini', 'max_features': 'sqrt', 'n_estimators': 102, 'oob_score': False}

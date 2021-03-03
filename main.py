@@ -1,4 +1,4 @@
-state = 11
+state = 9
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -10,8 +10,12 @@ state = 11
 # 7 - collect all datasets
 # 8 - select features
 # 9 - generate hyperoptions for neural_networks
-# 10 - generate hyperoptions for kNN
-# 10 - generate hyperoptions for SVM
+# 10 - generate hyperoptions for neural_networks_kfold
+# 11 - generate hyperoptions for kNN
+# 12 - generate hyperoptions for SVM
+# 13 - generate hyperoptions for DT
+# 14 - generate hyperoptions for ET
+# 15 - generate hyperoptions for RF
 
 
 import feature_extractor as fe
@@ -54,8 +58,20 @@ if __name__ == "__main__":
         from ml_algs import neural_networks
         neural_networks()
     elif state == 10:
+        from ml_algs import neural_networks_kfold
+        neural_networks_kfold()
+    elif state == 11:
         from ml_algs import KNN
         KNN()
-    elif state == 11:
+    elif state == 12:
         from ml_algs import SVM
         SVM()
+    elif state == 13:
+        from ml_algs import DT
+        DT()
+    elif state == 14:
+        from ml_algs import ET
+        ET()
+    elif state == 15:
+        from ml_algs import RF
+        RF()

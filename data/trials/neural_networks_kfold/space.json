@@ -1,0 +1,1 @@
+{'KFold': 2, 'batch_size': 4, 'decay_steps': 10000.0, 'init': 'glorot_normal', 'layers': None, 'optimizer': {'learning_rate': 0.007198243505750081, 'type': 'Adamax'}, 'shuffle': True, 'trainable_BatchNormalization': True, 'trainable_dropouts': False}
