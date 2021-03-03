@@ -1,1 +1,0 @@
-{'batch_size': 128, 'decay_steps': 100.0, 'init': 'glorot_normal', 'layers': {'BatchNormalization': False, 'activation': 'tanh', 'dropout': 0.19240142841844887, 'next': None, 'nodes_count': 268}, 'optimizer': {'learning_rate': 0.775784245503527, 'type': 'Nadam'}, 'shuffle': True, 'trainable_BatchNormalization': True, 'trainable_dropouts': True}

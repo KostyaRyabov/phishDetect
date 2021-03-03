@@ -1,1 +1,0 @@
-{"Adamax_lr": 0.007198243505750081, "KFold": 0, "batch_size": 2, "decay_steps": 4, "init": 0, "layer_0": 0, "optimizer": 2, "trainable_BatchNormalization": 1, "trainable_dropouts": 0}

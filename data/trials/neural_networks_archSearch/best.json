@@ -1,0 +1,1 @@
+{"BatchNormalization_0": 1, "BatchNormalization_1": 1, "Nadam_lr": 0.014224162990905523, "activation_0": 1, "activation_1": 8, "decay_steps": 4, "dropout_0": 0.358970140423815, "dropout_1": 0.2534318171385951, "init": 1, "layer_0": 1, "layer_1": 1, "layer_2": 0, "nodes_count_0": 387, "nodes_count_1": 413, "optimizer": 5, "trainable_BatchNormalization": 1, "trainable_dropouts": 1}

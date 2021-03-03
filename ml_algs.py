@@ -1,5 +1,6 @@
 import os
 import pandas
+from setuptools.command.register import register
 
 headers = {
     'stats': [
@@ -497,9 +498,20 @@ Y = frame['status'].to_numpy()
 from sklearn.model_selection import train_test_split
 
 
-def neural_networks():
+# def draw(history, metric):
+    #     plt.plot(history[metric])
+    #     plt.plot(history['val_{}'.format(metric)])
+    #     plt.title(metric)
+    #     plt.ylabel(metric)
+    #     plt.xlabel('epoch')
+    #     plt.legend(['train', 'test'], loc='upper left')
+    #     plt.savefig('data/trials/neural_networks_archSearch/{}.png'.format(metric))
+    #     plt.close()
+
+
+def neural_networks_archSearch():
     # for load
-    # tf.keras.models.load_model('data/models/neural_networks/nn1.h5', custom_objects={'f_score': f_score})
+    # tf.keras.models.load_model('data/models/neural_networks_archSearch/nn1.h5', custom_objects={'f_score': f_score})
 
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     # os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
@@ -508,16 +520,6 @@ def neural_networks():
     from tensorflow.keras import layers, models, optimizers, losses
 
     import telepot
-
-    def draw(history, metric):
-        plt.plot(history[metric])
-        plt.plot(history['val_{}'.format(metric)])
-        plt.title(metric)
-        plt.ylabel(metric)
-        plt.xlabel('epoch')
-        plt.legend(['train', 'test'], loc='upper left')
-        plt.savefig('data/trials/neural_networks/{}.png'.format(metric))
-        plt.close()
 
 
     metrics = [
@@ -537,7 +539,7 @@ def neural_networks():
             axs[i%3,i//3].set_title(metrics[i])
             axs[i%3,i//3].legend(['train', 'test'], loc='best')
 
-        fig.savefig('data/trials/neural_networks/stats.png')
+        fig.savefig('data/trials/neural_networks_archSearch/stats.png')
         fig.clf()
         plt.close()
 
@@ -554,15 +556,15 @@ def neural_networks():
     #     print(telegram_info, chat_id)
     # 
     #     # try:
-    #     #     with open("data/trials/neural_networks/metric.txt") as f:
+    #     #     with open("data/trials/neural_networks_archSearch/metric.txt") as f:
     #     #         bot.sendMessage(chat_id, float(f.read().strip()))
-    #     #     with open("data/trials/neural_networks/space.json", 'r') as f:
+    #     #     with open("data/trials/neural_networks_archSearch/space.json", 'r') as f:
     #     #         bot.sendMessage(chat_id, str(f.read()))
-    #     #     with open("data/trials/neural_networks/history.pkl", 'rb') as f:
+    #     #     with open("data/trials/neural_networks_archSearch/history.pkl", 'rb') as f:
     #     #         history = pickle.load(f)
     #     #     for metric in list(map(lambda x: x.lower(), metrics)) + ['loss','f_score']:
     #     #         draw(history, metric)
-    #     #         bot.sendPhoto(chat_id, photo=open('data/trials/neural_networks/{}.png'.format(metric), 'rb'))
+    #     #         bot.sendPhoto(chat_id, photo=open('data/trials/neural_networks_archSearch/{}.png'.format(metric), 'rb'))
     #     # except:
     #     #     bot.sendMessage(chat_id, 'error')
     # 
@@ -573,7 +575,7 @@ def neural_networks():
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     try:
-        with open("data/trials/neural_networks/results.pkl", 'rb') as file:
+        with open("data/trials/neural_networks_archSearch/results.pkl", 'rb') as file:
             trials = pickle.load(file)
     except:
         trials = Trials()
@@ -682,7 +684,7 @@ def neural_networks():
                 kernel_initializer=space['init'],
                 activation=layer['activation'])
             )
-            if layer['dropout'] >= 0.01:
+            if layer['dropout'] >= 0.005:
                 model.add(layers.Dropout(layer['dropout'], trainable=space['trainable_dropouts']))
             if layer['BatchNormalization']:
                 model.add(layers.BatchNormalization(trainable=space['trainable_BatchNormalization']))
@@ -697,23 +699,17 @@ def neural_networks():
         def tf_callbacks():
             return [
                 tf.keras.callbacks.ModelCheckpoint(
-                    'data/models/neural_networks/tmp.h5',
+                    'data/models/neural_networks_archSearch/tmp.h5',
                     monitor='accuracy',
                     mode='max',
                     verbose=0,
                     save_best_only=True
                 ),
                 tf.keras.callbacks.EarlyStopping(
-                    monitor='val_accuracy',
-                    patience=20,
+                    monitor='val_f_score',
+                    patience=25,
                     # min_delta=0.00001,
                     mode='max',
-                    verbose=0),
-                tf.keras.callbacks.EarlyStopping(
-                    monitor='val_loss',
-                    patience=20,
-                    # min_delta=0.00001,
-                    mode='min',
                     verbose=0),
                 # tf.keras.callbacks.EarlyStopping(
                 #     monitor='accuracy',
@@ -766,7 +762,8 @@ def neural_networks():
 
             history = model.fit(
                 x_train, y_train,
-                validation_split=0.2,
+                #validation_split=0.2,
+                validation_data=(x_test, y_test),
                 epochs=500,
                 callbacks=tf_callbacks(),
                 verbose=0,
@@ -777,7 +774,7 @@ def neural_networks():
             loss, acc, precision, recall, auc, fScore = model.evaluate(x_test, y_test, verbose=0)
 
             try:
-                with open("data/trials/neural_networks/metric.txt") as f:
+                with open("data/trials/neural_networks_archSearch/metric.txt") as f:
                     max_fScore = float(f.read().strip())  # read best metric,
             except FileNotFoundError:
                 max_fScore = -1
@@ -792,13 +789,13 @@ def neural_networks():
             }
 
             if fScore > max_fScore:
-                model.save("data/models/neural_networks/nn1.h5")
-                move('data/models/neural_networks/tmp.h5', "data/models/neural_networks/nn2.h5")
-                with open("data/trials/neural_networks/space.json", "w") as f:
+                model.save("data/models/neural_networks_archSearch/nn1.h5")
+                move('data/models/neural_networks_archSearch/tmp.h5', "data/models/neural_networks_archSearch/nn2.h5")
+                with open("data/trials/neural_networks_archSearch/space.json", "w") as f:
                     f.write(str(space))
-                with open("data/trials/neural_networks/metric.txt", "w") as f:
+                with open("data/trials/neural_networks_archSearch/metric.txt", "w") as f:
                     f.write(str(fScore))
-                with open("data/trials/neural_networks/history.pkl", 'wb') as f:
+                with open("data/trials/neural_networks_archSearch/history.pkl", 'wb') as f:
                     pickle.dump(history.history, f)
 
             try:
@@ -807,7 +804,8 @@ def neural_networks():
                 bot.sendMessage(int(telegram_info['CHAT_ID'][0]), str(space))
                 bot.sendMessage(int(telegram_info['CHAT_ID'][0]), str(m))
                 draw(history.history, list(map(lambda x: x.lower(), metrics)) + ['loss', 'f_score'])
-                bot.sendPhoto(int(telegram_info['CHAT_ID'][0]), photo=open('data/trials/neural_networks/stats.png', 'rb'))
+                bot.sendPhoto(int(telegram_info['CHAT_ID'][0]), photo=open(
+                    'data/trials/neural_networks_archSearch/stats.png', 'rb'))
             except:
                 pass
 
@@ -818,14 +816,7 @@ def neural_networks():
                 'space': space,
                 'metrics': m
             }
-        except Exception as ex:
-            try:
-                telegram_info = pandas.read_csv('telegram_client.csv')
-                bot = telepot.Bot(telegram_info['BOT_token'][0])
-                bot.sendMessage(int(telegram_info['CHAT_ID'][0]), ex)
-            except:
-                pass
-
+        except:
             return {
                 'loss': 1,
                 'status': STATUS_OK,
@@ -840,7 +831,7 @@ def neural_networks():
         algo=tpe.suggest,
         max_evals=5000 + len(trials),
         trials=trials,
-        timeout=60 * 60 * 5
+        timeout=60 * 60 * 1
     )
 
     def typer(o):
@@ -848,31 +839,21 @@ def neural_networks():
             return int(o)
         return o
 
-    with open("data/trials/neural_networks/best.json", "w") as f:
+    with open("data/trials/neural_networks_archSearch/best.json", "w") as f:
         json.dump(best, f, default=typer)
 
-    with open("data/trials/neural_networks/results.pkl", 'wb') as output:
+    with open("data/trials/neural_networks_archSearch/results.pkl", 'wb') as output:
         pickle.dump(trials, output)
 
 
-def neural_networks_kfold():
+def neural_networks_regularization():
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
-    from sklearn.model_selection import KFold
+    from tensorflow.keras import regularizers
 
     import telepot
-
-    def draw(history, metric):
-        plt.plot(history[metric])
-        plt.plot(history['val_{}'.format(metric)])
-        plt.title(metric)
-        plt.ylabel(metric)
-        plt.xlabel('epoch')
-        plt.legend(['train', 'test'], loc='upper left')
-        plt.savefig('data/trials/neural_networks_kfold/{}.png'.format(metric))
-        plt.close()
 
 
     metrics = [
@@ -882,32 +863,249 @@ def neural_networks_kfold():
         'AUC'
     ]
 
-    # telegram_info = pandas.read_csv('telegram_client.csv')
-    # bot = telepot.Bot(telegram_info['BOT_token'][0])
-    #
-    # def handle(msg):
-    #     chat_id = msg['chat']['id']
-    #     # command = msg['text']
-    #
-    #     try:
-    #         with open("data/trials/neural_networks_kfold/metric.txt") as f:
-    #             bot.sendMessage(chat_id, float(f.read().strip()))
-    #         with open("data/trials/neural_networks_kfold/space.json", 'r') as f:
-    #             bot.sendMessage(chat_id, str(f.read()))
-    #         with open("data/trials/neural_networks_kfold/history.pkl", 'rb') as f:
-    #             history = pickle.load(f)
-    #         for metric in list(map(lambda x: x.lower(), metrics))+['loss', 'f_score']:
-    #             draw(history, metric)
-    #             bot.sendPhoto(chat_id, photo=open('data/trials/neural_networks_kfold/{}.png'.format(metric), 'rb'))
-    #     except:
-    #         bot.sendMessage(chat_id, 'error')
-    #
-    # bot.message_loop(handle)
+    def draw(history, metrics):
+        fig, axs = plt.subplots(3, 2, figsize=(2*5, 3*5), dpi=400)
+
+        for i in range(len(metrics)):
+            axs[i%3,i//3].plot(history[metrics[i]])
+            axs[i%3,i//3].plot(history['val_{}'.format(metrics[i])])
+            axs[i%3,i//3].set(xlabel='epoch', ylabel=metrics[i])
+            axs[i%3,i//3].set_title(metrics[i])
+            axs[i%3,i//3].legend(['train', 'test'], loc='best')
+
+        fig.savefig('data/trials/neural_networks_regularization/stats.png')
+        fig.clf()
+        plt.close()
+
+    tf.compat.v1.enable_eager_execution()
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+    try:
+        with open("data/trials/neural_networks_regularization/results.pkl", 'rb') as file:
+            trials = pickle.load(file)
+    except:
+        trials = Trials()
+
+    space = {
+        'r1_kernel_l1_v': hp.uniform('r1_kernel_l1_v', -5, 5),
+        'r1_kernel_l2_v': hp.uniform('r1_kernel_l2_v', -5, 5),
+        'r1_bias_l1_v': hp.uniform('r1_bias_l1_v', -5, 5),
+        'r1_bias_l2_v': hp.uniform('r1_bias_l2_v', -5, 5),
+        'r1_activity_l1_v': hp.uniform('r1_activity_l1_v', -5, 5),
+        'r1_activity_l2_v': hp.uniform('r1_activity_l2_v', -5, 5),
+
+        'r2_kernel_l1_v': hp.uniform('r2_kernel_l1_v', -5, 5),
+        'r2_kernel_l2_v': hp.uniform('r2_kernel_l2_v', -5, 5),
+        'r2_bias_l1_v': hp.uniform('r2_bias_l1_v', -5, 5),
+        'r2_bias_l2_v': hp.uniform('r2_bias_l2_v', -5, 5),
+        'r2_activity_l1_v': hp.uniform('r2_activity_l1_v', -5, 5),
+        'r2_activity_l2_v': hp.uniform('r2_activity_l2_v', -5, 5),
+
+        'decay_steps': hp.uniform('decay_steps', 9000, 11000),
+        'learning_rate': hp.uniform('decay_steps', 0.013, 0.015)
+    }
+
+    import tensorflow.keras.backend as K
+
+    def f_score(y_true, y_pred):
+        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+        possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+        predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+        precision = true_positives / (predicted_positives + K.epsilon())
+        recall = true_positives / (possible_positives + K.epsilon())
+        f1_val = 2 * (precision * recall) / (precision + recall + K.epsilon())
+        return f1_val
+
+    def objective(space):
+        model = models.Sequential()
+        model.add(layers.Dense(
+            389,
+            kernel_initializer='truncated_normal',
+            activation='selu',
+            kernel_regularizer=regularizers.l1_l2(
+                l1=space['r1_kernel_l1_v'],
+                l2=space['r1_kernel_l2_v']
+            ),
+            bias_regularizer=regularizers.l1_l2(
+                l1=space['r1_bias_l1_v'],
+                l2=space['r1_bias_l2_v']
+            ),
+            activity_regularizer=regularizers.l1_l2(
+                l1=space['r1_activity_l1_v'],
+                l2=space['r1_activity_l2_v']
+            )
+        ))
+        model.add(layers.Dropout(0.358970140423815, trainable=True))
+        model.add(layers.BatchNormalization(trainable=True))
+        model.add(layers.Dense(
+            415,
+            kernel_initializer='truncated_normal',
+            activation='elu',
+            kernel_regularizer=regularizers.l1_l2(
+                l1=space['r2_kernel_l1_v'],
+                l2=space['r2_kernel_l2_v']
+            ),
+            bias_regularizer=regularizers.l1_l2(
+                l1=space['r2_bias_l1_v'],
+                l2=space['r2_bias_l2_v']
+            ),
+            activity_regularizer=regularizers.l1_l2(
+                l1=space['r2_activity_l1_v'],
+                l2=space['r2_activity_l2_v']
+            )
+        ))
+        model.add(layers.Dropout(0.2534318171385951, trainable=True))
+        model.add(layers.BatchNormalization(trainable=True))
+        model.add(layers.Dense(1, kernel_initializer=space['init'], activation='sigmoid'))
+
+        def scheduler(epoch, lr):
+            return lr * tf.math.exp(-epoch / space['decay_steps'])
+
+        def tf_callbacks():
+            return [
+                tf.keras.callbacks.ModelCheckpoint(
+                    'data/models/neural_networks_regularization/tmp.h5',
+                    monitor='accuracy',
+                    mode='max',
+                    verbose=0,
+                    save_best_only=True
+                ),
+                tf.keras.callbacks.EarlyStopping(
+                    monitor='val_f_score',
+                    patience=25,
+                    mode='max',
+                    verbose=0),
+                tf.keras.callbacks.LearningRateScheduler(scheduler)
+            ]
+
+        try:
+            model.compile(
+                optimizer=optimizers.Nadam(space['learning_rate']),
+                loss=losses.BinaryCrossentropy(from_logits=True),
+                metrics=metrics + [f_score]
+            )
+
+            history = model.fit(
+                x_train, y_train,
+                #validation_split=0.2,
+                validation_data=(x_test, y_test),
+                epochs=500,
+                callbacks=tf_callbacks(),
+                verbose=0,
+                batch_size=128,
+                shuffle=True
+            )
+
+            loss, acc, precision, recall, auc, fScore = model.evaluate(x_test, y_test, verbose=0)
+
+            try:
+                with open("data/trials/neural_networks_regularization/metric.txt") as f:
+                    max_fScore = float(f.read().strip())
+            except FileNotFoundError:
+                max_fScore = -1
+
+            m = {
+                'loss': loss,
+                'accuracy': acc,
+                'Precision': precision,
+                'Recall': recall,
+                'AUC': auc,
+                'f_score': fScore
+            }
+
+            if fScore > max_fScore:
+                model.save("data/models/neural_networks_regularization/nn1.h5")
+                move('data/models/neural_networks_regularization/tmp.h5', "data/models/neural_networks_regularization/nn2.h5")
+                with open("data/trials/neural_networks_regularization/space.json", "w") as f:
+                    f.write(str(space))
+                with open("data/trials/neural_networks_regularization/metric.txt", "w") as f:
+                    f.write(str(fScore))
+                with open("data/trials/neural_networks_regularization/history.pkl", 'wb') as f:
+                    pickle.dump(history.history, f)
+
+            try:
+                telegram_info = pandas.read_csv('telegram_client.csv')
+                bot = telepot.Bot(telegram_info['BOT_token'][0])
+                bot.sendMessage(int(telegram_info['CHAT_ID'][0]), str(space))
+                bot.sendMessage(int(telegram_info['CHAT_ID'][0]), str(m))
+                draw(history.history, list(map(lambda x: x.lower(), metrics)) + ['loss', 'f_score'])
+                bot.sendPhoto(int(telegram_info['CHAT_ID'][0]), photo=open(
+                    'data/trials/neural_networks_regularization/stats.png', 'rb'))
+            except:
+                pass
+
+            return {
+                'loss': -fScore,
+                'status': STATUS_OK,
+                'history': history.history,
+                'space': space,
+                'metrics': m
+            }
+        except:
+            return {
+                'loss': 1,
+                'status': STATUS_OK,
+                'history': None,
+                'space': space,
+                'metrics': None
+            }
+
+    best = fmin(
+        objective,
+        space,
+        algo=tpe.suggest,
+        max_evals=100 + len(trials),
+        trials=trials,
+        timeout=60 * 30 * 1
+    )
+
+    def typer(o):
+        if isinstance(o, np.int32):
+            return int(o)
+        return o
+
+    with open("data/trials/neural_networks_regularization/best.json", "w") as f:
+        json.dump(best, f, default=typer)
+
+    with open("data/trials/neural_networks_regularization/results.pkl", 'wb') as output:
+        pickle.dump(trials, output)
+
+
+def neural_networks_kfold_archSearch():
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+    import tensorflow as tf
+    from tensorflow.keras import layers, models, optimizers, losses
+    from sklearn.model_selection import KFold
+
+    import telepot
+
+    metrics = [
+        'accuracy',
+        'Precision',
+        'Recall',
+        'AUC'
+    ]
+
+    def draw(history, metrics):
+        fig, axs = plt.subplots(3, 2, figsize=(2 * 5, 3 * 5), dpi=400)
+
+        for i in range(len(metrics)):
+            axs[i % 3, i // 3].plot(history[metrics[i]])
+            axs[i % 3, i // 3].plot(history['val_{}'.format(metrics[i])])
+            axs[i % 3, i // 3].set(xlabel='epoch', ylabel=metrics[i])
+            axs[i % 3, i // 3].set_title(metrics[i])
+            axs[i % 3, i // 3].legend(['train', 'test'], loc='best')
+
+        fig.savefig('data/trials/neural_networks_kfold_archSearch/stats.png')
+        fig.clf()
+        plt.close()
 
     tf.compat.v1.enable_eager_execution()
 
     try:
-        with open("data/trials/neural_networks_kfold/results.pkl", 'rb') as file:
+        with open("data/trials/neural_networks_kfold_archSearch/results.pkl", 'rb') as file:
             trials = pickle.load(file)
     except:
         trials = Trials()
@@ -982,7 +1180,7 @@ def neural_networks_kfold():
                     'momentum': hp.uniform('SGD_momentum', 0.001, 1),
                 }
             ]),
-        'batch_size': 128,
+        'batch_size': 512,
             # hp.choice('batch_size', [None, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]),
         'init': hp.choice('init', [
             'glorot_normal',
@@ -1032,23 +1230,17 @@ def neural_networks_kfold():
         def tf_callbacks():
             return [
                 tf.keras.callbacks.ModelCheckpoint(
-                    'data/models/neural_networks_kfold/tmp.h5',
+                    'data/models/neural_networks_kfold_archSearch/tmp.h5',
                     monitor='accuracy',
                     mode='max',
                     verbose=0,
                     save_best_only=True
                 ),
                 tf.keras.callbacks.EarlyStopping(
-                    monitor='val_accuracy',
-                    patience=20,
+                    monitor='val_f_score',
+                    patience=25,
                     # min_delta=0.000001,
                     mode='max',
-                    verbose=0),
-                tf.keras.callbacks.EarlyStopping(
-                    monitor='val_loss',
-                    patience=20,
-                    # min_delta=0.0001,
-                    mode='min',
                     verbose=0),
                 tf.keras.callbacks.LearningRateScheduler(scheduler)
             ]
@@ -1096,7 +1288,8 @@ def neural_networks_kfold():
 
                 h = model.fit(
                     x_train, y_train,
-                    validation_split=0.2,
+                    # validation_split=0.2,
+                    validation_data=(x_test, y_test),
                     epochs=500,
                     callbacks=tf_callbacks(),
                     verbose=0,
@@ -1118,7 +1311,7 @@ def neural_networks_kfold():
             fScore = np.mean([r[5] for r in result])
 
             try:
-                with open("data/trials/neural_networks_kfold/metric.txt") as f:
+                with open("data/trials/neural_networks_kfold_archSearch/metric.txt") as f:
                     max_fScore = float(f.read().strip())  # read best metric,
             except FileNotFoundError:
                 max_fScore = -1
@@ -1133,13 +1326,13 @@ def neural_networks_kfold():
             }
 
             if fScore > max_fScore:
-                model.save("data/models/neural_networks_kfold/nn1.h5")
-                move('data/models/neural_networks_kfold/tmp.h5', "data/models/neural_networks_kfold/nn2.h5")
-                with open("data/trials/neural_networks_kfold/space.json", "w") as f:
+                model.save("data/models/neural_networks_kfold_archSearch/nn1.h5")
+                move('data/models/neural_networks_kfold_archSearch/tmp.h5', "data/models/neural_networks_kfold_archSearch/nn2.h5")
+                with open("data/trials/neural_networks_kfold_archSearch/space.json", "w") as f:
                     f.write(str(space))
-                with open("data/trials/neural_networks_kfold/metric.txt", "w") as f:
+                with open("data/trials/neural_networks_kfold_archSearch/metric.txt", "w") as f:
                     f.write(str(fScore))
-                with open("data/trials/neural_networks_kfold/history.pkl", 'wb') as f:
+                with open("data/trials/neural_networks_kfold_archSearch/history.pkl", 'wb') as f:
                     pickle.dump(history, f)
 
             try:
@@ -1148,7 +1341,7 @@ def neural_networks_kfold():
                 bot.sendMessage(int(telegram_info['CHAT_ID'][0]), str(space))
                 bot.sendMessage(int(telegram_info['CHAT_ID'][0]), str(m))
                 draw(history.history, list(map(lambda x: x.lower(), metrics)) + ['loss', 'f_score'])
-                bot.sendPhoto(int(telegram_info['CHAT_ID'][0]), photo=open('data/trials/neural_networks/stats.png', 'rb'))
+                bot.sendPhoto(int(telegram_info['CHAT_ID'][0]), photo=open('data/trials/neural_networks_kfold_archSearch/stats.png', 'rb'))
             except:
                 pass
 
@@ -1159,14 +1352,7 @@ def neural_networks_kfold():
                 'space': space,
                 'metrics': m
             }
-        except Exception as ex:
-            try:
-                telegram_info = pandas.read_csv('telegram_client.csv')
-                bot = telepot.Bot(telegram_info['BOT_token'][0])
-                bot.sendMessage(int(telegram_info['CHAT_ID'][0]), ex)
-            except:
-                pass
-
+        except:
             return {
                 'loss': 1,
                 'status': STATUS_OK,
@@ -1188,10 +1374,10 @@ def neural_networks_kfold():
         if isinstance(o, np.int32): return int(o)
         return o
 
-    with open("data/trials/neural_networks_kfold/best.json", "w") as f:
+    with open("data/trials/neural_networks_kfold_archSearch/best.json", "w") as f:
         json.dump(best, f, default=typer)
 
-    with open("data/trials/neural_networks_kfold/results.pkl", 'wb') as output:
+    with open("data/trials/neural_networks_kfold_archSearch/results.pkl", 'wb') as output:
         pickle.dump(trials, output)
 
 

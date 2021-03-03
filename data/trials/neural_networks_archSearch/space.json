@@ -1,0 +1,25 @@
+{
+  'batch_size': 128,
+  'decay_steps': 10000.0,
+  'init': 'truncated_normal',
+  'layers': {
+    'BatchNormalization': True,
+    'activation': 'selu',
+    'dropout': 0.358970140423815,
+    'next': {
+      'BatchNormalization': True,
+      'activation': 'elu',
+      'dropout': 0.2534318171385951,
+      'next': None,
+      'nodes_count': 415
+    },
+    'nodes_count': 389
+  },
+  'optimizer': {
+    'learning_rate': 0.014224162990905523,
+    'type': 'Nadam'
+  },
+  'shuffle': True,
+  'trainable_BatchNormalization': True,
+  'trainable_dropouts': True
+}
