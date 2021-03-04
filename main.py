@@ -1,4 +1,4 @@
-state = 10
+state = 11
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -10,15 +10,16 @@ state = 10
 # 7 - collect all datasets
 # 8 - select features
 # 9 - generate hyperoptions for neural_networks_archSearch
-# 10 - generate hyperoptions for neural_networks_kfold_archSearch
-# 11 - generate hyperoptions for kNN
-# 12 - generate hyperoptions for SVM
-# 13 - generate hyperoptions for DT
-# 14 - generate hyperoptions for ET
-# 15 - generate hyperoptions for RF
-# 16 - generate hyperoptions for AdaBoost_DT
-# 17 - generate hyperoptions for GradientBoost
-# 18 - generate hyperoptions for HistGradientBoost
+# 10 - learn neural_networks_kfold
+# 11 - learn neural_networks
+# 12 - generate hyperoptions for kNN
+# 13 - generate hyperoptions for SVM
+# 14 - generate hyperoptions for DT
+# 15 - generate hyperoptions for ET
+# 16 - generate hyperoptions for RF
+# 17 - generate hyperoptions for AdaBoost_DT
+# 18 - generate hyperoptions for GradientBoost
+# 19 - generate hyperoptions for HistGradientBoost
 
 
 import feature_extractor as fe
@@ -61,29 +62,32 @@ if __name__ == "__main__":
         from ml_algs import neural_networks_archSearch
         neural_networks_archSearch()
     elif state == 10:
-        from ml_algs import neural_networks_kfold_archSearch
-        neural_networks_kfold_archSearch()
+        from ml_algs import neural_networks_kfold
+        neural_networks_kfold()
     elif state == 11:
+        from ml_algs import neural_networks
+        neural_networks()
+    elif state == 12:
         from ml_algs import KNN
         KNN()
-    elif state == 12:
+    elif state == 13:
         from ml_algs import SVM
         SVM()
-    elif state == 13:
+    elif state == 14:
         from ml_algs import DT
         DT()
-    elif state == 14:
+    elif state == 15:
         from ml_algs import ET
         ET()
-    elif state == 15:
+    elif state == 16:
         from ml_algs import RF
         RF()
-    elif state == 16:
+    elif state == 17:
         from ml_algs import AdaBoost_DT
         AdaBoost_DT()
-    elif state == 17:
+    elif state == 18:
         from ml_algs import GradientBoost
         GradientBoost()
-    elif state == 18:
+    elif state == 19:
         from ml_algs import HistGradientBoost
         HistGradientBoost()

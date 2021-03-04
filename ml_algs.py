@@ -833,15 +833,12 @@ def neural_networks_archSearch():
         pickle.dump(trials, output)
 
 
-def neural_networks_kfold_archSearch():
+def neural_networks():
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
 
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
-    from sklearn.model_selection import KFold
-
-    import telepot
 
     metrics = [
         'accuracy',
@@ -851,102 +848,6 @@ def neural_networks_kfold_archSearch():
     ]
 
     tf.compat.v1.enable_eager_execution()
-
-    try:
-        with open("data/trials/neural_networks_kfold_archSearch/results.pkl", 'rb') as file:
-            trials = pickle.load(file)
-    except:
-        trials = Trials()
-
-    def layer(N, M=-1):
-        if M == -1:
-            M = N
-        if N == 0:
-            return hp.choice('layer_{}'.format(M - N), [None])
-        return hp.choice('layer_{}'.format(M - N), [
-            None,
-            {
-                'activation': hp.choice('activation_{}'.format(M - N), [
-                    None,
-                    'selu',
-                    'relu',
-                    'softmax',
-                    'sigmoid',
-                    'softplus',
-                    'softsign',
-                    'tanh',
-                    'elu',
-                    'exponential'
-                ]),
-                'nodes_count': hp.randint('nodes_count_{}'.format(M - N), 500) + 2,
-                'dropout': hp.uniform('dropout_{}'.format(M - N), 0, 0.5),
-                'BatchNormalization': hp.choice('BatchNormalization_{}'.format(M - N), [False, True]),
-                'next': layer(N - 1, M)
-            }
-        ])
-
-    space = {
-        'decay_steps': hp.choice('decay_steps',
-                                [1e0, 5e0,
-                                 1e1, 5e1,
-                                 1e2, 25e1, 5e2, 75e1,
-                                 1e3, 2e3, 3e3, 4e3, 5e3, 6e3, 7e3, 8e3, 9e3,
-                                 1e4, 2e4, 3e4, 4e4, 5e4, 6e4, 7e4, 8e4, 9e4,
-                                 1e5, 2e5, 3e5, 4e5, 5e5, 6e5, 7e5, 8e5, 9e5,
-                                 1e6]),
-        'layers': layer(4),
-        'optimizer':
-            hp.choice('optimizer', [
-                {
-                    'type': 'Adadelta',
-                    'learning_rate': hp.uniform('Adadelta_lr', 0.001, 1),
-                },
-                {
-                    'type': 'Adagrad',
-                    'learning_rate': hp.uniform('Adagrad_lr', 0.001, 1),
-                },
-                {
-                    'type': 'Adamax',
-                    'learning_rate': hp.uniform('Adamax_lr', 0.001, 1),
-                },
-                {
-                    'type': 'Adam',
-                    'learning_rate': hp.uniform('Adam_lr', 0.001, 1),
-                    'amsgrad': hp.choice('Adam_amsgrad', [False, True])
-                },
-                {
-                    'type': 'Ftrl',
-                    'learning_rate': hp.uniform('Ftrl_lr', 0.001, 1),
-                },
-                {
-                    'type': 'Nadam',
-                    'learning_rate': hp.uniform('Nadam_lr', 0.001, 1),
-                },
-                {
-                    'type': 'RMSprop',
-                    'learning_rate': hp.uniform('RMSprop_lr', 0.001, 1),
-                    'centered': hp.choice('RMSprop_centered', [False, True]),
-                    'momentum': hp.uniform('RMSprop_momentum', 0.001, 1),
-                },
-                {
-                    'type': 'SGD',
-                    'learning_rate': hp.uniform('SGD_lr', 0.001, 1),
-                    'nesterov': hp.choice('SGD_nesterov', [False, True]),
-                    'momentum': hp.uniform('SGD_momentum', 0.001, 1),
-                }
-            ]),
-        'batch_size': 1024,
-            # hp.choice('batch_size', [None, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]),
-        'init': hp.choice('init', [
-            'glorot_normal',
-            'truncated_normal',
-            'glorot_uniform'
-        ]),
-        'trainable_BatchNormalization': hp.choice('trainable_BatchNormalization', [False, True]),
-        'trainable_dropouts': hp.choice('trainable_dropouts', [False, True]),
-        'shuffle': True,
-        'KFold': hp.randint('KFold', 8) + 2
-    }
 
     import tensorflow.keras.backend as K
 
@@ -959,181 +860,178 @@ def neural_networks_kfold_archSearch():
         f1_val = 2 * (precision * recall) / (precision + recall + K.epsilon())
         return f1_val
 
-    def objective(space):
-        model = models.Sequential()
+    model = models.Sequential([
+        layers.Dense(389, kernel_initializer='truncated_normal', activation='selu'),
+        layers.Dropout(0.358970140423815, trainable=True),
+        layers.BatchNormalization(trainable=True),
+        layers.Dense(415, kernel_initializer='truncated_normal', activation='elu'),
+        layers.Dropout(0.2534318171385951, trainable=True),
+        layers.BatchNormalization(trainable=True),
+        layers.Dense(1, kernel_initializer='truncated_normal', activation='sigmoid')
+    ])
 
-        layer = space['layers']
+    def scheduler(epoch, lr):
+        return lr * tf.math.exp(-epoch / 10000)
 
-        while layer:
-            model.add(layers.Dense(
-                layer['nodes_count'],
-                kernel_initializer=space['init'],
-                activation=layer['activation'])
-            )
-            if layer['dropout'] >= 0.01:
-                model.add(layers.Dropout(layer['dropout'], trainable=space['trainable_dropouts']))
-            if layer['BatchNormalization']:
-                model.add(layers.BatchNormalization(trainable=space['trainable_BatchNormalization']))
+    def tf_callbacks():
+        return [
+            tf.keras.callbacks.ModelCheckpoint(
+                'data/models/neural_networks_kfold/nn2.h5',
+                monitor='accuracy',
+                mode='max',
+                save_best_only=True
+            ),
+            tf.keras.callbacks.LearningRateScheduler(scheduler)
+        ]
 
-            layer = layer['next']
-
-        model.add(layers.Dense(1, kernel_initializer=space['init'], activation='sigmoid'))
-
-        def scheduler(epoch, lr):
-            return lr * tf.math.exp(-epoch / space['decay_steps'])
-
-        def tf_callbacks():
-            return [
-                tf.keras.callbacks.ModelCheckpoint(
-                    'data/models/neural_networks_kfold_archSearch/tmp.h5',
-                    monitor='accuracy',
-                    mode='max',
-                    verbose=0,
-                    save_best_only=True
-                ),
-                tf.keras.callbacks.EarlyStopping(
-                    monitor='val_f_score',
-                    patience=25,
-                    # min_delta=0.000001,
-                    mode='max',
-                    verbose=0),
-                tf.keras.callbacks.LearningRateScheduler(scheduler)
-            ]
-
-        if space['optimizer']['type'] == 'Adadelta':
-            optimizer = optimizers.Adadelta()
-        elif space['optimizer']['type'] == 'Adagrad':
-            optimizer = optimizers.Adagrad()
-        elif space['optimizer']['type'] == 'Adam':
-            optimizer = optimizers.Adam()
-        elif space['optimizer']['type'] == 'Adamax':
-            optimizer = optimizers.Adamax()
-        elif space['optimizer']['type'] == 'Ftrl':
-            optimizer = optimizers.Ftrl()
-        elif space['optimizer']['type'] == 'Nadam':
-            optimizer = optimizers.Nadam()
-        elif space['optimizer']['type'] == 'RMSprop':
-            optimizer = optimizers.RMSprop()
-        elif space['optimizer']['type'] == 'SGD':
-            optimizer = optimizers.SGD()
-
-        optimizer.learning_rate = space['optimizer']['learning_rate']
-        if 'amsgrad' in space['optimizer']:
-            optimizer.amsgrad = space['optimizer']['amsgrad']
-        if 'centered' in space['optimizer']:
-            optimizer.centered = space['optimizer']['centered']
-        if 'momentrum' in space['optimizer']:
-            optimizer.momentum = space['optimizer']['momentum']
-        if 'nesterov' in space['optimizer']:
-            optimizer.nesterov = space['optimizer']['nesterov']
-
-        try:
-            model.compile(
-                optimizer=optimizer,
-                loss=losses.BinaryCrossentropy(from_logits=True),
-                metrics=metrics+[f_score]
-            )
-
-            result = []
-            history = {}
-
-            for train_index, test_index in KFold(space['KFold']).split(X):
-                x_train, x_test = X[train_index], X[test_index]
-                y_train, y_test = Y[train_index], Y[test_index]
-
-                h = model.fit(
-                    x_train, y_train,
-                    # validation_split=0.2,
-                    validation_data=(x_test, y_test),
-                    epochs=200,
-                    callbacks=tf_callbacks(),
-                    verbose=0,
-                    batch_size=space['batch_size'],
-                    shuffle=space['shuffle']
-                )
-
-                if history:
-                    history = {key: value + h.history[key] for key, value in history.items()}
-                else:
-                    history = h.history
-                result.append(model.evaluate(x_test, y_test, verbose=0))
-
-            loss = np.mean([r[0] for r in result])
-            acc = np.mean([r[1] for r in result])
-            precision = np.mean([r[2] for r in result])
-            recall = np.mean([r[3] for r in result])
-            auc = np.mean([r[4] for r in result])
-            fScore = np.mean([r[5] for r in result])
-
-            try:
-                with open("data/trials/neural_networks_kfold_archSearch/metric.txt") as f:
-                    max_fScore = float(f.read().strip())  # read best metric,
-            except FileNotFoundError:
-                max_fScore = -1
-
-            m = {
-                'loss': loss,
-                'accuracy': acc,
-                'Precision': precision,
-                'Recall': recall,
-                'AUC': auc,
-                'f_score': fScore
-            }
-
-            if fScore > max_fScore:
-                model.save("data/models/neural_networks_kfold_archSearch/nn1.h5")
-                move('data/models/neural_networks_kfold_archSearch/tmp.h5', "data/models/neural_networks_kfold_archSearch/nn2.h5")
-                with open("data/trials/neural_networks_kfold_archSearch/space.json", "w") as f:
-                    f.write(str(space))
-                with open("data/trials/neural_networks_kfold_archSearch/metric.txt", "w") as f:
-                    f.write(str(fScore))
-                with open("data/trials/neural_networks_kfold_archSearch/history.pkl", 'wb') as f:
-                    pickle.dump(history, f)
-
-            try:
-                telegram_info = pandas.read_csv('telegram_client.csv')
-                bot = telepot.Bot(telegram_info['BOT_token'][0])
-                bot.sendMessage(int(telegram_info['CHAT_ID'][0]), str(space))
-                bot.sendMessage(int(telegram_info['CHAT_ID'][0]), str(m))
-                draw(history, list(map(lambda x: x.lower(), metrics)) + ['loss', 'f_score'], 'neural_networks_kfold_archSearch')
-                bot.sendPhoto(int(telegram_info['CHAT_ID'][0]), photo=open('data/trials/neural_networks_kfold_archSearch/stats.png', 'rb'))
-            except:
-                pass
-
-            return {
-                'loss': -fScore,
-                'status': STATUS_OK,
-                'history': history,
-                'space': space,
-                'metrics': m
-            }
-        except:
-            return {
-                'loss': 1,
-                'status': STATUS_OK,
-                'history': None,
-                'space': space,
-                'metrics': None
-            }
-
-    best = fmin(
-        objective,
-        space,
-        algo=tpe.suggest,
-        max_evals=5000 + len(trials),
-        trials=trials,
-        timeout=60 * 60 * 1
+    model.compile(
+        optimizer=optimizers.Nadam(learning_rate=0.014224162990905523),
+        loss=losses.BinaryCrossentropy(from_logits=True),
+        metrics=metrics + [f_score]
     )
 
-    def typer(o):
-        if isinstance(o, np.int32): return int(o)
-        return o
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
-    with open("data/trials/neural_networks_kfold_archSearch/best.json", "w") as f:
-        json.dump(best, f, default=typer)
+    history = model.fit(
+        x_train, y_train,
+        # validation_split=0.2,
+        validation_data=(x_test, y_test),
+        epochs=500,
+        batch_size=32,
+        callbacks=tf_callbacks(),
+        shuffle=True
+    )
 
-    with open("data/trials/neural_networks_kfold_archSearch/results.pkl", 'wb') as output:
-        pickle.dump(trials, output)
+    loss, accuracy, Precision, Recall, AUC, f_score = model.evaluate(x_test, y_test)
+
+    m = {
+        'loss': loss,
+        'accuracy': accuracy,
+        'Precision': Precision,
+        'Recall': Recall,
+        'AUC': AUC,
+        'f_score': f_score
+    }
+
+    model.save("data/models/neural_networks/nn1.h5")
+    with open("data/trials/neural_networks/history.pkl", 'wb') as f:
+        pickle.dump(history.history, f)
+    with open("data/trials/neural_networks/metric.txt", "w") as f:
+        f.write(str(m))
+
+    print(m)
+
+
+def neural_networks_kfold():
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
+
+    import tensorflow as tf
+    from tensorflow.keras import layers, models, optimizers, losses
+    from sklearn.model_selection import KFold
+
+    metrics = [
+        'accuracy',
+        'Precision',
+        'Recall',
+        'AUC'
+    ]
+
+    tf.compat.v1.enable_eager_execution()
+
+    import tensorflow.keras.backend as K
+
+    def f_score(y_true, y_pred):
+        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+        possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+        predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+        precision = true_positives / (predicted_positives + K.epsilon())
+        recall = true_positives / (possible_positives + K.epsilon())
+        f1_val = 2 * (precision * recall) / (precision + recall + K.epsilon())
+        return f1_val
+
+    model = models.Sequential([
+        layers.Dense(389, kernel_initializer='truncated_normal', activation='selu'),
+        layers.Dropout(0.358970140423815, trainable=True),
+        layers.BatchNormalization(trainable=True),
+        layers.Dense(415, kernel_initializer='truncated_normal', activation='elu'),
+        layers.Dropout(0.2534318171385951, trainable=True),
+        layers.BatchNormalization(trainable=True),
+        layers.Dense(1, kernel_initializer='truncated_normal', activation='sigmoid')
+    ])
+
+    def scheduler(epoch, lr):
+        return lr * tf.math.exp(-epoch / 10000)
+
+    def tf_callbacks():
+        return [
+            tf.keras.callbacks.ModelCheckpoint(
+                'data/models/neural_networks_kfold/nn2.h5',
+                monitor='accuracy',
+                mode='max',
+                save_best_only=True
+            ),
+            tf.keras.callbacks.EarlyStopping(
+                monitor='val_accuracy',
+                patience=20,
+                # min_delta=0.000001,
+                mode='max',
+                verbose=0),
+            tf.keras.callbacks.EarlyStopping(
+                monitor='val_f_score',
+                patience=20,
+                # min_delta=0.000001,
+                mode='max',
+                verbose=0),
+            tf.keras.callbacks.LearningRateScheduler(scheduler)
+        ]
+
+    model.compile(
+        optimizer=optimizers.Nadam(learning_rate=0.014224162990905523),
+        loss=losses.BinaryCrossentropy(from_logits=True),
+        metrics=metrics + [f_score]
+    )
+
+    result = []
+    history = {}
+
+    for train_index, test_index in KFold(5).split(X):
+        x_train, x_test = X[train_index], X[test_index]
+        y_train, y_test = Y[train_index], Y[test_index]
+
+        h = model.fit(
+            x_train, y_train,
+            # validation_split=0.2,
+            validation_data=(x_test, y_test),
+            epochs=500,
+            callbacks=tf_callbacks(),
+            shuffle=True
+        )
+
+        if history:
+            history = {key: value + h.history[key] for key, value in history.items()}
+        else:
+            history = h.history
+        result.append(model.evaluate(x_test, y_test, verbose=0))
+
+        print(len(result))
+
+    m = {
+        'loss': np.mean([r[0] for r in result]),
+        'accuracy': np.mean([r[1] for r in result]),
+        'Precision': np.mean([r[2] for r in result]),
+        'Recall': np.mean([r[3] for r in result]),
+        'AUC': np.mean([r[4] for r in result]),
+        'f_score': np.mean([r[5] for r in result])
+    }
+
+    model.save("data/models/neural_networks_kfold/nn1.h5")
+    with open("data/trials/neural_networks_kfold/history.pkl", 'wb') as f:
+        pickle.dump(history, f)
+    with open("data/trials/neural_networks_kfold/metric.txt", "w") as f:
+        f.write(str(m))
+
+    print(m)
 
 
 def DT():

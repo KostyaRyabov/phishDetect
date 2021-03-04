@@ -1,1 +1,0 @@
-{'KFold': 6, 'batch_size': 1024, 'decay_steps': 10.0, 'init': 'truncated_normal', 'layers': None, 'optimizer': {'amsgrad': False, 'learning_rate': 0.31240379102640786, 'type': 'Adam'}, 'shuffle': True, 'trainable_BatchNormalization': True, 'trainable_dropouts': False}

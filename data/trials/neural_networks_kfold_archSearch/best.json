@@ -1,1 +1,0 @@
-{"BatchNormalization_0": 0, "KFold": 6, "SGD_lr": 0.2614887473583415, "SGD_momentum": 0.23289830365206204, "SGD_nesterov": 1, "activation_0": 0, "decay_steps": 25, "dropout_0": 0.24556068239789142, "init": 2, "layer_0": 1, "layer_1": 0, "nodes_count_0": 334, "optimizer": 7, "trainable_BatchNormalization": 1, "trainable_dropouts": 1}
