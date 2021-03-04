@@ -1,4 +1,4 @@
-state = 16
+state = 10
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -16,7 +16,9 @@ state = 16
 # 13 - generate hyperoptions for DT
 # 14 - generate hyperoptions for ET
 # 15 - generate hyperoptions for RF
-# 16 - neural_networks_regularization
+# 16 - generate hyperoptions for AdaBoost_DT
+# 17 - generate hyperoptions for GradientBoost
+# 18 - generate hyperoptions for HistGradientBoost
 
 
 import feature_extractor as fe
@@ -54,7 +56,7 @@ if __name__ == "__main__":
     elif state == 7:
         fe.combine_datasets()
     elif state == 8:
-        fe.select_features(40)
+        fe.select_features(50)
     elif state == 9:
         from ml_algs import neural_networks_archSearch
         neural_networks_archSearch()
@@ -77,5 +79,11 @@ if __name__ == "__main__":
         from ml_algs import RF
         RF()
     elif state == 16:
-        from ml_algs import neural_networks_regularization
-        neural_networks_regularization()
+        from ml_algs import AdaBoost_DT
+        AdaBoost_DT()
+    elif state == 17:
+        from ml_algs import GradientBoost
+        GradientBoost()
+    elif state == 18:
+        from ml_algs import HistGradientBoost
+        HistGradientBoost()
