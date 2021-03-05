@@ -1,4 +1,4 @@
-state = 11
+state = 24
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -20,6 +20,13 @@ state = 11
 # 17 - generate hyperoptions for AdaBoost_DT
 # 18 - generate hyperoptions for GradientBoost
 # 19 - generate hyperoptions for HistGradientBoost
+# 20 - learn Gaussian_NB
+# 21 - learn Bernoulli_NB
+# 22 - learn Complement_NB
+# 23 - learn Multinomial_NB
+# 24 - get ratings
+# 25 - Bagging_DT
+# 26 - Stacking
 
 
 import feature_extractor as fe
@@ -91,3 +98,24 @@ if __name__ == "__main__":
     elif state == 19:
         from ml_algs import HistGradientBoost
         HistGradientBoost()
+    elif state == 20:
+        from ml_algs import Gaussian_NB
+        Gaussian_NB()
+    elif state == 21:
+        from ml_algs import Bernoulli_NB
+        Bernoulli_NB()
+    elif state == 22:
+        from ml_algs import Complement_NB
+        Complement_NB()
+    elif state == 23:
+        from ml_algs import Multinomial_NB
+        Multinomial_NB()
+    elif state == 24:
+        from ml_algs import get_rating
+        get_rating()
+    elif state == 25:
+        from ml_algs import Bagging_DT
+        Bagging_DT()
+    elif state == 26:
+        from ml_algs import Stacking
+        Stacking()

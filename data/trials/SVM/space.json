@@ -1,1 +1,8 @@
-{'C': 10483.271353416312, 'kernel': {'gamma': 'scale', 'type': 'rbf'}, 'random_state': 42}
+{
+  'C': 10483.271353416312,
+  'kernel': {
+    'gamma': 'scale',
+    'type': 'rbf'
+  },
+  'random_state': 42
+}

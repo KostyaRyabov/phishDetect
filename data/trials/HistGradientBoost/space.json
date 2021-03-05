@@ -1,1 +1,4 @@
-{'learning_rate': 0.2776671879915404, 'loss': 'auto'}
+{
+  'learning_rate': 0.2776671879915404,
+  'loss': 'auto'
+}
