@@ -1,121 +1,59 @@
-state = 24
-
-# 0 - download phish_urls
-# 1 - search leg urls from popular domains
-# 2 - run only leg sites
-# 3 - run only phish sites
-# 4 - run all sites
-# 5 - run example with shield and save data
-# 6 - run example without shield
-# 7 - collect all datasets
-# 8 - select features
-# 9 - generate hyperoptions for neural_networks_archSearch
-# 10 - learn neural_networks_kfold
-# 11 - learn neural_networks
-# 12 - generate hyperoptions for kNN
-# 13 - generate hyperoptions for SVM
-# 14 - generate hyperoptions for DT
-# 15 - generate hyperoptions for ET
-# 16 - generate hyperoptions for RF
-# 17 - generate hyperoptions for AdaBoost_DT
-# 18 - generate hyperoptions for GradientBoost
-# 19 - generate hyperoptions for HistGradientBoost
-# 20 - learn Gaussian_NB
-# 21 - learn Bernoulli_NB
-# 22 - learn Complement_NB
-# 23 - learn Multinomial_NB
-# 24 - get ratings
-# 25 - Bagging_DT
-# 26 - Stacking
-
-
 import feature_extractor as fe
-import data.collector as dc
-
-if state in range(2, 6):
-    seed_l = 13023
-    seed_p = 1000
-
 
 if __name__ == "__main__":
-    if state == 0:
-        dc.download_phishURLS()  # use VPN!!!
-    elif state == 1:
-        fe.generate_legitimate_urls(20000)
-    elif state == 2:
-        legitimate_url_list = dc.load_legitimateURLS('30-01-2021')
-        url_list = dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
-        fe.generate_dataset(url_list)
-    elif state == 3:
-        phish_url_list = dc.load_phishURLS('15-02-2021')
-        url_list = dc.set_lable_to_list(phish_url_list[seed_p:], 1)
-        fe.generate_dataset(url_list)
-    elif state == 4:
-        legitimate_url_list = dc.load_legitimateURLS('30-01-2021')
-        phish_url_list = dc.load_phishURLS('15-02-2021')
-        url_list = []
-        url_list += dc.set_lable_to_list(phish_url_list[seed_p:], 1)
-        url_list += dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
-        fe.generate_dataset(url_list)
-    elif state == 5:
-        fe.generate_dataset([('http://mail.ru', 0)])
-    elif state == 6:
-        fe.extract_features('http://mail.ru', 0)
-    elif state == 7:
-        fe.combine_datasets()
-    elif state == 8:
-        fe.select_features(50)
-    elif state == 9:
-        from ml_algs import neural_networks_archSearch
-        neural_networks_archSearch()
-    elif state == 10:
-        from ml_algs import neural_networks_kfold
-        neural_networks_kfold()
-    elif state == 11:
-        from ml_algs import neural_networks
-        neural_networks()
-    elif state == 12:
-        from ml_algs import KNN
-        KNN()
-    elif state == 13:
-        from ml_algs import SVM
-        SVM()
-    elif state == 14:
-        from ml_algs import DT
-        DT()
-    elif state == 15:
-        from ml_algs import ET
-        ET()
-    elif state == 16:
-        from ml_algs import RF
-        RF()
-    elif state == 17:
-        from ml_algs import AdaBoost_DT
-        AdaBoost_DT()
-    elif state == 18:
-        from ml_algs import GradientBoost
-        GradientBoost()
-    elif state == 19:
-        from ml_algs import HistGradientBoost
-        HistGradientBoost()
-    elif state == 20:
-        from ml_algs import Gaussian_NB
-        Gaussian_NB()
-    elif state == 21:
-        from ml_algs import Bernoulli_NB
-        Bernoulli_NB()
-    elif state == 22:
-        from ml_algs import Complement_NB
-        Complement_NB()
-    elif state == 23:
-        from ml_algs import Multinomial_NB
-        Multinomial_NB()
-    elif state == 24:
-        from ml_algs import get_rating
-        get_rating()
-    elif state == 25:
-        from ml_algs import Bagging_DT
-        Bagging_DT()
-    elif state == 26:
-        from ml_algs import Stacking
-        Stacking()
+    import pickle
+    from tensorflow import keras
+
+    import tensorflow.keras.backend as K
+
+
+    def f_score(y_true, y_pred):
+        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+        possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+        predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+        precision = true_positives / (predicted_positives + K.epsilon())
+        recall = true_positives / (possible_positives + K.epsilon())
+        f1_val = 2 * (precision * recall) / (precision + recall + K.epsilon())
+        return f1_val
+
+    m1 = pickle.load(open('data/models/AdaBoost_DT/AdaBoost_DT.pkl', 'rb'))
+    m2 = pickle.load(open('data/models/Bagging_DT/Bagging_DT.pkl', 'rb'))
+    m3 = pickle.load(open('data/models/Bernoulli_NB/Bernoulli_NB.pkl', 'rb'))
+    m4 = pickle.load(open('data/models/Complement_NB/Complement_NB.pkl', 'rb'))
+    m5 = pickle.load(open('data/models/DT/DT.pkl', 'rb'))
+    m6 = pickle.load(open('data/models/ET/ET.pkl', 'rb'))
+    # m7 = pickle.load(open('data/models/Gaussian_NB', 'rb'))
+    m8 = pickle.load(open('data/models/GradientBoost/GradientBoost.pkl', 'rb'))
+    m9 = pickle.load(open('data/models/HistGradientBoost/HistGradientBoost.pkl', 'rb'))
+    m10 = pickle.load(open('data/models/kNN/2NN.pkl', 'rb'))
+    m11 = pickle.load(open('data/models/Multinomial_NB/Multinomial_NB.pkl', 'rb'))
+    m12 = keras.models.load_model('data/models/neural_networks/nn1.h5', custom_objects={'f_score': f_score})
+    m13 = pickle.load(open('data/models/RF/RF.pkl', 'rb'))
+    m14 = pickle.load(open('data/models/Stacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)/StackingClassifier.pkl', 'rb'))
+    m15 = pickle.load(open('data/models/Stacking (All)/StackingClassifier.pkl', 'rb'))
+    m16 = pickle.load(open('data/models/Stacking (CNB, MNB, BNB, GNB)/StackingClassifier.pkl', 'rb'))
+    m17 = pickle.load(open('data/models/Stacking (RF,HGBC, GBC, AdaBoost, ET)/StackingClassifier.pkl', 'rb'))
+    m18 = pickle.load(open('data/models/Stacking (SVM, kNN, DT)/StackingClassifier.pkl', 'rb'))
+    m19 = pickle.load(open('data/models/SVM/SVM.pkl', 'rb'))
+
+    data = [fe.extract_features('https://www.google.com/search?client=opera&q=tenserflow+load+model&sourceid=opera&ie=UTF-8&oe=UTF-8')]
+
+    print('AdaBoost_DT', m1.predict_proba(data))
+    print('Bagging_DT', m2.predict_proba(data))
+    print('Bernoulli_NB', m3.predict_proba(data))
+    print('Complement_NB', m4.predict_proba(data))
+    print('DT', m5.predict_proba(data))
+    print('ET', m6.predict_proba(data))
+    # print('Gaussian_NB', m7.predict_proba(data))
+    print('GradientBoost', m8.predict_proba(data))
+    print('HistGradientBoost', m9.predict_proba(data))
+    print('2NN', m10.predict_proba(data))
+    print('Multinomial_NB', m11.predict_proba(data))
+    print('neural_networks', m12.predict(data))
+    print('RF', m13.predict_proba(data))
+    print('Stacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)', m14.predict_proba(data))
+    print('Stacking (All)', m15.predict_proba(data))
+    print('Stacking (CNB, MNB, BNB, GNB)', m16.predict_proba(data))
+    print('Stacking (RF,HGBC, GBC, AdaBoost, ET)', m17.predict_proba(data))
+    print('Stacking (SVM, kNN, DT)', m18.predict_proba(data))
+    print('SVM', m19.predict(data))
