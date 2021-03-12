@@ -522,7 +522,7 @@ def plot_hyperop_score(dir):
         data = pickle.load(f)
 
     path = []
-    max_v = 0.85
+    max_v = 0.9
     for idx, raw in enumerate(data.results):
         if -raw['loss'] > max_v:
             max_v = -raw['loss']
@@ -678,7 +678,7 @@ def neural_networks_archSearch():
                     'momentum': hp.uniform('SGD_momentum', 0.001, 1),
                 }
             ]),
-        'batch_size': 128,
+        'batch_size': 32,
         'init': hp.choice('init', [
             'glorot_normal',
             'truncated_normal',
@@ -778,6 +778,7 @@ def neural_networks_archSearch():
             history = model.fit(
                 x_train, y_train,
                 validation_data=(x_test, y_test),
+                # validation_split=0.1,
                 epochs=500,
                 callbacks=tf_callbacks(),
                 verbose=2,
@@ -848,7 +849,7 @@ def neural_networks_archSearch():
         max_evals=1500,
                   # + len(trials),
         trials=trials,
-        timeout=60 * 60 * 2
+        timeout=60 * 60 * 5
     )
 
     def typer(o):
@@ -1017,14 +1018,11 @@ def neural_networks_kfold():
     print(m)
 
 
-def find_best_NN(throughput, min_len):
+def find_best_NN(throughput=0.01, gap=0.1):
     with open("data/trials/neural_networks_archSearch/results.pkl", 'rb') as f:
         data = pickle.load(f)
 
-    stats = []
     metrics = []
-
-    import numpy as np
 
     columns = [
         'id',
@@ -1040,59 +1038,52 @@ def find_best_NN(throughput, min_len):
         history = raw['history']
 
         if history:
-            if len(history['loss']) >= min_len \
-                and (history['val_loss'][-1] - history['loss'][-1]) <= throughput \
-                and (history['val_accuracy'][-1] - history['accuracy'][-1]) >= -throughput \
-                and (history['val_precision'][-1] - history['precision'][-1]) >= -throughput \
-                and (history['val_recall'][-1] - history['recall'][-1]) >= -throughput \
-                and (history['val_auc'][-1] - history['auc'][-1]) >= -throughput \
-                and (history['val_f_score'][-1] - history['f_score'][-1]) >= -throughput:
+            if (history['val_loss'][-1] - history['loss'][-1]) <= throughput \
+                    and (history['val_accuracy'][-1] - history['accuracy'][-1]) >= -throughput \
+                    and (history['val_f_score'][-1] - history['f_score'][-1]) >= -throughput\
+                    and abs(history['val_loss'][-1] - history['loss'][-1]) <= gap\
+                    and abs(history['val_accuracy'][-1] - history['accuracy'][-1]) <= gap\
+                    and abs(history['val_f_score'][-1] - history['f_score'][-1]) <= gap:
 
                 metrics.append([idx] + list(raw['metrics'].values()))
 
-
-    top_idx = pandas.DataFrame(metrics, columns=columns).sort_values(
+    id = pandas.DataFrame(metrics, columns=columns).sort_values(
         'f_score', ascending=False
-    ).head(10).sort_values(
-        'accuracy', ascending=False
-    ).head(8)['id']
-
-    for i in top_idx:
-        history = data.results[i]['history']
-
-        l = len(history['loss'])//3
-
-        stats.append([
-            i,
-            (np.array(history['val_loss'][-l:]) - np.array(history['loss'][-l:])).std(),
-            (np.array(history['val_accuracy'][-l:]) - np.array(history['accuracy'][-l:])).std(),
-            (np.array(history['val_precision'][-l:]) - np.array(history['precision'][-l:])).std(),
-            (np.array(history['val_recall'][-l:]) - np.array(history['recall'][-l:])).std(),
-            (np.array(history['val_auc'][-l:]) - np.array(history['auc'][-l:])).std(),
-            (np.array(history['val_f_score'][-l:]) - np.array(history['f_score'][-l:])).std()
-        ])
-
-
-    sorted_keys = pandas.DataFrame(stats, columns=columns).sort_values(
-        'loss', ascending=True
-    ).head(6).sort_values(
-        'auc', ascending=True
-    ).head(5).sort_values(
-        'recall', ascending=True
-    ).head(4).sort_values(
-        'precision', ascending=True
-    ).head(3).sort_values(
-        'accuracy', ascending=True
-    ).head(2).sort_values(
-        'f_score', ascending = True
     ).head(1)['id']
 
-    df = pandas.DataFrame(metrics, columns=columns)
-    # df = df[df['id'].isin(sorted_keys)].sort_values('f_score', ascending=False)
-    df = df[df['id'] == int(sorted_keys)]
-    print(df)
+    # for i in df['id']:
+    #     history = data.results[i]['history']
+    #
+    #     l = len(history['loss'])//4
+    #
+    #     stats.append([
+    #         i,
+    #         (np.array(history['val_loss'][-l:]) - np.array(history['loss'][-l:])).std(),
+    #         (np.array(history['val_accuracy'][-l:]) - np.array(history['accuracy'][-l:])).std(),
+    #         (np.array(history['val_precision'][-l:]) - np.array(history['precision'][-l:])).std(),
+    #         (np.array(history['val_recall'][-l:]) - np.array(history['recall'][-l:])).std(),
+    #         (np.array(history['val_auc'][-l:]) - np.array(history['auc'][-l:])).std(),
+    #         (np.array(history['val_f_score'][-l:]) - np.array(history['f_score'][-l:])).std()
+    #     ])
+    #
+    #
+    # sorted_keys = pandas.DataFrame(stats, columns=columns).sort_values(
+    #     'loss', ascending=True
+    # ).head(5).sort_values(
+    #     'recall', ascending=True
+    # ).head(4).sort_values(
+    #     'precision', ascending=True
+    # ).head(3).sort_values(
+    #     'accuracy', ascending=True
+    # ).head(2).sort_values(
+    #     'f_score', ascending=True
+    # ).head(1)['id']
 
-    best = data.results[int(df['id'].head(1))]
+    # df = df[df['id'].isin(sorted_keys)].sort_values('f_score', ascending=False)
+    # df = df[df['id'] == int(sorted_keys)]
+    # print(df)
+
+    best = data.results[int(id)]
 
     draw(best['history'], [
         'accuracy',
