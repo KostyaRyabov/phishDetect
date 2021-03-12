@@ -1,7 +1,7 @@
 {
-  'C': 10483.271353416312,
+  'C': 15441.433713190638,
   'kernel': {
-    'gamma': 'scale',
+    'gamma': 'auto',
     'type': 'rbf'
   },
   'random_state': 42

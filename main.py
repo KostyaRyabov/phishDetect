@@ -1,4 +1,4 @@
-state = 24
+state = 9
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -10,7 +10,7 @@ state = 24
 # 7 - collect all datasets
 # 8 - select features
 # 9 - generate hyperoptions for neural_networks_archSearch
-# 10 - learn neural_networks_kfold
+# 10 - learn neural_networks_regularization
 # 11 - learn neural_networks
 # 12 - generate hyperoptions for kNN
 # 13 - generate hyperoptions for SVM
@@ -27,6 +27,7 @@ state = 24
 # 24 - get ratings
 # 25 - Bagging_DT
 # 26 - Stacking
+# 27 - find_best_NN
 
 
 import feature_extractor as fe
@@ -64,13 +65,13 @@ if __name__ == "__main__":
     elif state == 7:
         fe.combine_datasets()
     elif state == 8:
-        fe.select_features(50)
+        fe.select_features(40)
     elif state == 9:
         from ml_algs import neural_networks_archSearch
         neural_networks_archSearch()
     elif state == 10:
-        from ml_algs import neural_networks_kfold
-        neural_networks_kfold()
+        from ml_algs import neural_networks_regularization
+        neural_networks_regularization()
     elif state == 11:
         from ml_algs import neural_networks
         neural_networks()
@@ -119,3 +120,6 @@ if __name__ == "__main__":
     elif state == 26:
         from ml_algs import Stacking
         Stacking()
+    elif state == 27:
+        from ml_algs import find_best_NN
+        find_best_NN(-0.01, 100)

@@ -70,7 +70,7 @@ if state in range(2, 10):
 
             'наличие punycode',
             'домен в брендах',
-            'юренд в пути url',
+            'бренд в пути url',
             'кол-во www в url',
             'кол-во com в url',
 
@@ -114,7 +114,7 @@ if state in range(2, 10):
             "соотношение внешних Favicon со всеми в основном контексте страницы",
             "соотношение внутренних Favicon со всеми в основном контексте страницы",
             "наличие отправки на почту в основном контексте страницы",
-            "соотношение внешних медиа со всеми в основном контексте страницы",
+            "соотношение внутренних медиа со всеми в основном контексте страницы",
             "соотношение внешних медиа со всеми в основном контексте страницы",
             "пустой титульник в основном контексте страницы",
             "соотношение небезопасных якорей со всеми в основном контексте страницы",
@@ -165,7 +165,7 @@ if state in range(2, 10):
             "соотношение внешних Favicon со всеми во внутренне добавляемом контексте страницы",
             "соотношение внутренних Favicon со всеми во внутренне добавляемом контексте страницы",
             "наличие отправки на почту во внутренне добавляемом контексте страницы",
-            "соотношение внешних медиа со всеми во внутренне добавляемом контексте страницы",
+            "соотношение внутренних медиа со всеми во внутренне добавляемом контексте страницы",
             "соотношение внешних медиа со всеми во внутренне добавляемом контексте страницы",
             "пустой титульник во внутренне добавляемом контексте страницы",
             "соотношение небезопасных якорей со всеми во внутренне добавляемом контексте страницы",
@@ -210,7 +210,7 @@ if state in range(2, 10):
             "соотношение внешних Favicon со всеми во внешне добавляемом контексте страницы",
             "соотношение внутренних Favicon со всеми во внешне добавляемом контексте страницы",
             "наличие отправки на почту во внешне добавляемом контексте страницы",
-            "соотношение внешних медиа со всеми во внешне добавляемом контексте страницы",
+            "соотношение внутренних медиа со всеми во внешне добавляемом контексте страницы",
             "соотношение внешних медиа со всеми во внешне добавляемом контексте страницы",
             "пустой титульник во внешне добавляемом контексте страницы",
             "соотношение небезопасных якорей со всеми во внешне добавляемом контексте страницы",
@@ -758,7 +758,7 @@ if state in range(2, 7):
         for form in soup.findAll('form', action=True):
             url = form['action']
 
-            if url in Null_format or url == 'about:blank':
+            if url in Null_format or url == 'about:best_nn':
                 Form['null'].append('http://' + hostname + '/' + url)
                 continue
 
@@ -1404,63 +1404,23 @@ if state == 7:
         lst_files = list(map(int, os.listdir(os.getcwd() + '/data/datasets/RAW')))
         lst_files.sort()
 
-        # for file in lst_files:
-        #     f = pandas.read_csv("data/datasets/RAW/{}/dataset.csv".format(file))
-        #     f.drop('Unnamed: 0', axis=1, inplace=True)
-        #     f.to_csv("data/datasets/RAW/{}/dataset.csv".format(file),
-        #              header=headers['metadata'] + headers['stats'] + ['TF'],
-        #              index_label='id')
-
-        # for file in lst_files:
-        #     f = pandas.read_csv("data/datasets/RAW/{}/feature_times.csv".format(file))
-        #     f.drop('Unnamed: 0', axis=1, inplace=True)
-        #     f.to_csv("data/datasets/RAW/{}/feature_times.csv".format(file),
-        #              header=headers['metadata'] + headers['substats'] + headers['stats'],
-        #              index=False)
-
 
         df = [pandas.read_csv("data/datasets/RAW/{}/dataset.csv".format(i), index_col='id') for i in lst_files]
         frame = pandas.concat(df, axis=0)
         frame.drop_duplicates(subset=['url'], keep='last')
 
-        # TF = {
-        #     0: [{w.split('=')[0]: float(w.split('=')[-1]) for w in str(raw).split(';')} for raw in
-        #         frame.loc[frame['status'] == 0]['TF'].tolist()],
-        #     1: [{w.split('=')[0]: float(w.split('=')[-1]) for w in str(raw).split(';')} for raw in
-        #         frame.loc[frame['status'] == 1]['TF'].tolist()]
-        # }
-        #
-        # a0 = [idx for idx, val in enumerate(TF[0]) if len(val) <= 2]
-        # a1 = [idx for idx, val in enumerate(TF[1]) if len(val) <= 2]
 
-        #
-        # IDF = {0: compute_idf(TF[0]), 1: compute_idf(TF[1])}
-        #
-        # pandas.DataFrame(list(IDF[0].values())).T.to_csv('data/datasets/PROCESS/IDF [0].csv', header=list(IDF[0].keys()), index=False)
-        # pandas.DataFrame(list(IDF[1].values())).T.to_csv('data/datasets/PROCESS/IDF [1].csv', header=list(IDF[1].keys()), index=False)
-        #
-        # frame.drop('TF', axis=1, inplace=True)
-
-        frame = frame.drop(['TF'], axis=1)
-
-        #
+        frame = frame.drop(['TF','кол-во поддоменов'], axis=1)
 
         frame = frame.loc[frame['срок регистрации домена'] <= 10000]
 
-        # frame.loc[frame['степень сжатия страницы'] == -1, 'степень сжатия страницы'] = 1
         frame.loc[frame['степень сжатия страницы'] > 1, 'степень сжатия страницы'] = 1
 
         frame['рейтинг по Alexa'] = frame['рейтинг по Alexa']/10000000
         frame.loc[frame['рейтинг по Alexa'] > 1, 'рейтинг по Alexa'] = 1
 
         frame = frame.replace(-5, 0)
-        # frame = frame.replace([-5, -2, -1], 0)
 
-        #
-
-        nunique = frame.apply(pandas.Series.nunique)
-        cols_to_drop = nunique[nunique == 1].index
-        frame = frame.drop(cols_to_drop, axis=1)
         frame = frame.reset_index(drop=True)
 
         frame.to_csv("data/datasets/PROCESS/dataset.csv", index_label='id')
@@ -1474,10 +1434,9 @@ if state == 7:
         pandas.DataFrame([head, max, min, mean]).T.to_csv("data/datasets/PROCESS/dataset_stats.csv", index=False,
                                                           header=['feature', 'max', 'min', 'mean'])
 
-
         df = [pandas.read_csv("data/datasets/RAW/{}/feature_times.csv".format(i)) for i in lst_files]
         frame = pandas.concat(df, axis=0)
-        frame = frame.drop(cols_to_drop.to_list() + ['url', 'lang', 'status'], axis=1)
+
         head = list(frame)
         max = frame.max().to_list()
         min = frame.min().to_list()
@@ -1489,6 +1448,9 @@ if state == 7:
 if state == 8:
     import numpy as np
     from sklearn import svm
+
+    from feature_selector import FeatureSelector
+
 
     def RFE(X, Y, N, step=10):
         clfRFE = svm.SVC(kernel='linear', cache_size=4096)
@@ -1509,6 +1471,7 @@ if state == 8:
         included = [idx for idx in featureList if included[idx]]
         return X.iloc[:, included]
 
+
     def select_features(N):
         frame = pandas.read_csv('data/datasets/PROCESS/dataset.csv')
 
@@ -1519,13 +1482,33 @@ if state == 8:
         X = frame[cols]
         Y = frame['status']
 
-        # X = (X - X.min()) / ((X.max() - X.min())/2) - 1
         X = (X - X.min()) / (X.max() - X.min())
-        # X = (X - X.mean()) / (X.max() - X.min())
+
+        fs = FeatureSelector(data=X, labels=Y)
+
+        fs.identify_all({
+            'missing_threshold': 0.6,
+            'correlation_threshold': 0.98,
+            'eval_metric': 'auc',
+            'task': 'classification',
+            'cumulative_importance': 0.99
+        })
+
+        fs.plot_feature_importances(threshold=0.99, plot_n=10)
+        selected = fs.remove(methods='all')
+
+        X = selected
 
         # сокращение числа параметров
 
+
         X = RFE(X, Y, N)
+
+        max = X.max().to_list()
+        min = X.min().to_list()
+        mean = X.mean().to_list()
+        pandas.DataFrame([list(X), max, min, mean]).T.to_csv("data/datasets/OUTPUT/dataset_stats.csv", index=False,
+                                                             header=['feature', 'max', 'min', 'mean'])
 
         X['status'] = Y
         X.to_csv("data/datasets/OUTPUT/dataset.csv",

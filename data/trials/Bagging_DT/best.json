@@ -1,1 +1,1 @@
-{"bootstrap": 0, "bootstrap_features": 1, "max_depth": 9, "n_estimators": 173, "oob_score": 0}
+{"bootstrap_features": 1, "max_depth": 8, "n_estimators": 117}
