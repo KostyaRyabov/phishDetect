@@ -496,8 +496,6 @@ cols = [col for col in headers['stats'] if col in list(frame)]
 X = frame[cols].to_numpy()
 Y = frame['status'].to_numpy()
 
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
-
 
 def plot_lr(lr, n_epochs, decay):
     from math import exp
@@ -582,6 +580,8 @@ def get_rating():
 def neural_networks_archSearch():
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
 
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
@@ -864,160 +864,6 @@ def neural_networks_archSearch():
         pickle.dump(trials, output)
 
 
-def neural_networks_kfold():
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
-
-    import tensorflow as tf
-    from tensorflow.keras import layers, models, optimizers, losses
-    from sklearn.model_selection import KFold
-
-    metrics = [
-        'accuracy',
-        'Precision',
-        'Recall',
-        'AUC'
-    ]
-
-    tf.compat.v1.enable_eager_execution()
-
-    import tensorflow.keras.backend as K
-
-    def f_score(y_true, y_pred):
-        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-        possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
-        predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
-        precision = true_positives / (predicted_positives + K.epsilon())
-        recall = true_positives / (possible_positives + K.epsilon())
-        f1_val = 2 * (precision * recall) / (precision + recall + K.epsilon())
-        return f1_val
-
-    with open('data/trials/best_nn/space.json', 'r') as f:
-        space = json.loads(
-            str(f.read()).replace("'", '"').replace('None', 'null').replace('True', 'true').replace('False', 'false'))
-
-    model = models.Sequential()
-
-    layer = space['layers']
-
-    while layer:
-        model.add(layers.Dense(
-            layer['nodes_count'],
-            kernel_initializer=space['init'],
-            activation=layer['activation'])
-        )
-        if layer['dropout']:
-            model.add(layers.Dropout(layer['dropout']['dropout_rate'], trainable=space['trainable_dropouts']))
-        if layer['BatchNormalization']:
-            model.add(layers.BatchNormalization(trainable=space['trainable_BatchNormalization']))
-
-        layer = layer['next']
-
-    model.add(layers.Dense(1, kernel_initializer=space['init'], activation='sigmoid'))
-
-    def scheduler(epoch, lr):
-        return lr * tf.math.exp(-epoch / space['decay_steps'])
-
-    def tf_callbacks():
-        return [
-            tf.keras.callbacks.ModelCheckpoint(
-                'data/models/neural_networks_kfold/nn2.h5',
-                monitor='accuracy',
-                mode='max',
-                save_best_only=True
-            ),
-            tf.keras.callbacks.EarlyStopping(
-                monitor='val_accuracy',
-                patience=20,
-                # min_delta=0.000001,
-                mode='max',
-                verbose=0),
-            tf.keras.callbacks.EarlyStopping(
-                monitor='val_f_score',
-                patience=20,
-                # min_delta=0.000001,
-                mode='max',
-                verbose=0),
-            tf.keras.callbacks.LearningRateScheduler(scheduler)
-        ]
-
-    if space['optimizer']['type'] == 'Adadelta':
-        optimizer = optimizers.Adadelta()
-    elif space['optimizer']['type'] == 'Adagrad':
-        optimizer = optimizers.Adagrad()
-    elif space['optimizer']['type'] == 'Adam':
-        optimizer = optimizers.Adam()
-    elif space['optimizer']['type'] == 'Adamax':
-        optimizer = optimizers.Adamax()
-    elif space['optimizer']['type'] == 'Ftrl':
-        optimizer = optimizers.Ftrl()
-    elif space['optimizer']['type'] == 'Nadam':
-        optimizer = optimizers.Nadam()
-    elif space['optimizer']['type'] == 'RMSprop':
-        optimizer = optimizers.RMSprop()
-    elif space['optimizer']['type'] == 'SGD':
-        optimizer = optimizers.SGD()
-
-    optimizer.learning_rate = space['optimizer']['learning_rate']
-    if 'amsgrad' in space['optimizer']:
-        optimizer.amsgrad = space['optimizer']['amsgrad']
-    if 'centered' in space['optimizer']:
-        optimizer.centered = space['optimizer']['centered']
-    if 'momentrum' in space['optimizer']:
-        optimizer.momentum = space['optimizer']['momentum']
-    if 'nesterov' in space['optimizer']:
-        optimizer.nesterov = space['optimizer']['nesterov']
-
-
-    model.compile(
-        optimizer=optimizer,
-        loss=losses.BinaryCrossentropy(from_logits=True),
-        metrics=metrics + [f_score]
-    )
-
-    result = []
-    history = {}
-
-    for train_index, test_index in KFold(5).split(X):
-        x_train, x_test = X[train_index], X[test_index]
-        y_train, y_test = Y[train_index], Y[test_index]
-
-        h = model.fit(
-            x_train, y_train,
-            validation_data=(x_test, y_test),
-            epochs=500,
-            callbacks=tf_callbacks(),
-            verbose=2,
-            batch_size=space['batch_size'],
-            shuffle=space['shuffle']
-        )
-
-        if history:
-            history = {key: value + h.history[key] for key, value in history.items()}
-        else:
-            history = h.history
-        result.append(model.evaluate(x_test, y_test, verbose=0))
-
-        print(len(result))
-
-    m = {
-        "loss": np.mean([r[0] for r in result]),
-        "accuracy": np.mean([r[1] for r in result]),
-        "Precision": np.mean([r[2] for r in result]),
-        "Recall": np.mean([r[3] for r in result]),
-        "AUC": np.mean([r[4] for r in result]),
-        "f_score": np.mean([r[5] for r in result])
-    }
-
-    model.save("data/models/neural_networks_kfold/nn1.h5")
-    with open("data/trials/neural_networks_kfold/history.pkl", 'wb') as f:
-        pickle.dump(history, f)
-    with open("data/trials/neural_networks_kfold/metric.txt", "w") as f:
-        json.dump(m, f)
-
-    print(m)
-
-
 def find_best_NN(throughput=0.01, gap=0.1):
     with open("data/trials/neural_networks_archSearch/results.pkl", 'rb') as f:
         data = pickle.load(f)
@@ -1104,6 +950,8 @@ def neural_networks():
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
 
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
 
@@ -1116,6 +964,10 @@ def neural_networks():
 
     tf.compat.v1.enable_eager_execution()
 
+    with open('data/trials/best_nn/space.json', 'r') as f:
+        space = json.loads(
+            str(f.read()).replace("'", '"').replace('None', 'null').replace('True', 'true').replace('False', 'false'))
+
     import tensorflow.keras.backend as K
 
     def f_score(y_true, y_pred):
@@ -1127,56 +979,88 @@ def neural_networks():
         f1_val = 2 * (precision * recall) / (precision + recall + K.epsilon())
         return f1_val
 
-    model = models.Sequential([
-        layers.Dense(413, kernel_initializer='glorot_normal', activation='softsign'),
-        layers.Dropout(0.06482234761929646, trainable=True),
-        layers.BatchNormalization(trainable=True),
-        layers.Dense(1, kernel_initializer='glorot_normal', activation='sigmoid')
-    ])
+    model = models.Sequential()
+
+    layer = space['layers']
+
+    while layer:
+        model.add(layers.Dense(
+            layer['nodes_count'],
+            kernel_initializer=space['init'],
+            activation=layer['activation'])
+        )
+        if layer['dropout']:
+            model.add(layers.Dropout(layer['dropout']['dropout_rate'], trainable=space['trainable_dropouts']))
+        if layer['BatchNormalization']:
+            model.add(layers.BatchNormalization(trainable=space['trainable_BatchNormalization']))
+
+        layer = layer['next']
+
+    model.add(layers.Dense(1, kernel_initializer=space['init'], activation='sigmoid'))
 
     def scheduler(epoch, lr):
-        return lr * tf.math.exp(-epoch / 10000)
+        return lr * tf.math.exp(-epoch / space['decay_steps'])
 
     def tf_callbacks():
         return [
             tf.keras.callbacks.ModelCheckpoint(
-                'data/models/neural_networks/nn2.h5',
+                'data/models/neural_networks_archSearch/tmp.h5',
                 monitor='val_accuracy',
                 mode='max',
+                verbose=0,
                 save_best_only=True
             ),
             tf.keras.callbacks.EarlyStopping(
-                monitor='val_f_score',
-                patience=25,
-                mode='max',
-                verbose=0),
-            tf.keras.callbacks.EarlyStopping(
                 monitor='val_accuracy',
-                patience=25,
+                patience=50,
+                # min_delta=0.00001,
                 mode='max',
-                verbose=0),
-            tf.keras.callbacks.EarlyStopping(
-                monitor='val_loss',
-                patience=25,
-                mode='min',
                 verbose=0),
             tf.keras.callbacks.LearningRateScheduler(scheduler)
         ]
 
+    if space['optimizer']['type'] == 'Adadelta':
+        optimizer = optimizers.Adadelta()
+    elif space['optimizer']['type'] == 'Adagrad':
+        optimizer = optimizers.Adagrad()
+    elif space['optimizer']['type'] == 'Adam':
+        optimizer = optimizers.Adam()
+    elif space['optimizer']['type'] == 'Adamax':
+        optimizer = optimizers.Adamax()
+    elif space['optimizer']['type'] == 'Ftrl':
+        optimizer = optimizers.Ftrl()
+    elif space['optimizer']['type'] == 'Nadam':
+        optimizer = optimizers.Nadam()
+    elif space['optimizer']['type'] == 'RMSprop':
+        optimizer = optimizers.RMSprop()
+    elif space['optimizer']['type'] == 'SGD':
+        optimizer = optimizers.SGD()
+
+    optimizer.learning_rate = space['optimizer']['learning_rate']
+    if 'amsgrad' in space['optimizer']:
+        optimizer.amsgrad = space['optimizer']['amsgrad']
+    if 'centered' in space['optimizer']:
+        optimizer.centered = space['optimizer']['centered']
+    if 'momentrum' in space['optimizer']:
+        optimizer.momentum = space['optimizer']['momentum']
+    if 'nesterov' in space['optimizer']:
+        optimizer.nesterov = space['optimizer']['nesterov']
+
     model.compile(
-        optimizer=optimizers.Adamax(learning_rate=0.4880895875030107),
+        optimizer=optimizer,
         loss=losses.BinaryCrossentropy(from_logits=True),
         metrics=metrics + [f_score]
     )
 
     history = model.fit(
         x_train, y_train,
-        # validation_split=0.2,
         validation_data=(x_test, y_test),
-        epochs=500,
-        batch_size=128,
+        # validation_split=0.1,
+        epochs=1000,
         callbacks=tf_callbacks(),
-        shuffle=True
+        verbose=2,
+        batch_size=space['batch_size'],
+        shuffle=space['shuffle']
     )
 
     loss, accuracy, Precision, Recall, AUC, f_score = model.evaluate(x_test, y_test)
@@ -1202,6 +1086,8 @@ def neural_networks():
 
 def DT():
     from sklearn.tree import DecisionTreeClassifier
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
 
     try:
         with open("data/trials/DT/results.pkl", 'rb') as file:
@@ -1281,6 +1167,8 @@ def DT():
 
 def SVM():
     from sklearn.svm import SVC
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
 
     try:
         with open("data/trials/SVM/results.pkl", 'rb') as file:
@@ -1391,6 +1279,8 @@ def SVM():
 def KNN():
     from sklearn.neighbors import KNeighborsClassifier
 
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+
     try:
         with open("data/trials/kNN/results.pkl", 'rb') as file:
             trials = pickle.load(file)
@@ -1467,6 +1357,8 @@ def KNN():
 def Gaussian_NB():
     from sklearn.naive_bayes import GaussianNB
 
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+
     clf = GaussianNB()
     clf.fit(x_train, y_train)
 
@@ -1490,6 +1382,8 @@ def Gaussian_NB():
 
 def Bernoulli_NB():
     from sklearn.naive_bayes import BernoulliNB
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
 
     clf = BernoulliNB()
     clf.fit(x_train, y_train)
@@ -1515,6 +1409,8 @@ def Bernoulli_NB():
 def Complement_NB():
     from sklearn.naive_bayes import ComplementNB
 
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+
     clf = ComplementNB()
     clf.fit(x_train, y_train)
 
@@ -1538,6 +1434,8 @@ def Complement_NB():
 
 def Multinomial_NB():
     from sklearn.naive_bayes import MultinomialNB
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
 
     clf = MultinomialNB()
     clf.fit(x_train, y_train)
@@ -1565,6 +1463,8 @@ def Multinomial_NB():
 
 def ET():
     from sklearn.ensemble import ExtraTreesClassifier
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
 
     try:
         with open("data/trials/ET/results.pkl", 'rb') as file:
@@ -1649,6 +1549,8 @@ def ET():
 
 def RF():
     from sklearn.ensemble import RandomForestClassifier
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
 
     try:
         with open("data/trials/RF/results.pkl", 'rb') as file:
@@ -1735,6 +1637,8 @@ def AdaBoost_DT():
     from sklearn.ensemble import AdaBoostClassifier
     from sklearn.tree import DecisionTreeClassifier
 
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+
     try:
         with open("data/trials/AdaBoost_DT/results.pkl", 'rb') as file:
             trials = pickle.load(file)
@@ -1816,6 +1720,8 @@ def Bagging_DT():
     from sklearn.ensemble import BaggingClassifier
     from sklearn.tree import DecisionTreeClassifier
 
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+
     try:
         with open("data/trials/Bagging_DT/results.pkl", 'rb') as file:
             trials = pickle.load(file)
@@ -1893,6 +1799,8 @@ def Bagging_DT():
 
 def GradientBoost():
     from sklearn.ensemble import GradientBoostingClassifier
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
 
     try:
         with open("data/trials/GradientBoost/results.pkl", 'rb') as file:
@@ -1977,6 +1885,8 @@ def HistGradientBoost():
     from sklearn.experimental import enable_hist_gradient_boosting
     from sklearn.ensemble import HistGradientBoostingClassifier
 
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+
     try:
         with open("data/trials/HistGradientBoost/results.pkl", 'rb') as file:
             trials = pickle.load(file)
@@ -2055,6 +1965,8 @@ def HistGradientBoost():
 
 
 def Stacking():
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+
     from sklearn.experimental import enable_hist_gradient_boosting
     from sklearn.ensemble import HistGradientBoostingClassifier
     from sklearn.ensemble import AdaBoostClassifier
