@@ -678,7 +678,7 @@ def neural_networks_archSearch():
                     'momentum': hp.uniform('SGD_momentum', 0.001, 1),
                 }
             ]),
-        'batch_size': 32,
+        'batch_size': 64,
         'init': hp.choice('init', [
             'glorot_normal',
             'truncated_normal',
@@ -781,7 +781,7 @@ def neural_networks_archSearch():
                 # validation_split=0.1,
                 epochs=500,
                 callbacks=tf_callbacks(),
-                verbose=2,
+                verbose=0,
                 batch_size=space['batch_size'],
                 shuffle=space['shuffle']
             )
@@ -849,7 +849,7 @@ def neural_networks_archSearch():
         max_evals=1500,
                   # + len(trials),
         trials=trials,
-        timeout=60 * 60 * 5
+        timeout=60 * 60 * 10
     )
 
     def typer(o):
