@@ -2,7 +2,7 @@
   'bootstrap': False,
   'class_weight': None,
   'criterion': 'gini',
-  'max_features': 'sqrt',
-  'n_estimators': 80,
+  'max_features': None,
+  'n_estimators': 185,
   'oob_score': False
 }

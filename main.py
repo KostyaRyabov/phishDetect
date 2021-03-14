@@ -21,10 +21,10 @@ m3 = pickle.load(open('data/models/Bernoulli_NB/Bernoulli_NB.pkl', 'rb'))
 m4 = pickle.load(open('data/models/Complement_NB/Complement_NB.pkl', 'rb'))
 m5 = pickle.load(open('data/models/DT/DT.pkl', 'rb'))
 m6 = pickle.load(open('data/models/ET/ET.pkl', 'rb'))
-# m7 = pickle.load(open('data/models/Gaussian_NB', 'rb'))
+m7 = pickle.load(open('data/models/Gaussian_NB/Gaussian_NB.pkl', 'rb'))
 m8 = pickle.load(open('data/models/GradientBoost/GradientBoost.pkl', 'rb'))
 m9 = pickle.load(open('data/models/HistGradientBoost/HistGradientBoost.pkl', 'rb'))
-m10 = pickle.load(open('data/models/kNN/2NN.pkl', 'rb'))
+m10 = pickle.load(open('data/models/kNN/12NN.pkl', 'rb'))
 m11 = pickle.load(open('data/models/Multinomial_NB/Multinomial_NB.pkl', 'rb'))
 m12 = keras.models.load_model('data/models/neural_networks/nn1.h5', custom_objects={'f_score': f_score})
 m13 = pickle.load(open('data/models/RF/RF.pkl', 'rb'))
@@ -40,16 +40,15 @@ def check_site():
     data = [fe.extract_features(url.get())]
 
     result.configure(state='normal')
-
     result.delete(1.0, tk.END)
 
-    result.insert(tk.END, ('\nAdaBoost_DT', m1.predict(data)))
+    # result.insert(tk.END, ('\nAdaBoost_DT', m1.predict(data)))
     result.insert(tk.END, ('\nBagging_DT', m2.predict(data)))
     result.insert(tk.END, ('\nBernoulli_NB', m3.predict(data)))
     result.insert(tk.END, ('\nComplement_NB', m4.predict(data)))
     result.insert(tk.END, ('\nDT', m5.predict(data)))
     result.insert(tk.END, ('\nET', m6.predict(data)))
-    # # print('Gaussian_NB', m7.predict(data))
+    result.insert(tk.END, ('\nET', m7.predict(data)))
     result.insert(tk.END, ('\nGradientBoost', m8.predict(data)))
     result.insert(tk.END, ('\nHistGradientBoost', m9.predict(data)))
     result.insert(tk.END, ('\n2NN', m10.predict(data)))
@@ -97,6 +96,3 @@ if __name__ == "__main__":
 
 
     window.mainloop()
-
-
-

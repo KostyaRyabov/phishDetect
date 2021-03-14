@@ -1,7 +1,1 @@
-{
-  'criterion': 'mse',
-  'learning_rate': 0.7358548029040607,
-  'loss': 'deviance',
-  'max_features': 'auto',
-  'n_estimators': 244
-}
+{'criterion': 'friedman_mse', 'learning_rate': 0.8350389335928043, 'loss': 'deviance', 'max_features': None, 'n_estimators': 139}
