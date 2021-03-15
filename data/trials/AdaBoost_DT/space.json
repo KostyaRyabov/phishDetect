@@ -1,6 +1,6 @@
 {
   'algorithm': 'SAMME',
-  'learning_rate': 0.6844446777168631,
-  'max_depth': 9,
-  'n_estimators': 113
+  'learning_rate': 0.5492431252157344,
+  'max_depth': 11,
+  'n_estimators': 63
 }

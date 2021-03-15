@@ -1,8 +1,9 @@
 {
-  'C': 15441.433713190638,
+  'C': 42300.469903089426,
   'kernel': {
-    'gamma': 'auto',
-    'type': 'rbf'
+    'coef0': -4.669941268932323,
+    'gamma': 'scale',
+    'type': 'sigmoid'
   },
   'random_state': 42
 }

@@ -236,240 +236,6 @@ headers = {
         "срок действия сертификата",
         "кол-во альтернативных имен в сертификате"
     ],
-    # 'stats': [
-    #     'word_ratio',
-    #
-    #                 #   URL FEATURES
-    #
-    #                 'uf.having_ip_address(url)',
-    #                 'uf.shortening_service(url)',
-    #
-    #                 "cert!=None",
-    #                 "good_netloc",
-    #
-    #                 'uf.url_length(r_url)',
-    #
-    #                 'uf.count_at(r_url)',
-    #                 'uf.count_exclamation(r_url)',
-    #                 'uf.count_plust(r_url)',
-    #                 'uf.count_sBrackets(r_url)',
-    #                 'uf.count_rBrackets(r_url)',
-    #                 'uf.count_comma(r_url)',
-    #                 'uf.count_dollar(r_url)',
-    #                 'uf.count_semicolumn(r_url)',
-    #                 'uf.count_space(r_url)',
-    #                 'uf.count_and(r_url)',
-    #                 'uf.count_double_slash(r_url)',
-    #                 'uf.count_slash(r_url)',
-    #                 'uf.count_equal(r_url)',
-    #                 'uf.count_percentage(r_url)',
-    #                 'uf.count_question(r_url)',
-    #                 'uf.count_underscore(r_url)',
-    #                 'uf.count_hyphens(r_url)',
-    #                 'uf.count_dots(r_url)',
-    #                 'uf.count_colon(r_url)',
-    #                 'uf.count_star(r_url)',
-    #                 'uf.count_or(r_url)',
-    #                 'uf.count_tilde(r_url)',
-    #                 'uf.count_http_token(r_url)',
-    #
-    #                 'uf.https_token(scheme)',
-    #
-    #                 'uf.ratio_digits(r_url)',
-    #                 'uf.count_digits(r_url)',
-    #
-    #                 "cf.count_phish_hints(url_words, phish_hints)",
-    #                 "(len(url_words), 0)",
-    #
-    #                 'uf.tld_in_path(tld,path)',
-    #                 'uf.tld_in_subdomain(tld,subdomain)',
-    #                 'uf.tld_in_bad_position(tld,subdomain,path)',
-    #                 'uf.abnormal_subdomain(r_url)',
-    #
-    #                 'uf.count_redirection(request)',
-    #                 'uf.count_external_redirection(request,domain)',
-    #
-    #                 'uf.random_domain(second_level_domain)',
-    #
-    #                 'uf.random_words(words_raw)',
-    #                 'uf.random_words(words_raw_host)',
-    #                 'uf.random_words(words_raw_path)',
-    #
-    #                 'uf.char_repeat(words_raw)',
-    #                 'uf.char_repeat(words_raw_host)',
-    #                 'uf.char_repeat(words_raw_path)',
-    #
-    #                 'uf.punycode(r_url)',
-    #                 'uf.domain_in_brand(second_level_domain)',
-    #                 'uf.brand_in_path(second_level_domain, words_raw_path)',
-    #                 'uf.check_www(words_raw)',
-    #                 'uf.check_com(words_raw)',
-    #
-    #                 'uf.port(r_url)',
-    #
-    #                 'uf.length_word_raw(words_raw)',
-    #                 'uf.average_word_length(words_raw)',
-    #                 'uf.longest_word_length(words_raw)',
-    #                 'uf.shortest_word_length(words_raw)',
-    #
-    #                 'uf.prefix_suffix(r_url)',
-    #
-    #                 'uf.count_subdomain(r_url)',
-    #
-    #                 'uf.count_visual_similarity_domains(second_level_domain)',
-    #
-    #                 #   CONTENT FEATURE
-    #                 #       (static)
-    #
-    #                 'cf.compression_ratio(request)',
-    #                 'cf.count_textareas(content)',
-    #                 'cf.ratio_js_on_html(Text)',
-    #
-    #                 'len(iUrl_s)+len(eUrl_s)',
-    #                 'cf.urls_ratio(iUrl_s,iUrl_s+eUrl_s+nUrl_s)',
-    #                 'cf.urls_ratio(eUrl_s,iUrl_s+eUrl_s+nUrl_s)',
-    #                 'cf.urls_ratio(nUrl_s,iUrl_s+eUrl_s+nUrl_s)',
-    #                 "cf.ratio_List(CSS,'internals')",
-    #                 "cf.ratio_List(CSS,'externals')",
-    #                 "cf.ratio_List(CSS,'embedded')",
-    #                 "cf.ratio_List(SCRIPT,'internals')",
-    #                 "cf.ratio_List(SCRIPT,'externals')",
-    #                 "cf.ratio_List(SCRIPT,'embedded')",
-    #                 "cf.ratio_List(Img,'externals')",
-    #                 "cf.ratio_List(Img,'internals')",
-    #                 "cf.count_reqs_redirections(reqs_iData_s)",
-    #                 "cf.count_reqs_redirections(reqs_eData_s)",
-    #                 "cf.count_reqs_error(reqs_iData_s)",
-    #                 "cf.count_reqs_error(reqs_eData_s)",
-    #                 "cf.login_form(Form)",
-    #                 "cf.ratio_List(Favicon,'externals')",
-    #                 "cf.ratio_List(Favicon,'internals')",
-    #                 "cf.submitting_to_email(Form)",
-    #                 "cf.ratio_List(Media,'internals')",
-    #                 "cf.ratio_List(Media,'externals')",
-    #                 "cf.empty_title(Title)",
-    #                 "cf.ratio_anchor(Anchor,'unsafe')",
-    #                 "cf.ratio_anchor(Anchor,'safe')",
-    #                 "cf.ratio_List(Link,'internals')",
-    #                 "cf.ratio_List(Link,'externals')",
-    #                 "cf.iframe(IFrame)",
-    #                 "cf.onmouseover(content)",
-    #                 "cf.popup_window(content)",
-    #                 "cf.right_clic(content)",
-    #                 "cf.domain_in_text(second_level_domain,Text)",
-    #                 "cf.domain_in_text(second_level_domain,Title)",
-    #                 "cf.domain_with_copyright(domain,content)",
-    #                 "cf.count_phish_hints(Text, phish_hints)",
-    #                 "(len(sContent_words), 0)",
-    #                 "cf.ratio_Txt(iImgTxt_words+eImgTxt_words,sContent_words)",
-    #                 "cf.ratio_Txt(iImgTxt_words,sContent_words)",
-    #                 "cf.ratio_Txt(eImgTxt_words,sContent_words)",
-    #                 "cf.ratio_Txt(eImgTxt_words,iImgTxt_words)",
-    #
-    #                 #       (dynamic)
-    #
-    #                 "cf.ratio_dynamic_html(Text,"".join([Text_di,Text_de]))",
-    #
-    #                 #       (dynamic internals)
-    #
-    #                 "cf.ratio_dynamic_html(Text,Text_di)",
-    #                 "cf.ratio_js_on_html(Text_di)",
-    #                 "cf.count_textareas(content_di)",
-    #
-    #                 "len(iUrl_di)+len(eUrl_di)",
-    #                 "cf.urls_ratio(iUrl_di,iUrl_di+eUrl_di+nUrl_di)",
-    #                 "cf.urls_ratio(eUrl_di,iUrl_di+eUrl_di+nUrl_di)",
-    #                 "cf.urls_ratio(nUrl_di,iUrl_di+eUrl_di+nUrl_di)",
-    #                 "cf.ratio_List(CSS_di,'internals')",
-    #                 "cf.ratio_List(CSS_di,'externals')",
-    #                 "cf.ratio_List(CSS_di,'embedded')",
-    #                 "cf.ratio_List(SCRIPT_di,'internals')",
-    #                 "cf.ratio_List(SCRIPT_di,'externals')",
-    #                 "cf.ratio_List(SCRIPT_di,'embedded')",
-    #                 "cf.ratio_List(Img_di,'externals')",
-    #                 "cf.ratio_List(Img_di,'internals')",
-    #                 "cf.count_reqs_redirections(reqs_iData_di)",
-    #                 "cf.count_reqs_redirections(reqs_eData_di)",
-    #                 "cf.count_reqs_error(reqs_iData_di)",
-    #                 "cf.count_reqs_error(reqs_eData_di)",
-    #                 "cf.login_form(Form_di)",
-    #                 "cf.ratio_List(Favicon_di,'externals')",
-    #                 "cf.ratio_List(Favicon_di,'internals')",
-    #                 "cf.submitting_to_email(Form_di)",
-    #                 "cf.ratio_List(Media_di,'internals')",
-    #                 "cf.ratio_List(Media_di,'externals')",
-    #                 "cf.empty_title(Title_di)",
-    #                 "cf.ratio_anchor(Anchor_di,'unsafe')",
-    #                 "cf.ratio_anchor(Anchor_di,'safe')",
-    #                 "cf.ratio_List(Link_di,'internals')",
-    #                 "cf.ratio_List(Link_di,'externals')",
-    #                 "cf.iframe(IFrame_di)",
-    #                 "cf.onmouseover(content_di)",
-    #                 "cf.popup_window(content_di)",
-    #                 "cf.right_clic(content_di)",
-    #                 "cf.domain_in_text(second_level_domain,Text_di)",
-    #                 "cf.domain_in_text(second_level_domain,Title_di)",
-    #                 "cf.domain_with_copyright(domain,content_di)",
-    #
-    #                 "cf.count_io_commands(internals_script_doc)",
-    #                 "cf.count_phish_hints(Text_di,phish_hints)",
-    #                 "(len(diContent_words), 0)",
-    #
-    #                 #       (dynamic externals)
-    #
-    #                 "cf.ratio_dynamic_html(Text,Text_de)",
-    #                 "cf.ratio_js_on_html(Text_de)",
-    #                 "cf.count_textareas(content_de)",
-    #
-    #                 "len(iUrl_de)+len(eUrl_de)",
-    #                 "cf.urls_ratio(iUrl_de,iUrl_de+eUrl_de+nUrl_de)",
-    #                 "cf.urls_ratio(eUrl_de,iUrl_de+eUrl_de+nUrl_de)",
-    #                 "cf.urls_ratio(nUrl_de,iUrl_de+eUrl_de+nUrl_de)",
-    #                 "cf.ratio_List(CSS_de,'internals')",
-    #                 "cf.ratio_List(CSS_de,'externals')",
-    #                 "cf.ratio_List(CSS_de,'embedded')",
-    #                 "cf.ratio_List(SCRIPT_de,'internals')",
-    #                 "cf.ratio_List(SCRIPT_de,'externals')",
-    #                 "cf.ratio_List(SCRIPT_de,'embedded')",
-    #                 "cf.ratio_List(Img_de,'externals')",
-    #                 "cf.ratio_List(Img_de,'internals')",
-    #                 "cf.count_reqs_redirections(reqs_iData_de)",
-    #                 "cf.count_reqs_redirections(reqs_eData_de)",
-    #                 "cf.count_reqs_error(reqs_iData_de)",
-    #                 "cf.count_reqs_error(reqs_eData_de)",
-    #                 "cf.login_form(Form_de)",
-    #                 "cf.ratio_List(Favicon_de,'externals')",
-    #                 "cf.ratio_List(Favicon_de,'internals')",
-    #                 "cf.submitting_to_email(Form_de)",
-    #                 "cf.ratio_List(Media_de,'internals')",
-    #                 "cf.ratio_List(Media_de,'externals')",
-    #                 "cf.empty_title(Title_de)",
-    #                 "cf.ratio_anchor(Anchor_de,'unsafe')",
-    #                 "cf.ratio_anchor(Anchor_de,'safe')",
-    #                 "cf.ratio_List(Link_de,'internals')",
-    #                 "cf.ratio_List(Link_de,'externals')",
-    #                 "cf.iframe(IFrame_de)",
-    #                 "cf.onmouseover(content_de)",
-    #                 'cf.popup_window(content_de)',
-    #                 "cf.right_clic(content_de)",
-    #                 "cf.domain_in_text(second_level_domain,Text_de)",
-    #                 "cf.domain_in_text(second_level_domain,Title_de)",
-    #                 "cf.domain_with_copyright(domain,content_de)",
-    #
-    #                 "cf.count_io_commands(externals_script_doc)",
-    #                 "cf.count_phish_hints(Text_de,phish_hints)",
-    #                 "(len(deContent_words), 0)",
-    #
-    #                 #   EXTERNAL FEATURES
-    #
-    #                 'ef.domain_registration_length(domain)',
-    #                 "ef.whois_registered_domain(domain)",
-    #                 "ef.web_traffic(r_url)",
-    #                 "ef.page_rank(domain)",
-    #                 "ef.remainder_valid_cert(hostinfo.cert)",
-    #                 "ef.valid_cert_period(hostinfo.cert)",
-    #                 "ef.count_alt_names(hostinfo.cert)"
-    # ],
     'metadata': [
         'url',
         'lang',
@@ -492,7 +258,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, recall_scor
 from math import ceil
 
 frame = pandas.read_csv('data/datasets/OUTPUT/dataset.csv')
-cols = [col for col in headers['stats'] if col in list(frame)]
+cols = [col for col in headers['stats'] if col in list(frame)][:-1]
 X = frame[cols].to_numpy()
 Y = frame['status'].to_numpy()
 
@@ -581,7 +347,7 @@ def neural_networks_archSearch():
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
@@ -611,7 +377,6 @@ def neural_networks_archSearch():
         if N == 0:
             return None
         return hp.choice('layer_{}'.format(M - N), [
-            None,
             {
                 'activation': hp.choice('activation_{}'.format(M - N), [
                     'selu',
@@ -631,7 +396,8 @@ def neural_networks_archSearch():
                 ]),
                 'BatchNormalization': hp.choice('BatchNormalization_{}'.format(M - N), [False, True]),
                 'next': layer(N - 1, M)
-            }
+            },
+            None
         ])
 
     space = {
@@ -678,7 +444,7 @@ def neural_networks_archSearch():
                     'momentum': hp.uniform('SGD_momentum', 0.001, 1),
                 }
             ]),
-        'batch_size': 64,
+        'batch_size': 32,
         'init': hp.choice('init', [
             'glorot_normal',
             'truncated_normal',
@@ -734,8 +500,8 @@ def neural_networks_archSearch():
                 ),
                 tf.keras.callbacks.EarlyStopping(
                     monitor='val_accuracy',
-                    patience=25,
-                    min_delta=0.00001,
+                    patience=15,
+                    min_delta=0.0001,
                     mode='max',
                     verbose=0),
                 tf.keras.callbacks.LearningRateScheduler(scheduler)
@@ -781,7 +547,7 @@ def neural_networks_archSearch():
                 # validation_split=0.1,
                 epochs=500,
                 callbacks=tf_callbacks(),
-                verbose=0,
+                verbose=2,
                 batch_size=space['batch_size'],
                 shuffle=space['shuffle']
             )
@@ -846,10 +612,10 @@ def neural_networks_archSearch():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=1500,
+        max_evals=700,
                   # + len(trials),
         trials=trials,
-        timeout=60 * 60 * 10
+        timeout=60 * 60 * 1
     )
 
     def typer(o):
@@ -864,93 +630,69 @@ def neural_networks_archSearch():
         pickle.dump(trials, output)
 
 
-def find_best_NN(throughput=0.01, gap=0.1):
+def find_best_NN(throughput=0.01, std=0.02, back_search=False):
     with open("data/trials/neural_networks_archSearch/results.pkl", 'rb') as f:
         data = pickle.load(f)
 
     metrics = []
 
-    columns = [
-        'id',
-        'loss',
-        'accuracy',
-        'precision',
-        'recall',
-        'auc',
-        'f_score'
-    ]
+    import numpy as np
 
     for idx, raw in enumerate(data.results):
         history = raw['history']
 
         if history:
-            if (history['val_loss'][-1] - history['loss'][-1]) <= throughput \
-                    and (history['val_accuracy'][-1] - history['accuracy'][-1]) >= -throughput \
-                    and (history['val_f_score'][-1] - history['f_score'][-1]) >= -throughput\
-                    and abs(history['val_loss'][-1] - history['loss'][-1]) <= gap\
-                    and abs(history['val_accuracy'][-1] - history['accuracy'][-1]) <= gap\
-                    and abs(history['val_f_score'][-1] - history['f_score'][-1]) <= gap:
+            if back_search:
+                maxf = -1
+            else:
+                maxf = np.argmax(history['val_f_score'])
 
-                metrics.append([idx] + list(raw['metrics'].values()))
+            c_len = len(history['val_f_score']) // 3
 
-    id = pandas.DataFrame(metrics, columns=columns).sort_values(
-        'f_score', ascending=False
+            if (history['val_loss'][maxf] - history['loss'][maxf]) <= throughput \
+                    and (history['val_accuracy'][maxf] - history['accuracy'][maxf]) >= -throughput \
+                    and (history['val_f_score'][maxf] - history['f_score'][maxf]) >= -throughput \
+                    and (history['val_precision'][maxf] - history['precision'][maxf]) >= -throughput \
+                    and (history['val_auc'][maxf] - history['auc'][maxf]) >= -throughput \
+                    and (history['val_recall'][maxf] - history['recall'][maxf]) >= -throughput \
+                    and (np.array(history['val_loss'][:-c_len]) - np.array(history['loss'][:-c_len])).std() <= std\
+                    and (np.array(history['val_precision'][:-c_len]) - np.array(history['precision'][:-c_len])).std() <= std\
+                    and (np.array(history['val_recall'][:-c_len]) - np.array(history['recall'][:-c_len])).std() <= std:
+
+                metrics.append([idx] + [history['val_f_score'][maxf]])
+
+    id = pandas.DataFrame(metrics, columns=['id', 'max_f_score']).sort_values(
+        'max_f_score', ascending=False
     ).head(1)['id']
 
-    # for i in df['id']:
-    #     history = data.results[i]['history']
-    #
-    #     l = len(history['loss'])//4
-    #
-    #     stats.append([
-    #         i,
-    #         (np.array(history['val_loss'][-l:]) - np.array(history['loss'][-l:])).std(),
-    #         (np.array(history['val_accuracy'][-l:]) - np.array(history['accuracy'][-l:])).std(),
-    #         (np.array(history['val_precision'][-l:]) - np.array(history['precision'][-l:])).std(),
-    #         (np.array(history['val_recall'][-l:]) - np.array(history['recall'][-l:])).std(),
-    #         (np.array(history['val_auc'][-l:]) - np.array(history['auc'][-l:])).std(),
-    #         (np.array(history['val_f_score'][-l:]) - np.array(history['f_score'][-l:])).std()
-    #     ])
-    #
-    #
-    # sorted_keys = pandas.DataFrame(stats, columns=columns).sort_values(
-    #     'loss', ascending=True
-    # ).head(5).sort_values(
-    #     'recall', ascending=True
-    # ).head(4).sort_values(
-    #     'precision', ascending=True
-    # ).head(3).sort_values(
-    #     'accuracy', ascending=True
-    # ).head(2).sort_values(
-    #     'f_score', ascending=True
-    # ).head(1)['id']
+    if not id.empty:
+        print("id = {}; len = {}".format(int(id), len(metrics)))
 
-    # df = df[df['id'].isin(sorted_keys)].sort_values('f_score', ascending=False)
-    # df = df[df['id'] == int(sorted_keys)]
-    # print(df)
+        best = data.results[int(id)]
 
-    best = data.results[int(id)]
+        draw(best['history'], [
+            'accuracy',
+            'precision',
+            'recall',
+            'auc',
+            'f_score',
+            'loss'
+        ], 'best_nn')
 
-    draw(best['history'], [
-        'accuracy',
-        'precision',
-        'recall',
-        'auc',
-        'f_score',
-        'loss'
-    ], 'best_nn')
+        with open("data/trials/best_nn/space.json", "w") as f:
+            f.write(str(best['space']))
+        with open("data/trials/best_nn/metrics.json", "w") as f:
+            json.dump(best['metrics'], f)
 
-    with open("data/trials/best_nn/space.json", "w") as f:
-        f.write(str(best['space']))
-    with open("data/trials/best_nn/metrics.json", "w") as f:
-        json.dump(best['metrics'], f)
+    else:
+        print('ERROR: selection criteria are too strict!')
 
 
 def neural_networks():
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
@@ -1004,18 +746,13 @@ def neural_networks():
     def tf_callbacks():
         return [
             tf.keras.callbacks.ModelCheckpoint(
-                'data/models/neural_networks_archSearch/tmp.h5',
+                'data/models/neural_networks/nn2.h5',
                 monitor='val_accuracy',
                 mode='max',
                 verbose=0,
+                save_weights_only=True,
                 save_best_only=True
             ),
-            tf.keras.callbacks.EarlyStopping(
-                monitor='val_accuracy',
-                patience=50,
-                # min_delta=0.00001,
-                mode='max',
-                verbose=0),
             tf.keras.callbacks.LearningRateScheduler(scheduler)
         ]
 
@@ -1055,7 +792,6 @@ def neural_networks():
     history = model.fit(
         x_train, y_train,
         validation_data=(x_test, y_test),
-        # validation_split=0.1,
         epochs=1000,
         callbacks=tf_callbacks(),
         verbose=2,
@@ -1087,7 +823,7 @@ def neural_networks():
 def DT():
     from sklearn.tree import DecisionTreeClassifier
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     try:
         with open("data/trials/DT/results.pkl", 'rb') as file:
@@ -1149,9 +885,9 @@ def DT():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=10 + len(trials),
+        max_evals=100,
         trials=trials,
-        timeout=60 * 10
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1168,7 +904,7 @@ def DT():
 def SVM():
     from sklearn.svm import SVC
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     try:
         with open("data/trials/SVM/results.pkl", 'rb') as file:
@@ -1209,8 +945,8 @@ def SVM():
             C=space['C'],
             random_state=space['random_state'],
             kernel=space['kernel']['type'],
-            max_iter=10000000,
-            # tol=1e-2
+            max_iter=10000,
+            tol=1e-2
         )
 
         if 'coef0' in space['kernel']:
@@ -1260,9 +996,9 @@ def SVM():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=50 + len(trials),
+        max_evals=200,
         trials=trials,
-        timeout=60 * 10
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1279,7 +1015,7 @@ def SVM():
 def KNN():
     from sklearn.neighbors import KNeighborsClassifier
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     try:
         with open("data/trials/kNN/results.pkl", 'rb') as file:
@@ -1338,7 +1074,7 @@ def KNN():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=8 + len(trials),
+        max_evals=100 + len(trials),
         trials=trials,
         timeout=60 * 20 * 1
     )
@@ -1357,7 +1093,7 @@ def KNN():
 def Gaussian_NB():
     from sklearn.naive_bayes import GaussianNB
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     clf = GaussianNB()
     clf.fit(x_train, y_train)
@@ -1383,7 +1119,7 @@ def Gaussian_NB():
 def Bernoulli_NB():
     from sklearn.naive_bayes import BernoulliNB
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     clf = BernoulliNB()
     clf.fit(x_train, y_train)
@@ -1409,7 +1145,7 @@ def Bernoulli_NB():
 def Complement_NB():
     from sklearn.naive_bayes import ComplementNB
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     clf = ComplementNB()
     clf.fit(x_train, y_train)
@@ -1435,7 +1171,7 @@ def Complement_NB():
 def Multinomial_NB():
     from sklearn.naive_bayes import MultinomialNB
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     clf = MultinomialNB()
     clf.fit(x_train, y_train)
@@ -1464,7 +1200,7 @@ def Multinomial_NB():
 def ET():
     from sklearn.ensemble import ExtraTreesClassifier
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     try:
         with open("data/trials/ET/results.pkl", 'rb') as file:
@@ -1473,7 +1209,7 @@ def ET():
         trials = Trials()
 
     space = {
-        'n_estimators': hp.randint('n_estimators', 248) + 2,
+        'n_estimators': hp.randint('n_estimators', 98) + 2,
         'criterion': hp.choice('criterion', ['gini', 'entropy']),
         'max_features': hp.choice('max_features', ['sqrt', 'log2', None]),
         'bootstrap': hp.choice('bootstrap', [False, True]),
@@ -1531,7 +1267,7 @@ def ET():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=100 + len(trials),
+        max_evals=100,
         trials=trials,
         timeout=60 * 30
     )
@@ -1550,7 +1286,7 @@ def ET():
 def RF():
     from sklearn.ensemble import RandomForestClassifier
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     try:
         with open("data/trials/RF/results.pkl", 'rb') as file:
@@ -1559,7 +1295,7 @@ def RF():
         trials = Trials()
 
     space = {
-        'n_estimators': hp.randint('n_estimators', 148) + 2,
+        'n_estimators': hp.randint('n_estimators', 98) + 2,
         'criterion': hp.choice('criterion', ['gini', 'entropy']),
         'max_features': hp.choice('max_features', ['sqrt', 'log2']),
         'bootstrap': hp.choice('bootstrap', [False, True]),
@@ -1617,7 +1353,7 @@ def RF():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=100 + len(trials),
+        max_evals=100,
         trials=trials,
         timeout=60 * 30
     )
@@ -1637,7 +1373,7 @@ def AdaBoost_DT():
     from sklearn.ensemble import AdaBoostClassifier
     from sklearn.tree import DecisionTreeClassifier
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     try:
         with open("data/trials/AdaBoost_DT/results.pkl", 'rb') as file:
@@ -1646,10 +1382,10 @@ def AdaBoost_DT():
         trials = Trials()
 
     space = {
-        'n_estimators': hp.randint('n_estimators', 148) + 2,
+        'n_estimators': hp.randint('n_estimators',  98) + 2,
         'learning_rate': hp.uniform('learning_rate', 0, 1),
         'algorithm': hp.choice('algorithm', ['SAMME', 'SAMME.R']),
-        'max_depth': hp.randint('max_depth', 9)+1
+        'max_depth': hp.randint('max_depth', 19)+1
     }
 
     def objective(space):
@@ -1700,9 +1436,9 @@ def AdaBoost_DT():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=37 + len(trials),
+        max_evals=200,
         trials=trials,
-        timeout=60 * 10
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1720,7 +1456,7 @@ def Bagging_DT():
     from sklearn.ensemble import BaggingClassifier
     from sklearn.tree import DecisionTreeClassifier
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     try:
         with open("data/trials/Bagging_DT/results.pkl", 'rb') as file:
@@ -1729,9 +1465,9 @@ def Bagging_DT():
         trials = Trials()
 
     space = {
-        'n_estimators': hp.randint('n_estimators', 148) + 2,
+        'n_estimators': hp.randint('n_estimators', 98) + 2,
         'bootstrap_features': hp.choice('bootstrap_features', [False, True]),
-        'max_depth': hp.randint('max_depth', 9)+1
+        'max_depth': hp.randint('max_depth', 19)+1
     }
 
     def objective(space):
@@ -1781,7 +1517,7 @@ def Bagging_DT():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=100 + len(trials),
+        max_evals=200,
         trials=trials,
         timeout=60 * 30
     )
@@ -1800,7 +1536,7 @@ def Bagging_DT():
 def GradientBoost():
     from sklearn.ensemble import GradientBoostingClassifier
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     try:
         with open("data/trials/GradientBoost/results.pkl", 'rb') as file:
@@ -1809,7 +1545,7 @@ def GradientBoost():
         trials = Trials()
 
     space = {
-        'n_estimators': hp.randint('n_estimators', 148) + 2,
+        'n_estimators': hp.randint('n_estimators',  98) + 2,
         'learning_rate': hp.uniform('learning_rate', 0, 1),
         'loss': hp.choice('loss', ['deviance', 'exponential']),
         'criterion': hp.choice('criterion', ['friedman_mse', 'mse']),
@@ -1865,7 +1601,7 @@ def GradientBoost():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=100 + len(trials),
+        max_evals=500,
         trials=trials,
         timeout=60 * 30
     )
@@ -1885,7 +1621,7 @@ def HistGradientBoost():
     from sklearn.experimental import enable_hist_gradient_boosting
     from sklearn.ensemble import HistGradientBoostingClassifier
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     try:
         with open("data/trials/HistGradientBoost/results.pkl", 'rb') as file:
@@ -1944,9 +1680,9 @@ def HistGradientBoost():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=100 + len(trials),
+        max_evals=500,
         trials=trials,
-        timeout=60 * 10
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1965,7 +1701,7 @@ def HistGradientBoost():
 
 
 def Stacking():
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     from sklearn.experimental import enable_hist_gradient_boosting
     from sklearn.ensemble import HistGradientBoostingClassifier
@@ -1989,56 +1725,62 @@ def Stacking():
 
     estimators = [
         ('SVM', SVC(
-            C=15441.43371319063,
+            C=42300.469903089426,
             random_state=42,
-            kernel='rbf',
-            gamma='auto',
-            max_iter=1000000,
+            kernel='sigmoid',
+            gamma='scale',
+            coef0=-4.669941268932323,
+            max_iter=100000,
         )),
         ('GNB', GaussianNB()),
         ('BNB', BernoulliNB()),
         ('CNB', ComplementNB()),
         ('MNB', MultinomialNB()),
         ('RF', RandomForestClassifier(
-            class_weight='balanced_subsample',
-            n_estimators=102,
-            max_features='log2',
+            class_weight='balanced',
+            n_estimators=96,
+            max_features='sqrt',
+            criterion='gini',
             bootstrap=False,
             oob_score=False
         )),
         ('HGBC', HistGradientBoostingClassifier(
-            learning_rate=0.2776671879915404
+            learning_rate=0.5410893212663248,
+            loss='auto'
         )),
         ('GBC', GradientBoostingClassifier(
-            learning_rate=0.447268184247265,
-            loss='exponential',
-            n_estimators=944,
+            learning_rate=0.7395211845757522,
+            loss='deviance',
+            n_estimators=92,
             criterion='mse',
             max_features=None
         )),
         ('AdaBoost_DT', AdaBoostClassifier(
-            DecisionTreeClassifier(max_depth=9),
-            n_estimators=113,
-            learning_rate=0.6844446777168631,
+            DecisionTreeClassifier(max_depth=11),
+            n_estimators=63,
+            learning_rate=0.5492431252157344,
             algorithm='SAMME'
         )),
         ('kNN', KNeighborsClassifier(
             algorithm='kd_tree',
             weights='distance',
-            n_neighbors=12,
+            n_neighbors=8,
             p=1
         )),
         ('ET', ExtraTreesClassifier(
-            n_estimators=185,
-            max_features=None
+            n_estimators=86,
+            max_features=None,
+            criterion='gini',
+            class_weight='balanced_subsample'
         )),
         ('DT', DecisionTreeClassifier(
             criterion='entropy',
+            splitter='best',
             max_features=None
         )),
         ('Bagging_DT', BaggingClassifier(
-            DecisionTreeClassifier(max_depth=9),
-            n_estimators=119,
+            DecisionTreeClassifier(max_depth=19),
+            n_estimators=88,
             bootstrap_features=True
         ))
     ]

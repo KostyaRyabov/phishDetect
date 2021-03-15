@@ -1,8 +1,8 @@
 {
   'bootstrap': False,
-  'class_weight': 'balanced_subsample',
+  'class_weight': 'balanced',
   'criterion': 'gini',
-  'max_features': 'log2',
-  'n_estimators': 102,
+  'max_features': 'sqrt',
+  'n_estimators': 96,
   'oob_score': False
 }

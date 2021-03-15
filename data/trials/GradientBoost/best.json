@@ -1,1 +1,1 @@
-{"criterion": 0, "learning_rate": 0.8350389335928043, "loss": 0, "max_features": 2, "n_estimators": 137}
+{"criterion": 1, "learning_rate": 0.7395211845757522, "loss": 0, "max_features": 2, "n_estimators": 90}
