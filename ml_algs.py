@@ -306,12 +306,14 @@ def draw(history, metrics, dir):
     h = ceil(len(metrics) / 2)
     fig, axs = plt.subplots(h, 2, figsize=(2 * 5, h * 5), dpi=400)
 
+    axs = axs.reshape(h, 2)
+
     for i in range(len(metrics)):
-        axs[i % 3, i // 3].plot(history[metrics[i]])
-        axs[i % 3, i // 3].plot(history['val_{}'.format(metrics[i])])
-        axs[i % 3, i // 3].set(xlabel='epoch', ylabel=metrics[i])
-        axs[i % 3, i // 3].set_title(metrics[i])
-        axs[i % 3, i // 3].legend(['train', 'test'], loc='best')
+        axs[i % h, i // h].plot(history[metrics[i]])
+        axs[i % h, i // h].plot(history['val_{}'.format(metrics[i])])
+        axs[i % h, i // h].set(xlabel='epoch', ylabel=metrics[i])
+        axs[i % h, i // h].set_title(metrics[i])
+        axs[i % h, i // h].legend(['train', 'test'], loc='best')
 
     fig.savefig('data/trials/{}/stats.png'.format(dir))
     fig.clf()
@@ -697,29 +699,13 @@ def neural_networks():
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
 
-    metrics = [
-        'accuracy',
-        'Precision',
-        'Recall',
-        'AUC'
-    ]
+    metrics = ['accuracy']
 
     tf.compat.v1.enable_eager_execution()
 
     with open('data/trials/best_nn/space.json', 'r') as f:
         space = json.loads(
             str(f.read()).replace("'", '"').replace('None', 'null').replace('True', 'true').replace('False', 'false'))
-
-    import tensorflow.keras.backend as K
-
-    def f_score(y_true, y_pred):
-        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-        possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
-        predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
-        precision = true_positives / (predicted_positives + K.epsilon())
-        recall = true_positives / (possible_positives + K.epsilon())
-        f1_val = 2 * (precision * recall) / (precision + recall + K.epsilon())
-        return f1_val
 
     model = models.Sequential()
 
@@ -750,9 +736,13 @@ def neural_networks():
                 monitor='val_accuracy',
                 mode='max',
                 verbose=0,
-                save_weights_only=True,
                 save_best_only=True
             ),
+            tf.keras.callbacks.EarlyStopping(
+                monitor='val_accuracy',
+                patience=50,
+                mode='max',
+                verbose=0),
             tf.keras.callbacks.LearningRateScheduler(scheduler)
         ]
 
@@ -786,7 +776,7 @@ def neural_networks():
     model.compile(
         optimizer=optimizer,
         loss=losses.BinaryCrossentropy(from_logits=True),
-        metrics=metrics + [f_score]
+        metrics=metrics
     )
 
     history = model.fit(
@@ -799,16 +789,9 @@ def neural_networks():
         shuffle=space['shuffle']
     )
 
-    loss, accuracy, Precision, Recall, AUC, f_score = model.evaluate(x_test, y_test)
+    loss, accuracy = model.evaluate(x_test, y_test)
 
-    m = {
-        "loss": loss,
-        "accuracy": accuracy,
-        "Precision": Precision,
-        "Recall": Recall,
-        "AUC": AUC,
-        "f_score": f_score
-    }
+    m = {"loss": loss, "accuracy": accuracy}
 
     model.save("data/models/neural_networks/nn1.h5")
     with open("data/trials/neural_networks/history.pkl", 'wb') as f:
@@ -817,7 +800,7 @@ def neural_networks():
         json.dump(m, f)
 
     print(m)
-    draw(history.history, ['accuracy', 'precision', 'recall', 'auc', 'loss', 'f_score'], 'neural_networks')
+    draw(history.history, metrics + ['loss'], 'neural_networks')
 
 
 def DT():
