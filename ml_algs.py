@@ -740,7 +740,7 @@ def neural_networks():
             ),
             tf.keras.callbacks.EarlyStopping(
                 monitor='val_accuracy',
-                patience=50,
+                patience=25,
                 mode='max',
                 verbose=0),
             tf.keras.callbacks.LearningRateScheduler(scheduler)
@@ -782,7 +782,7 @@ def neural_networks():
     history = model.fit(
         x_train, y_train,
         validation_data=(x_test, y_test),
-        epochs=1000,
+        epochs=160,
         callbacks=tf_callbacks(),
         verbose=2,
         batch_size=space['batch_size'],
