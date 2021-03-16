@@ -1,5 +1,1 @@
-{
-  'bootstrap_features': True,
-  'max_depth': 9,
-  'n_estimators': 119
-}
+{'bootstrap_features': True, 'max_depth': 19, 'n_estimators': 88}

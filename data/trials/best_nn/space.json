@@ -1,24 +1,30 @@
 {
   'batch_size': 32,
-  'decay_steps': 723600,
-  'init': 'glorot_uniform',
+  'decay_steps': 925900,
+  'init': 'truncated_normal',
   'layers': {
     'BatchNormalization': True,
-    'activation': 'exponential',
-    'dropout': {
-      'dropout_rate': 0.13498250444278895
-    },
+    'activation': 'elu',
+    'dropout': None,
     'next': {
       'BatchNormalization': False,
-      'activation': 'softsign',
-      'dropout': None,
-      'next': None,
-      'nodes_count': 255
+      'activation': 'tanh',
+      'dropout': {
+        'dropout_rate': 0.39781381306766944
+      },
+      'next': {
+        'BatchNormalization': True,
+        'activation': 'elu',
+        'dropout': None,
+        'next': None,
+        'nodes_count': 49
+      },
+      'nodes_count': 179
     },
-    'nodes_count': 271
+    'nodes_count': 117
   },
   'optimizer': {
-    'learning_rate': 0.3249507331605746,
+    'learning_rate': 0.3129779238170405,
     'type': 'Adadelta'
   },
   'shuffle': True,

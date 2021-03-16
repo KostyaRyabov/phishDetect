@@ -1,265 +1,129 @@
 import os
 import pandas
+import tldextract
+import concurrent.futures
+from urllib.parse import urlparse, urlsplit, urljoin
+from nltk.tokenize import RegexpTokenizer
+import wordsegment
+from nltk.corpus import stopwords, brown
+import numpy as np
+from googletrans import Translator
+import cv2
+import pytesseract
+from bs4 import BeautifulSoup
+import re
+import ssl
+import socket
+import OpenSSL
+from datetime import datetime
+import whois
+import Levenshtein
+from collections import Counter
+import requests
+from iso639 import languages
 
-headers = {
-    'stats': [
-        'коэффициент уникальности всех слов',
 
-        #   URL FEATURES
+pytesseract.pytesseract.tesseract_cmd = r'C:/Program Files (x86)/Tesseract-OCR/tesseract.exe'
 
-        'наличие ip-адреса в url',
-        'использование сервисов сокраения url',
 
-        "наличие сертификата",
-        "хороший netloc",
+def load_phishHints():
+    hints_dir = "data/phish_hints/"
+    file_list = os.listdir(hints_dir)
 
-        'длина url',
+    if file_list:
+        return {leng[0:2]: pandas.read_csv(hints_dir + leng, header=None)[0].tolist() for leng in file_list}
+    else:
+        hints = {'en': [
+            'login',
+            'logon',
+            'sign',
+            'account',
+            'authorization',
+            'registration',
+            'user',
+            'password',
+            'pay',
+            'name',
+            'profile',
+            'mail',
+            'pass',
+            'reg',
+            'log',
+            'auth',
+            'psw',
+            'nickname',
+            'enter',
+            'bank',
+            'card',
+            'pincode',
+            'phone',
+            'key',
+            'visa',
+            'cvv',
+            'cvp',
+            'cvc',
+            'ccv'
+        ]
+        }
 
-        'кол-во @ в url',
-        'кол-во ! в url',
-        'кол-во + в url',
-        'кол-во [ и ] в url',
-        'кол-во ( и ) в url',
-        'кол-во , в url',
-        'кол-во $ в url',
-        'кол-во ; в url',
-        'кол-во пропусков в url',
-        'кол-во & в url',
-        'кол-во // в url',
-        'кол-во / в url',
-        'кол-во = в url',
-        'кол-во % в url',
-        'кол-во ? в url',
-        'кол-во _ в url',
-        'кол-во - в url',
-        'кол-во . в url',
-        'кол-во : в url',
-        'кол-во * в url',
-        'кол-во | в url',
-        'кол-во ~ в url',
-        'кол-во http токенов в url',
+        data = pandas.DataFrame(hints)
+        filename = "data/phish_hints/en.csv"
+        data.to_csv(filename, index=False, header=False)
 
-        'https',
+        return hints
 
-        'соотношение цифр в url',
-        'кол-во цифр в url',
 
-        "кол-во фишинговых слов в url",
-        "кол-во распознанных слов в url",
+translator = Translator()
+phish_hints = load_phishHints()
 
-        'tld в пути url',
-        'tld в поддомене url',
-        'tld на плохой позиции url',
-        'ненормальный поддомен url',
 
-        'кол-во перенаправлений на сайт',
-        'кол-во перенаправлений на другие домены',
-
-        'случайный домен',
-
-        'кол-во случайных слов в url',
-        'кол-во случайных слов в хосте url',
-        'кол-во случайных слов в пути url',
-
-        'кол-во повторяющих последовательностей в url',
-        'кол-во повторяющих последовательностей в хосте url',
-        'кол-во повторяющих последовательностей в пути url',
-
-        'наличие punycode',
-        'домен в брендах',
-        'бренд в пути url',
-        'кол-во www в url',
-        'кол-во com в url',
-
-        'наличие порта в url',
-
-        'кол-во слов в url',
-        'средняя длина слова в url',
-        'максимальная длина слова в url',
-        'минимальная длина слова в url',
-
-        'префикс суффикс в url',
-
-        'кол-во поддоменов',
-
-        'кол-во визульно схожих доменов',
-
-        #   CONTENT FEATURE
-        #       (static)
-
-        'степень сжатия страницы',
-        'кол-во полей ввода/вывода в основном контексте страницы',
-        'соотношение кода в странице в основном контексте страницы',
-
-        'кол-во всех ссылок в основном контексте страницы',
-        'соотношение внутренних ссылок на сайты со всеми в основном контексте страницы',
-        'соотношение внешних ссылок на сайты со всеми в основном контексте страницы',
-        'соотношение пустых ссылок на сайты со всеми в основном контексте страницы',
-        "соотношение внутренних CSS со всеми в основном контексте страницы",
-        "соотношение внешних CSS со всеми в основном контексте страницы",
-        "соотношение встроенных CSS со всеми в основном контексте страницы",
-        "соотношение внутренних скриптов со всеми в основном контексте страницы",
-        "соотношение внешних скриптов со всеми в основном контексте страницы",
-        "соотношение встроенных скриптов со всеми в основном контексте страницы",
-        "соотношение внешних изображений со всеми в основном контексте страницы",
-        "соотношение внутренних изображений со всеми в основном контексте страницы",
-        "общее кол-во перенаправлений по внутренним ссылкам в основном контексте страницы",
-        "общее кол-во перенаправлений по внешним ссылкам в основном контексте страницы",
-        "общее кол-во ошибок по внутренним ссылкам в основном контексте страницы",
-        "общее кол-во ошибок по внешним ссылкам в основном контексте страницы",
-        "форма входа в основном контексте страницы",
-        "соотношение внешних Favicon со всеми в основном контексте страницы",
-        "соотношение внутренних Favicon со всеми в основном контексте страницы",
-        "наличие отправки на почту в основном контексте страницы",
-        "соотношение внутренних медиа со всеми в основном контексте страницы",
-        "соотношение внешних медиа со всеми в основном контексте страницы",
-        "пустой титульник в основном контексте страницы",
-        "соотношение небезопасных якорей со всеми в основном контексте страницы",
-        "соотношение безопасных якорей со всеми в основном контексте страницы",
-        "соотношение внутренних ссылок на ресурсы со всеми в основном контексте страницы",
-        "соотношение внешних ссылок на ресурсы со всеми в основном контексте страницы",
-        "наличие невидимых в основном контексте страницы",
-        "наличие onmouseover в основном контексте страницы",
-        "наличие всплывающих окон в основном контексте страницы",
-        "наличие событий правой мыши в основном контексте страницы",
-        "наличие домена в тексте в основном контексте страницы",
-        "наличие домена в титульнике в основном контексте страницы",
-        "домен с авторскими правами в основном контексте страницы",
-        "кол-во фишинговых слов в тексте в основном контексте страницы",
-        "кол-во слов в тексте в основном контексте страницы",
-        "соотношение текста со всех изображений с основным текстом в основном контексте страницы",
-        "соотношение текста внутренних изображений с основным текстом в основном контексте страницы",
-        "соотношение текста внешних изображений с основным текстом в основном контексте страницы",
-        "соотношение текста внешних изображений с текстом внутренних изображений в основном контексте страницы",
-
-        #       (dynamic)
-
-        "соотношение основного текста с динамически добавляемым текстом страницы",
-
-        #       (dynamic internals)
-
-        "соотношение основного текста с внутреннее добавляемым текстом страницы",
-        "соотношение кода в внутренне добавляемом контексте страницы",
-        "кол-во полей ввода/вывода в внутренне добавляемом контексте страницы",
-
-        'кол-во всех ссылок во внутренне добавляемом контексте страницы',
-        'соотношение внутренних ссылок на сайты со всеми во внутренне добавляемом контексте страницы',
-        'соотношение внешних ссылок на сайты со всеми во внутренне добавляемом контексте страницы',
-        'соотношение пустых ссылок на сайты со всеми во внутренне добавляемом контексте страницы',
-        "соотношение внутренних CSS со всеми во внутренне добавляемом контексте страницы",
-        "соотношение внешних CSS со всеми во внутренне добавляемом контексте страницы",
-        "соотношение встроенных CSS со всеми во внутренне добавляемом контексте страницы",
-        "соотношение внутренних скриптов со всеми во внутренне добавляемом контексте страницы",
-        "соотношение внешних скриптов со всеми во внутренне добавляемом контексте страницы",
-        "соотношение встроенных скриптов со всеми во внутренне добавляемом контексте страницы",
-        "соотношение внешних изображений со всеми во внутренне добавляемом контексте страницы",
-        "соотношение внутренних изображений со всеми во внутренне добавляемом контексте страницы",
-        "общее кол-во перенаправлений по внутренним ссылкам во внутренне добавляемом контексте страницы",
-        "общее кол-во перенаправлений по внешним ссылкам во внутренне добавляемом контексте страницы",
-        "общее кол-во ошибок по внутренним ссылкам во внутренне добавляемом контексте страницы",
-        "общее кол-во ошибок по внешним ссылкам во внутренне добавляемом контексте страницы",
-        "форма входа во внутренне добавляемом контексте страницы",
-        "соотношение внешних Favicon со всеми во внутренне добавляемом контексте страницы",
-        "соотношение внутренних Favicon со всеми во внутренне добавляемом контексте страницы",
-        "наличие отправки на почту во внутренне добавляемом контексте страницы",
-        "соотношение внутренних медиа со всеми во внутренне добавляемом контексте страницы",
-        "соотношение внешних медиа со всеми во внутренне добавляемом контексте страницы",
-        "пустой титульник во внутренне добавляемом контексте страницы",
-        "соотношение небезопасных якорей со всеми во внутренне добавляемом контексте страницы",
-        "соотношение безопасных якорей со всеми во внутренне добавляемом контексте страницы",
-        "соотношение внутренних ссылок на ресурсы со всеми во внутренне добавляемом контексте страницы",
-        "соотношение внешних ссылок на ресурсы со всеми во внутренне добавляемом контексте страницы",
-        "наличие невидимых во внутренне добавляемом контексте страницы",
-        "наличие onmouseover во внутренне добавляемом контексте страницы",
-        "наличие всплывающих окон во внутренне добавляемом контексте страницы",
-        "наличие событий правой мыши во внутренне добавляемом контексте страницы",
-        "наличие домена в тексте во внутренне добавляемом контексте страницы",
-        "наличие домена в титульнике во внутренне добавляемом контексте страницы",
-        "домен с авторскими правами во внутренне добавляемом контексте страницы",
-
-        "кол-во операций ввода/вывода во внутренне добавляемом коде страницы",
-        "кол-во фишинговых слов во внутренне добавляемом контексте страницы",
-        "кол-во слов во внутренне добавляемом контексте страницы",
-
-        #       (dynamic externals)
-
-        "соотношение основного текста с внешне добавляемым текстом страницы",
-        "соотношение кода в внешне добавляемом контексте страницы",
-        "кол-во полей ввода/вывода в внешне добавляемом контексте страницы",
-
-        'кол-во всех ссылок во внешне добавляемом контексте страницы',
-        'соотношение внутренних ссылок на сайты со всеми во внешне добавляемом контексте страницы',
-        'соотношение внешних ссылок на сайты со всеми во внешне добавляемом контексте страницы',
-        'соотношение пустых ссылок на сайты со всеми во внешне добавляемом контексте страницы',
-        "соотношение внутренних CSS со всеми во внешне добавляемом контексте страницы",
-        "соотношение внешних CSS со всеми во внешне добавляемом контексте страницы",
-        "соотношение встроенных CSS со всеми во внешне добавляемом контексте страницы",
-        "соотношение внутренних скриптов со всеми во внешне добавляемом контексте страницы",
-        "соотношение внешних скриптов со всеми во внешне добавляемом контексте страницы",
-        "соотношение встроенных скриптов со всеми во внешне добавляемом контексте страницы",
-        "соотношение внешних изображений со всеми во внешне добавляемом контексте страницы",
-        "соотношение внутренних изображений со всеми во внешне добавляемом контексте страницы",
-        "общее кол-во перенаправлений по внутренним ссылкам во внешне добавляемом контексте страницы",
-        "общее кол-во перенаправлений по внешним ссылкам во внешне добавляемом контексте страницы",
-        "общее кол-во ошибок по внутренним ссылкам во внешне добавляемом контексте страницы",
-        "общее кол-во ошибок по внешним ссылкам во внешне добавляемом контексте страницы",
-        "форма входа во внешне добавляемом контексте страницы",
-        "соотношение внешних Favicon со всеми во внешне добавляемом контексте страницы",
-        "соотношение внутренних Favicon со всеми во внешне добавляемом контексте страницы",
-        "наличие отправки на почту во внешне добавляемом контексте страницы",
-        "соотношение внутренних медиа со всеми во внешне добавляемом контексте страницы",
-        "соотношение внешних медиа со всеми во внешне добавляемом контексте страницы",
-        "пустой титульник во внешне добавляемом контексте страницы",
-        "соотношение небезопасных якорей со всеми во внешне добавляемом контексте страницы",
-        "соотношение безопасных якорей со всеми во внешне добавляемом контексте страницы",
-        "соотношение внутренних ссылок на ресурсы со всеми во внешне добавляемом контексте страницы",
-        "соотношение внешних ссылок на ресурсы со всеми во внешне добавляемом контексте страницы",
-        "наличие невидимых во внешне добавляемом контексте страницы",
-        "наличие onmouseover во внешне добавляемом контексте страницы",
-        "наличие всплывающих окон во внешне добавляемом контексте страницы",
-        "наличие событий правой мыши во внешне добавляемом контексте страницы",
-        "наличие домена в тексте во внешне добавляемом контексте страницы",
-        "наличие домена в титульнике во внешне добавляемом контексте страницы",
-        "домен с авторскими правами во внешне добавляемом контексте страницы",
-
-        "кол-во операций ввода/вывода во внешне добавляемом коде страницы",
-        "кол-во фишинговых слов во внешне добавляемом контексте страницы",
-        "кол-во слов во внешне добавляемом контексте страницы",
-
-        #   EXTERNAL FEATURES
-
-        'срок регистрации домена',
-        "домен зарегестрирован",
-        "рейтинг по Alexa",
-        "рейтинг по openpagerank",
-        "соотношение оставшегося времени действия сертификата",
-        "срок действия сертификата",
-        "кол-во альтернативных имен в сертификате"
-    ],
-    'metadata': [
-        'url',
-        'lang',
-        'status'
-    ],
-    'substats': [
-        'extraction-contextData-time',
-        'image-recognition-time'
-    ]
-}
+headers = [
+    'коэффициент уникальности всех слов',
+    'хороший netloc',
+    'длина url',
+    'кол-во @ в url',
+    'кол-во ; в url',
+    'кол-во = в url',
+    'кол-во % в url',
+    'кол-во - в url',
+    'кол-во . в url',
+    'кол-во : в url',
+    'https',
+    'кол-во фишинговых слов в url',
+    'кол-во перенаправлений на сайт',
+    'кол-во перенаправлений на другие домены',
+    'случайный домен',
+    'кол-во случайных слов в url',
+    'кол-во случайных слов в хосте url',
+    'домен в брендах',
+    'кол-во www в url',
+    'кол-во слов в url',
+    'средняя длина слова в url',
+    'максимальная длина слова в url',
+    'кол-во всех ссылок в основном контексте страницы',
+    'соотношение внутренних ссылок на сайты со всеми в основном контексте страницы',
+    'соотношение пустых ссылок на сайты со всеми в основном контексте страницы',
+    'соотношение внутренних скриптов со всеми в основном контексте страницы',
+    'соотношение внутренних изображений со всеми в основном контексте страницы',
+    'соотношение внешних медиа со всеми в основном контексте страницы',
+    'соотношение небезопасных якорей со всеми в основном контексте страницы',
+    'соотношение безопасных якорей со всеми в основном контексте страницы',
+    'кол-во слов в тексте в основном контексте страницы',
+    'соотношение текста со всех изображений с основным текстом в основном контексте страницы',
+    'соотношение текста внутренних изображений с основным текстом в основном контексте страницы',
+    'кол-во операций ввода/вывода во внутренне добавляемом коде страницы',
+    'кол-во операций ввода/вывода во внешне добавляемом коде страницы',
+    'домен зарегестрирован',
+    'рейтинг по Alexa',
+    'рейтинг по openpagerank',
+    'срок действия сертификата',
+    'кол-во альтернативных имен в сертификате'
+]
 
 
 brand_list = [brand.split('.')[0] for brand in
                       pandas.read_csv("data/ranked_domains/14-1-2021.csv", header=None)[1].tolist()][:100000]
 
-import tldextract
-import concurrent.futures
-from urllib.parse import urlparse, urlsplit, urljoin
-
-from collections import Counter
-from nltk.tokenize import RegexpTokenizer
-
-import wordsegment
-from nltk.corpus import stopwords, brown
 
 WORDS = list(Counter(brown.words()).keys())
 STOPWORDS = stopwords.words()
@@ -285,21 +149,14 @@ def clear_text(word_raw):
 wordsegment.load()
 
 def segment(obj):
-    if type(obj) is list:
-        return [word for str in [wordsegment.segment(word) for word in obj] for word in str]
-    elif type(obj) is str:
-        return wordsegment.segment(obj)
-    else:
-        return None
+    return [word for str in [wordsegment.segment(word) for word in obj] for word in str]
 
 ########################################################################################################################
 #                                          TF-IDF
 ########################################################################################################################
 
-from collections import Counter
-
 def tokenize_url(word_raw):
-    return segment(' '.join(word_raw))
+    return segment(word_raw)
 
 
 ########################################################################################################################
@@ -307,7 +164,7 @@ def tokenize_url(word_raw):
 ########################################################################################################################
 
 def url_length(url):
-    return len(url)
+    return min(len(url) / 1169, 1)
 
 
 ########################################################################################################################
@@ -316,7 +173,7 @@ def url_length(url):
 
 
 def count_at(base_url):
-    return base_url.count('@')
+    return min(base_url.count('@') / 5, 1)
 
 
 ########################################################################################################################
@@ -325,7 +182,7 @@ def count_at(base_url):
 
 
 def count_semicolumn(url):
-    return url.count(';')
+    return min(url.count(';') / 15, 1)
 
 
 ########################################################################################################################
@@ -334,7 +191,7 @@ def count_semicolumn(url):
 
 
 def count_equal(base_url):
-    return base_url.count('=')
+    return min(base_url.count('=') / 17, 1)
 
 
 ########################################################################################################################
@@ -343,7 +200,7 @@ def count_equal(base_url):
 
 
 def count_percentage(base_url):
-    return base_url.count('%')
+    return min(base_url.count('%') / 202, 1)
 
 
 ########################################################################################################################
@@ -352,7 +209,7 @@ def count_percentage(base_url):
 
 
 def count_hyphens(base_url):
-    return base_url.count('-')
+    return min(base_url.count('-') / 37, 1)
 
 
 ########################################################################################################################
@@ -360,8 +217,8 @@ def count_hyphens(base_url):
 ########################################################################################################################
 
 
-def count_dots(hostname):
-    return hostname.count('.')
+def count_dots(base_url):
+    return min(base_url.count('.') / 35, 1)
 
 
 ########################################################################################################################
@@ -370,7 +227,7 @@ def count_dots(hostname):
 
 
 def count_colon(url):
-    return url.count(':')
+    return min(url.count(':') / 8, 1)
 
 
 ########################################################################################################################
@@ -412,7 +269,7 @@ def tld_in_subdomain(tld, subdomain):
 
 
 def tld_in_bad_position(tld, subdomain, path):
-    if tld_in_path(tld, path)[0] == 1 or tld_in_subdomain(tld, subdomain)[0] == 1:
+    if tld_in_path(tld, path) == 1 or tld_in_subdomain(tld, subdomain) == 1:
         return 1
     return 0
 
@@ -423,7 +280,7 @@ def tld_in_bad_position(tld, subdomain, path):
 
 
 def count_redirection(page):
-    return len(page.history)
+    return min(len(page.history) / 7, 1)
 
 
 ########################################################################################################################
@@ -439,7 +296,7 @@ def count_external_redirection(page, domain):
         for i, response in enumerate(page.history, 1):
             if domain.lower() not in response.url.lower():
                 count += 1
-        return count
+        return min(count / 4, 1)
 
 
 ########################################################################################################################
@@ -448,7 +305,11 @@ def count_external_redirection(page, domain):
 
 
 def random_domain(second_level_domain):
-    return int(len([word for word in segment(second_level_domain) if word not in WORDS + brand_list]) > 0)
+    for word in segment([second_level_domain]):
+        if word not in WORDS + brand_list:
+            return 1
+
+    return 0
 
 
 ###############################tld_in_path#########################################################################################
@@ -456,17 +317,14 @@ def random_domain(second_level_domain):
 ########################################################################################################################
 
 
-def random_words(words_raw):
-    return len([word for str in [segment(word) for word in words_raw] for word in str if
-                word not in WORDS + brand_list])
+def random_words(words_raw, limit):
+    return min(len([word for str in [segment([word]) for word in words_raw] for word in str if
+                word not in WORDS + brand_list]) / limit, 1)
 
 
 ########################################################################################################################
 #               domain in brand list
 ########################################################################################################################
-
-
-import Levenshtein
 
 
 def domain_in_brand(second_level_domain):
@@ -486,12 +344,12 @@ def domain_in_brand(second_level_domain):
 ########################################################################################################################
 
 
-def check_www(words_raw):
+def count_www(words_raw):
     count = 0
     for word in words_raw:
         if not word.find('www') == -1:
             count += 1
-    return count
+    return min(count / 5, 1)
 
 
 ########################################################################################################################
@@ -500,7 +358,7 @@ def check_www(words_raw):
 
 
 def length_word_raw(words_raw):
-    return len(words_raw)
+    return min(len(words_raw) / 208, 1)
 
 
 ########################################################################################################################
@@ -511,7 +369,7 @@ def length_word_raw(words_raw):
 def average_word_length(words_raw):
     if len(words_raw) == 0:
         return 0
-    return sum(len(word) for word in words_raw) / len(words_raw)
+    return min((sum(len(word) for word in words_raw) / len(words_raw) / 23), 1)
 
 
 ########################################################################################################################
@@ -522,11 +380,7 @@ def average_word_length(words_raw):
 def longest_word_length(words_raw):
     if len(words_raw) == 0:
         return 0
-    return max(len(word) for word in words_raw)
-
-
-import requests
-import whois
+    return min(max(len(word) for word in words_raw) / 24, 1)
 
 
 ########################################################################################################################
@@ -541,12 +395,12 @@ def whois_registered_domain(domain):
             for host in hostname:
                 if re.search(host.lower(), domain):
                     return 1
-            return 0
+            return 0.5
         else:
             if re.search(hostname.lower(), domain):
                 return 1
             else:
-                return 0
+                return 0.5
     except:
         return 0
 
@@ -563,7 +417,7 @@ def web_traffic(short_url):
         rank = BeautifulSoup(session.get("http://data.alexa.com/data?cli=10&dat=s&url=" + short_url, timeout=10).text,
                              "xml").find("REACH")['RANK']
 
-        return int(rank) / 10000000
+        return min((int(rank) - -5e-07) / 10000000.0000005, 1)
     except:
         return 0
 
@@ -578,7 +432,7 @@ def page_rank(domain):
         result = request.json()
         result = result['response'][0]['page_rank_integer']
         if result:
-            return result
+            return (result - -1) / 11
         else:
             return 0
     except:
@@ -588,12 +442,6 @@ def page_rank(domain):
 ########################################################################################################################
 #               Certificate information
 ########################################################################################################################
-
-
-import ssl
-import socket
-import OpenSSL
-from datetime import datetime
 
 
 def get_certificate(host, port=443, timeout=10):
@@ -608,13 +456,7 @@ def get_certificate(host, port=443, timeout=10):
     return ssl.DER_cert_to_PEM_cert(der_cert)
 
 
-import threading
-
-lock_obj = threading.Lock()
-
-
 def get_cert(hostname):
-    lock_obj.acquire()
     result = None
     try:
         certificate = get_certificate(hostname)
@@ -634,22 +476,20 @@ def get_cert(hostname):
         result.update(extension_data)
     except:
         pass
-    finally:
-        lock_obj.release()
 
     return result
 
 
 def count_alt_names(cert):
     try:
-        return len(cert[b'subjectAltName'].split(','))
+        return min((len(cert[b'subjectAltName'].split(',')) + 1) / 715, 1)
     except:
         return 0
 
 
 def valid_cert_period(cert):
     try:
-        return (cert['notAfter'] - cert['notBefore']).days
+        return min(((cert['notAfter'] - cert['notBefore']).days + 1)/1186, 1)
     except:
         return 0
 
@@ -665,9 +505,6 @@ def good_netloc(netloc):
         return 1
     except:
         return 0
-
-
-import requests
 
 
 ########################################################################################################################
@@ -727,10 +564,6 @@ def get_html_from_js(context):
     return " ".join([res.group(2) for res in re.finditer(pattern, context, re.MULTILINE) if res.group(2) is not None])
 
 
-from bs4 import BeautifulSoup
-import re
-
-
 def remove_JScomments(string):
     pattern = r"(\".*?\"|\'.*?\'|\`.*?\`)|(/\*.*?\*/|//[^\r\n]*$)"
     regex = re.compile(pattern, re.MULTILINE | re.DOTALL)
@@ -767,7 +600,8 @@ def ratio_js_on_html(html_context):
 #              Amount of http request operations (popular)
 ########################################################################################################################
 
-def count_io_commands(string):
+
+def count_io_commands(string, limit):
     pattern = r"(\".*?\"|\'.*?\'|\`.*?\`)|" \
               r"((.(open|send)|$.(get|post|ajax|getJSON)|fetch|axios(|.(get|post|all))|getData)\s*\()"
     regex = re.compile(pattern, re.MULTILINE | re.DOTALL)
@@ -778,17 +612,12 @@ def count_io_commands(string):
         if not m.group(2) and m.groups():
             count += 1
 
-    return count
+    return min(count / limit, 1)
 
 
 ########################################################################################################################
 #                       OCR
 ########################################################################################################################
-
-import cv2
-import pytesseract
-
-pytesseract.pytesseract.tesseract_cmd = r'C:/Program Files (x86)/Tesseract-OCR/tesseract.exe'
 
 
 def translate_image(obj):
@@ -801,9 +630,6 @@ def translate_image(obj):
         return pytesseract.image_to_string(img, lang=obj[1])
     except:
         return ""
-
-
-from iso639 import languages
 
 
 def image_to_text(img, lang):
@@ -850,7 +676,7 @@ def count_phish_hints(word_raw, phish_hints, lang):
         exp = '|'.join(list(set([item for sublist in [phish_hints[lang], phish_hints['en']] for item in sublist])))
 
         if exp:
-            return len(re.findall(exp, word_raw))
+            return min(len(re.findall(exp, word_raw)) / 9, 1)
         else:
             return 0
     except:
@@ -878,61 +704,7 @@ def is_URL_accessible(url, time_out=5):
     if page and page.status_code == 200 and page.content not in ["b''", "b' '"]:
         return True, page
     else:
-        return False, None
-
-
-import numpy as np
-from googletrans import Translator
-
-translator = Translator()
-
-def load_phishHints():
-    hints_dir = "data/phish_hints/"
-    file_list = os.listdir(hints_dir)
-
-    if file_list:
-        return {leng[0:2]: pandas.read_csv(hints_dir + leng, header=None)[0].tolist() for leng in file_list}
-    else:
-        hints = {'en': [
-            'login',
-            'logon',
-            'sign',
-            'account',
-            'authorization',
-            'registration',
-            'user',
-            'password',
-            'pay',
-            'name',
-            'profile',
-            'mail',
-            'pass',
-            'reg',
-            'log',
-            'auth',
-            'psw',
-            'nickname',
-            'enter',
-            'bank',
-            'card',
-            'pincode',
-            'phone',
-            'key',
-            'visa',
-            'cvv',
-            'cvp',
-            'cvc',
-            'ccv'
-        ]
-        }
-
-        data = pandas.DataFrame(hints)
-        filename = "data/phish_hints/en.csv"
-        data.to_csv(filename, index=False, header=False)
-
-        return hints
-
-phish_hints = load_phishHints()
+        return False, page
 
 
 def check_Language(text):
@@ -957,7 +729,7 @@ def get_domain(url):
     return o.hostname, tldextract.extract(url).domain, o.path, o.netloc
 
 
-def extract_data_from_URL(hostname, content, domain, base_url):
+def extract_all_context_data(hostname, content, domain, base_url):
     Null_format = ["", "#", "#nothing", "#doesnotexist", "#null", "#void", "#whatever",
                    "#content", "javascript::void(0)", "javascript::void(0);", "javascript::;", "javascript"]
 
@@ -967,12 +739,7 @@ def extract_data_from_URL(hostname, content, domain, base_url):
     Img = {'internals': [], 'externals': [], 'null': []}
     Media = {'internals': [], 'externals': [], 'null': []}
     Form = {'internals': [], 'externals': [], 'null': []}
-    CSS = {'internals': [], 'externals': [], 'null': [], 'embedded': 0}
-    Favicon = {'internals': [], 'externals': [], 'null': []}
-    IFrame = {'visible': [], 'invisible': [], 'null': []}
     SCRIPT = {'internals': [], 'externals': [], 'null': [], 'embedded': 0}  # JavaScript
-    Title = ''
-    Text = ''
 
     soup = BeautifulSoup(content, 'html.parser')
 
@@ -1090,23 +857,6 @@ def extract_data_from_URL(hostname, content, domain, base_url):
         else:
             Link['externals'].append(url)
 
-    # collect all css
-    for link in soup.find_all('link', rel='stylesheet'):
-        url = link['href']
-
-        if url in Null_format:
-            CSS['null'].append('http://' + hostname + '/' + url)
-            continue
-
-        url = urljoin(base_url, url)
-
-        if domain in urlparse(url).netloc:
-            CSS['internals'].append(url)
-        else:
-            CSS['externals'].append(url)
-
-    CSS['embedded'] = len([css for css in soup.find_all('style', type='text/css') if len(css.contents) > 0])
-
     # collect all form actions
     for form in soup.findAll('form', action=True):
         url = form['action']
@@ -1122,71 +872,6 @@ def extract_data_from_URL(hostname, content, domain, base_url):
         else:
             Form['externals'].append(url)
 
-    # collect all link tags
-    for head in soup.find_all('head'):
-        for head.link in soup.find_all('link', href=True):
-            url = head.link['href']
-
-            if url in Null_format:
-                Favicon['null'].append('http://' + hostname + '/' + url)
-                continue
-
-            url = urljoin(base_url, url)
-
-            if domain in urlparse(url).netloc:
-                Favicon['internals'].append(url)
-            else:
-                Favicon['externals'].append(url)
-
-        for head.link in soup.findAll('link', {'href': True, 'rel': True}):
-            isicon = False
-            if isinstance(head.link['rel'], list):
-                for e_rel in head.link['rel']:
-                    if e_rel.endswith('icon'):
-                        isicon = True
-                        break
-            else:
-                if head.link['rel'].endswith('icon'):
-                    isicon = True
-                    break
-
-            if isicon:
-                url = head.link['href']
-
-                if url in Null_format:
-                    Favicon['null'].append('http://' + hostname + '/' + url)
-                    continue
-
-                url = urljoin(base_url, url)
-
-                if domain in urlparse(url).netloc:
-                    Favicon['internals'].append(url)
-                else:
-                    Favicon['externals'].append(url)
-
-    # collect i_frame
-    for i_frame in soup.find_all('iframe', width=True, height=True, frameborder=True):
-        if i_frame['width'] == "0" and i_frame['height'] == "0" and i_frame['frameborder'] == "0":
-            IFrame['invisible'].append(i_frame)
-        else:
-            IFrame['visible'].append(i_frame)
-    for i_frame in soup.find_all('iframe', width=True, height=True, border=True):
-        if i_frame['width'] == "0" and i_frame['height'] == "0" and i_frame['border'] == "0":
-            IFrame['invisible'].append(i_frame)
-        else:
-            IFrame['visible'].append(i_frame)
-    for i_frame in soup.find_all('iframe', width=True, height=True, style=True):
-        if i_frame['width'] == "0" and i_frame['height'] == "0" and i_frame['style'] == "border:none;":
-            IFrame['invisible'].append(i_frame)
-        else:
-            IFrame['visible'].append(i_frame)
-
-    # get page title
-    try:
-        Title = soup.title.string.lower()
-    except:
-        pass
-
     # get content text
     Text = soup.get_text().lower()
 
@@ -1194,7 +879,7 @@ def extract_data_from_URL(hostname, content, domain, base_url):
         docs = []
 
         for url in script_lnks:
-            state, request = is_URL_accessible(url)[0]
+            state, request = is_URL_accessible(url)
 
             if state:
                 docs.append(str(request.content))
@@ -1213,7 +898,11 @@ def extract_data_from_URL(hostname, content, domain, base_url):
     except:
         pass
 
-    return Href, Link, Anchor, Media, Img, Form, CSS, Favicon, IFrame, SCRIPT, Title, Text, internals_script_doc, externals_script_doc
+    return Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc, externals_script_doc
+
+
+def extract_text_context_data(content):
+    return BeautifulSoup(content, 'html.parser').get_text().lower()
 
 
 # import configparser
@@ -1222,11 +911,26 @@ def extract_data_from_URL(hostname, content, domain, base_url):
 # config.read('settings.ini')
 
 
+def word_ratio(Text_words):
+    if Text_words:
+        return len(Counter(Text_words)) / len(Text_words)
+    else:
+        return 0
+
+
+def count_links(len):
+    return min(len / 15585, 1)
+
+
+def count_words(len):
+    return min(len / 990735, 1)
+
+
 def extract_features(url):
     def words_raw_extraction(domain, subdomain, path):
-        w_domain = re.split("\-|\.|\/|\?|\=|\@|\&|\%|\:|\_", domain.lower())
-        w_subdomain = re.split("\-|\.|\/|\?|\=|\@|\&|\%|\:|\_", subdomain.lower())
-        w_path = re.split("\-|\.|\/|\?|\=|\@|\&|\%|\:|\_", path.lower())
+        w_domain = re.split("[-./?=@&%:_]", domain.lower())
+        w_subdomain = re.split("[-./?=@&%:_]", subdomain.lower())
+        w_path = re.split("[-./?=@&%:_]", path.lower())
         raw_words = w_domain + w_path + w_subdomain
         w_host = w_domain + w_subdomain
         return segment(list(filter(None, raw_words))), \
@@ -1250,19 +954,14 @@ def extract_features(url):
 
         cert = get_cert(domain)
 
-        (Href, Link, Anchor, Media, Img, Form, CSS, Favicon, IFrame, SCRIPT, Title, Text, internals_script_doc,
-         externals_script_doc) = extract_data_from_URL(hostname, content, domain, r_url)
+        (Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc,
+         externals_script_doc) = extract_all_context_data(hostname, content, domain, r_url)
 
         content_di = get_html_from_js(remove_JScomments(internals_script_doc))
         content_de = get_html_from_js(remove_JScomments(externals_script_doc))
 
-        (Href_di, Link_di, Anchor_di, Media_di, Img_di, Form_di, CSS_di, Favicon_di, IFrame_di, SCRIPT_di,
-         Title_di,
-         Text_di, internals_script_doc_di, externals_script_doc_di) = extract_data_from_URL(hostname, content_di, domain, r_url)
-
-        (Href_de, Link_de, Anchor_de, Media_de, Img_de, Form_de, CSS_de, Favicon_de, IFrame_de, SCRIPT_de,
-         Title_de,
-         Text_de, internals_script_doc_de, externals_script_doc_de) = extract_data_from_URL(hostname, content_de, domain, r_url)
+        Text_di = extract_text_context_data(content_di)
+        Text_de = extract_text_context_data(content_de)
 
         lang = check_Language(content)
 
@@ -1279,56 +978,50 @@ def extract_features(url):
 
         Text_words = iImgTxt_words + eImgTxt_words + sContent_words + diContent_words + deContent_words
 
-        if Text_words:
-            word_ratio = len(Counter(Text_words)) / len(Text_words)
-        else:
-            word_ratio = 0
-
         iUrl_s = Href['internals'] + Link['internals'] + Media['internals'] + Form['internals']
         eUrl_s = Href['externals'] + Link['externals'] + Media['externals'] + Form['externals']
         nUrl_s = Href['null'] + Link['null'] + Media['null'] + Form['null']
 
         return [
-                        word_ratio,
-                        good_netloc(netloc),
-                        url_length(r_url),
-                        count_at(r_url),
-                        count_semicolumn(r_url),
-                        count_equal(r_url),
-                        count_percentage(r_url),
-                        count_hyphens(r_url),
-                        count_dots(r_url),
-                        count_colon(r_url),
-                        https_token(scheme),
-                        count_phish_hints(url_words, phish_hints, lang),
-                        count_redirection(request),
-                        count_external_redirection(request, domain),
-                        random_domain(second_level_domain),
-                        random_words(words_raw),
-                        random_words(words_raw_host),
-                        domain_in_brand(second_level_domain),
-                        check_www(words_raw),
-                        length_word_raw(words_raw),
-                        average_word_length(words_raw),
-                        longest_word_length(words_raw),
-                        len(iUrl_s) + len(eUrl_s),
-                        urls_ratio(iUrl_s, iUrl_s + eUrl_s + nUrl_s),
-                        urls_ratio(nUrl_s, iUrl_s + eUrl_s + nUrl_s),
-                        ratio_List(SCRIPT, 'internals'),
-                        ratio_List(Img, 'internals'),
-                        ratio_List(Media, 'externals'),
-                        ratio_anchor(Anchor, 'unsafe'),
-                        ratio_anchor(Anchor, 'safe'),
-                        len(sContent_words),
-                        ratio_Txt(iImgTxt_words + eImgTxt_words, sContent_words),
-                        ratio_Txt(iImgTxt_words, sContent_words),
-                        count_io_commands(internals_script_doc),
-                        count_io_commands(externals_script_doc),
-                        whois_registered_domain(domain),
-                        web_traffic(r_url),
-                        page_rank(domain),
-                        valid_cert_period(cert),
-                        count_alt_names(cert)
-                    ]
-    return None
-
+            word_ratio(Text_words),
+            good_netloc(netloc),
+            url_length(r_url),
+            count_at(r_url),
+            count_semicolumn(r_url),
+            count_equal(r_url),
+            count_percentage(r_url),
+            count_hyphens(r_url),
+            count_dots(r_url),
+            count_colon(r_url),
+            https_token(scheme),
+            count_phish_hints(url_words, phish_hints, lang),
+            count_redirection(request),
+            count_external_redirection(request, domain),
+            random_domain(second_level_domain),
+            random_words(words_raw, 86),
+            random_words(words_raw_host, 8),
+            domain_in_brand(second_level_domain),
+            count_www(words_raw),
+            length_word_raw(words_raw),
+            average_word_length(words_raw),
+            longest_word_length(words_raw),
+            count_links(len(iUrl_s) + len(eUrl_s)),
+            urls_ratio(iUrl_s, iUrl_s + eUrl_s + nUrl_s),
+            urls_ratio(nUrl_s, iUrl_s + eUrl_s + nUrl_s),
+            ratio_List(SCRIPT, 'internals'),
+            ratio_List(Img, 'internals'),
+            ratio_List(Media, 'externals'),
+            ratio_anchor(Anchor, 'unsafe'),
+            ratio_anchor(Anchor, 'safe'),
+            count_words(len(sContent_words)),
+            ratio_Txt(iImgTxt_words + eImgTxt_words, sContent_words),
+            ratio_Txt(iImgTxt_words, sContent_words),
+            count_io_commands(internals_script_doc, 487490),
+            count_io_commands(externals_script_doc, 713513),
+            whois_registered_domain(domain),
+            web_traffic(r_url),
+            page_rank(domain),
+            valid_cert_period(cert),
+            count_alt_names(cert)
+        ]
+    return request.status_code
