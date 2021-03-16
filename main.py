@@ -734,6 +734,9 @@ def count_phish_hints(word_raw, phish_hints, lang):
         return 0
 
 
+http_header = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+
+
 def is_URL_accessible(url, time_out=5):
     page = None
 
@@ -741,23 +744,21 @@ def is_URL_accessible(url, time_out=5):
         url = 'http://' + url
 
     try:
-        page = requests.get(url, timeout=time_out)
+        page = requests.get(url, timeout=time_out, headers=http_header)
     except:
         parsed = urlparse(url)
         if not parsed.netloc.startswith('www'):
             url = parsed.scheme + '://www.' + parsed.netloc
             try:
-                page = requests.get(url, timeout=time_out)
+                page = requests.get(url, timeout=time_out, headers=http_header)
             except:
-                pass
+                print(url)
+                return False, -1
 
-    if page:
-        if page.status_code == 200 and page.content not in ["b''", "b' '"]:
-            return True, page
-        else:
-            return False, page.status_code
+    if page and page.status_code == 200 and page.content not in ["b''", "b' '"]:
+        return True, page
     else:
-        return False, -1
+        return False, page.status_code
 
 @indicate
 def check_Language(text):
@@ -1150,13 +1151,15 @@ if __name__ == "__main__":
 
             for i in range(len(m)):
                 start = time()
-                if 'neural' in estimators[i+1]:
-                    res.append(m[i].predict(data).round().tolist()[0][0])
-                else:
-                    res.append(m[i].predict(data).round().tolist()[0])
+                r = m[i].predict(data)
                 dtime.append(time() - start)
+
+                if 'neural' in estimators[i+1]:
+                    res.append(r.round().tolist()[0][0])
+                else:
+                    res.append(r.round().tolist()[0])
                 result.configure(state='normal')
-                result.insert(tk.END, ('\n'+estimators[i+1], res[-1]))
+                result.insert(tk.END, ('\n'+estimators[i+1], r))
                 result.configure(state='disabled')
                 p_v += 1
                 result.configure(state='normal')
