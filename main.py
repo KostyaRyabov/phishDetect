@@ -32,15 +32,27 @@ from tensorflow import keras
 
 import tkinter as tk
 from tkinter.ttk import Progressbar, Style
+from tkinter import simpledialog
+
+
+# import configparser
+# config = configparser.ConfigParser()
+# config.read('settings.ini')
 
 
 p_v = 0
 
 
+timer = {}
+
+
 def indicate(func):
     def wrapper(*args, **kwargs):
-        global progress, p_v
+        global progress, p_v, timer
+        start = time()
         res = func(*args, **kwargs)
+        end = time()
+        timer[func.__name__] = end - start
         p_v += 1
         progress['value'] = p_v
         return res
@@ -368,7 +380,7 @@ def domain_in_brand(second_level_domain):
         dst = len(Levenshtein.editops(word, b.lower()))
         if dst == 0:
             return 1 - idx / len(brand_list)
-        elif dst <= (len(word ) -2 ) / 3 +1:
+        elif dst <= (len(word) - 2) / 3 + 1:
             return 1 - idx / (len(brand_list) * 2)
     return 0
 
@@ -452,7 +464,7 @@ def web_traffic(short_url):
         rank = BeautifulSoup(session.get("http://data.alexa.com/data?cli=10&dat=s&url=" + short_url, timeout=10).text,
                              "xml").find("REACH")['RANK']
 
-        return min((int(rank) - -5e-07) / 10000000.0000005, 1)
+        return min((int(rank) + 5e-07) / 10000000.0000005, 1)
     except:
         return 0
 
@@ -467,7 +479,7 @@ def page_rank(domain):
         result = request.json()
         result = result['response'][0]['page_rank_integer']
         if result:
-            return (result - -1) / 11
+            return (result + 1) / 11
         else:
             return 0
     except:
@@ -743,7 +755,7 @@ def is_URL_accessible(url, time_out=5):
         if page.status_code == 200 and page.content not in ["b''", "b' '"]:
             return True, page
         else:
-            return True, page.status_code
+            return False, page.status_code
     else:
         return False, -1
 
@@ -946,11 +958,6 @@ def extract_text_context_data(content):
     return BeautifulSoup(content, 'html.parser').get_text().lower()
 
 
-# import configparser
-#
-# config = configparser.ConfigParser()
-# config.read('settings.ini')
-
 @indicate
 def word_ratio(Text_words):
     if Text_words:
@@ -1069,163 +1076,30 @@ def extract_features(url):
     return request
 
 
-m1 = pickle.load(open('data/models/AdaBoost_DT/AdaBoost_DT.pkl', 'rb'))
-m2 = pickle.load(open('data/models/Bagging_DT/Bagging_DT.pkl', 'rb'))
-m3 = pickle.load(open('data/models/Bernoulli_NB/Bernoulli_NB.pkl', 'rb'))
-m4 = pickle.load(open('data/models/Complement_NB/Complement_NB.pkl', 'rb'))
-m5 = pickle.load(open('data/models/DT/DT.pkl', 'rb'))
-m6 = pickle.load(open('data/models/ET/ET.pkl', 'rb'))
-m7 = pickle.load(open('data/models/Gaussian_NB/Gaussian_NB.pkl', 'rb'))
-m8 = pickle.load(open('data/models/GradientBoost/GradientBoost.pkl', 'rb'))
-m9 = pickle.load(open('data/models/HistGradientBoost/HistGradientBoost.pkl', 'rb'))
-m10 = pickle.load(open('data/models/kNN/8NN.pkl', 'rb'))
-m11 = pickle.load(open('data/models/Multinomial_NB/Multinomial_NB.pkl', 'rb'))
-m12 = keras.models.load_model('data/models/neural_networks/nn1.h5')
-m13 = pickle.load(open('data/models/RF/RF.pkl', 'rb'))
-m14 = pickle.load(open('data/models/Stacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)/StackingClassifier.pkl', 'rb'))
-m15 = pickle.load(open('data/models/Stacking (All)/StackingClassifier.pkl', 'rb'))
-m16 = pickle.load(open('data/models/Stacking (CNB, MNB, BNB, GNB)/StackingClassifier.pkl', 'rb'))
-m17 = pickle.load(open('data/models/Stacking (RF,HGBC, GBC, AdaBoost, ET)/StackingClassifier.pkl', 'rb'))
-m18 = pickle.load(open('data/models/Stacking (SVM, kNN, DT)/StackingClassifier.pkl', 'rb'))
-m19 = pickle.load(open('data/models/SVM/SVM.pkl', 'rb'))
+m = []
+
+m.append(pickle.load(open('data/models/AdaBoost_DT/AdaBoost_DT.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Bagging_DT/Bagging_DT.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Bernoulli_NB/Bernoulli_NB.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Complement_NB/Complement_NB.pkl', 'rb')))
+m.append(pickle.load(open('data/models/DT/DT.pkl', 'rb')))
+m.append(pickle.load(open('data/models/ET/ET.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Gaussian_NB/Gaussian_NB.pkl', 'rb')))
+m.append(pickle.load(open('data/models/GradientBoost/GradientBoost.pkl', 'rb')))
+m.append(pickle.load(open('data/models/HistGradientBoost/HistGradientBoost.pkl', 'rb')))
+m.append(pickle.load(open('data/models/kNN/8NN.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Multinomial_NB/Multinomial_NB.pkl', 'rb')))
+m.append(keras.models.load_model('data/models/neural_networks/nn1.h5'))
+m.append(pickle.load(open('data/models/RF/RF.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (All)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (CNB, MNB, BNB, GNB)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (RF,HGBC, GBC, AdaBoost, ET)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (SVM, kNN, DT)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/SVM/SVM.pkl', 'rb')))
 
 
-from time import time
-
-
-if __name__ == "__main__":
-    @run_in_thread
-    def check_site():
-        global p_v, progress
-        p_v = 0
-        dtime = []
-
-        start = time()
-        data = [extract_features(url.get())]
-        dtime.append(time() - start)
-
-        result.configure(state='normal')
-        result.delete(1.0, tk.END)
-
-        result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-
-        if type(data[0]) is not int:
-            start = time()
-            result.insert(tk.END, ('\nAdaBoost_DT', m1.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nBagging_DT', m2.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nBernoulli_NB', m3.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nComplement_NB', m4.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nDT', m5.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nET', m6.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nGaussian_NB', m7.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nGradientBoost', m8.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nHistGradientBoost', m9.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\n8NN', m10.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nMultinomial_NB', m11.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nneural_networks', m12.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nRF', m13.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nStacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)', m14.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nStacking (All)', m15.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nStacking (CNB, MNB, BNB, GNB)', m16.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nStacking (RF,HGBC, GBC, AdaBoost, ET)', m17.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nStacking (SVM, kNN, DT)', m18.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-            start = time()
-            result.insert(tk.END, ('\nSVM', m19.predict(data)))
-            p_v += 1
-            dtime.append(time() - start)
-            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-            progress['value'] = p_v
-
-            estimators = [
+estimators = [
                 'extraction_data',
                 'AdaBoost_DT',
                 'Bagging_DT',
@@ -1249,30 +1123,119 @@ if __name__ == "__main__":
             ]
 
 
+from time import time
+
+
+if __name__ == "__main__":
+    @run_in_thread
+    def check_site():
+        result.configure(state='normal')
+        result.delete(1.0, tk.END)
+
+        global p_v, progress, timer
+        p_v = 0
+        progress['value'] = p_v
+
+        dtime = []
+        res = []
+        timer = {}
+
+        start = time()
+        data = [extract_features(url.get().split()[1])]
+        dtime.append(time() - start)
+
+        if type(data[0]) is list:
+            result.configure(state='normal')
+            result.insert(tk.END, " -> {} sec".format(dtime[-1]))
+
+            for i in range(len(m)):
+                start = time()
+                if 'neural' in estimators[i+1]:
+                    res.append(m[i].predict(data).round().tolist()[0][0])
+                else:
+                    res.append(m[i].predict(data).round().tolist()[0])
+                dtime.append(time() - start)
+                result.configure(state='normal')
+                result.insert(tk.END, ('\n'+estimators[i+1], res[-1]))
+                result.configure(state='disabled')
+                p_v += 1
+                result.configure(state='normal')
+                result.insert(tk.END, " -> {} sec".format(dtime[-1]))
+                result.configure(state='disabled')
+                progress['value'] = p_v
+
+
             if os.path.isfile('data/logs/estimator_time.csv'):
-                pandas.DataFrame(dtime).T.to_csv('data/logs/estimator_time.csv', header=False, mode='a')
+                pandas.DataFrame(dtime).T.to_csv('data/logs/estimator_time.csv', header=False, mode='a', index=False)
             else:
-                pandas.DataFrame(dtime).T.to_csv('data/logs/estimator_time.csv', header=estimators)
+                pandas.DataFrame(dtime).T.to_csv('data/logs/estimator_time.csv', header=estimators, index=False)
 
             df = pandas.read_csv('data/logs/estimator_time.csv')
             pandas.DataFrame([estimators, df.mean(), df.max(), df.min()]).T.to_csv('data/logs/estimator_avg_time.csv',
-                                                               header=['estimator', 'mean', 'max', 'min'], index=False)
-        else:
-            result.insert(tk.END, "ERROR: {}".format(data[0]))
+                                                                                   header=['estimator', 'mean', 'max',
+                                                                                           'min'], index=False)
 
-        result.configure(state='disabled')
+            df = pandas.DataFrame(timer.values()).T
+            if os.path.isfile('data/logs/commands_timer.csv'):
+                df.to_csv('data/logs/commands_timer.csv', header=False, mode='a', index=False)
+            else:
+                df.to_csv('data/logs/commands_timer.csv', header=list(timer.keys()), index=False)
+
+            df = pandas.read_csv('data/logs/commands_timer.csv')
+            pandas.DataFrame([list(timer.keys()), df.mean(), df.max(), df.min()]).T.to_csv(
+                'data/logs/commands_timer_stats.csv',
+                header=['estimator', 'mean', 'max',
+                        'min'], index=False)
+
+            df = pandas.DataFrame(res)
+            df = (df == int(url.get().split()[0])).astype(int).T
+
+
+            if os.path.isfile('data/logs/estimator_rate.csv'):
+                df.to_csv('data/logs/estimator_rate.csv', header=False, index=False, mode='a')
+            else:
+                df.to_csv('data/logs/estimator_rate.csv', header=estimators[1:], index=False)
+
+            df = pandas.read_csv('data/logs/estimator_rate.csv')
+            df.sum().to_csv('data/logs/estimator_rate_voite.csv', header=['count'], index_label='estimator')
+        else:
+            result.configure(state='normal')
+            result.insert(tk.END, "ERROR: {}".format(data[0]))
+            result.configure(state='disabled')
 
     window = tk.Tk()
     window.title("phishDetect")
     window.resizable(0, 0)
 
+    mb = tk.Menubutton(window, text="settings", relief=tk.RAISED)
+    mb.grid(column=0, row=0, sticky=tk.N+tk.W, pady=(0, 10))
+    mb.menu = tk.Menu(mb, tearoff=0)
+    mb["menu"] = mb.menu
+
+    mayoVar = tk.IntVar()
+    ketchVar = tk.IntVar()
+
+    mb.menu.add_checkbutton(label="mayo",
+                            variable=mayoVar)
+    mb.menu.add_checkbutton(label="ketchup",
+                            variable=ketchVar)
+
+
+    def take_user_input_for_something():
+        user_input = simpledialog.askstring("Pop up for user input!", "What do you want to ask the user to input here?")
+        if user_input != "":
+            print(user_input)
+
+
+    mb.menu.add_command(label="Do something", command=take_user_input_for_something)
+
     url = tk.StringVar()
 
-    textArea = tk.Entry(textvariable=url, width=80)
-    textArea.grid(column=0, row=0, sticky=tk.N+tk.S+tk.W+tk.E)
+    textArea = tk.Entry(textvariable=url, width=80, exportselection=0)
+    textArea.grid(column=0, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
 
     btn = tk.Button(window, text="check", command=check_site)
-    btn.grid(column=1, row=0, sticky=tk.N+tk.S+tk.W+tk.E)
+    btn.grid(column=1, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
 
     s = Style()
     s.theme_use("default")
@@ -1286,10 +1249,10 @@ if __name__ == "__main__":
         mode='determinate',
         style="TProgressbar"
     )
-    progress.grid(column=0, row=1, columnspan=2,  sticky=tk.N + tk.S + tk.W + tk.E)
+    progress.grid(column=0, row=2, columnspan=2,  sticky=tk.N + tk.S + tk.W + tk.E)
 
     scroll = tk.Scrollbar(window)
-    scroll.grid(column=3, row=2, sticky=tk.N + tk.S + tk.W + tk.E)
+    scroll.grid(column=3, row=3, sticky=tk.N + tk.S + tk.W + tk.E)
 
     result = tk.Text(
         window,
@@ -1298,9 +1261,8 @@ if __name__ == "__main__":
         state='disabled',
         yscrollcommand=scroll.set
     )
-    result.grid(column=0, row=2, columnspan=2)
+    result.grid(column=0, row=3, columnspan=2)
 
     scroll.config(command=result.yview)
-
 
     window.mainloop()
