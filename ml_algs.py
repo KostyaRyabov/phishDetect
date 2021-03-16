@@ -502,8 +502,8 @@ def neural_networks_archSearch():
                 ),
                 tf.keras.callbacks.EarlyStopping(
                     monitor='val_accuracy',
-                    patience=15,
-                    min_delta=0.0001,
+                    patience=25,
+                    # min_delta=0.0001,
                     mode='max',
                     verbose=0),
                 tf.keras.callbacks.LearningRateScheduler(scheduler)
@@ -547,7 +547,7 @@ def neural_networks_archSearch():
                 x_train, y_train,
                 validation_data=(x_test, y_test),
                 # validation_split=0.1,
-                epochs=500,
+                epochs=250,
                 callbacks=tf_callbacks(),
                 verbose=2,
                 batch_size=space['batch_size'],
@@ -614,7 +614,7 @@ def neural_networks_archSearch():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=700,
+        max_evals=800,
                   # + len(trials),
         trials=trials,
         timeout=60 * 60 * 1
@@ -632,7 +632,7 @@ def neural_networks_archSearch():
         pickle.dump(trials, output)
 
 
-def find_best_NN(throughput=0.01, std=0.02, back_search=False):
+def find_best_NN(throughput=0.01, std=0.02, back_search=False, min_len=50):
     with open("data/trials/neural_networks_archSearch/results.pkl", 'rb') as f:
         data = pickle.load(f)
 
@@ -649,17 +649,19 @@ def find_best_NN(throughput=0.01, std=0.02, back_search=False):
             else:
                 maxf = np.argmax(history['val_f_score'])
 
-            c_len = len(history['val_f_score']) // 3
+            # c_len = len(history['val_f_score']) // 3
 
-            if (history['val_loss'][maxf] - history['loss'][maxf]) <= throughput \
+            c_len = 20
+
+            if len(history['loss']) >= min_len\
+                    and (history['val_loss'][maxf] - history['loss'][maxf]) <= throughput \
                     and (history['val_accuracy'][maxf] - history['accuracy'][maxf]) >= -throughput \
                     and (history['val_f_score'][maxf] - history['f_score'][maxf]) >= -throughput \
-                    and (history['val_precision'][maxf] - history['precision'][maxf]) >= -throughput \
-                    and (history['val_auc'][maxf] - history['auc'][maxf]) >= -throughput \
+                    and (history['val_precision'][maxf] - history['precision'][maxf]) <= throughput \
                     and (history['val_recall'][maxf] - history['recall'][maxf]) >= -throughput \
-                    and (np.array(history['val_loss'][:-c_len]) - np.array(history['loss'][:-c_len])).std() <= std\
-                    and (np.array(history['val_precision'][:-c_len]) - np.array(history['precision'][:-c_len])).std() <= std\
-                    and (np.array(history['val_recall'][:-c_len]) - np.array(history['recall'][:-c_len])).std() <= std:
+                    and (history['val_auc'][maxf] - history['auc'][maxf]) >= -throughput \
+                    and np.array(history['val_recall'][:-c_len]).std() <= std\
+                    and np.array(history['val_precision'][:-c_len]).std() <= std:
 
                 metrics.append([idx] + [history['val_f_score'][maxf]])
 
@@ -739,7 +741,7 @@ def neural_networks():
                 save_best_only=True
             ),
             tf.keras.callbacks.EarlyStopping(
-                monitor='val_accuracy',
+                monitor='accuracy',
                 patience=25,
                 mode='max',
                 verbose=0),
@@ -782,7 +784,7 @@ def neural_networks():
     history = model.fit(
         x_train, y_train,
         validation_data=(x_test, y_test),
-        epochs=160,
+        epochs=500,
         callbacks=tf_callbacks(),
         verbose=2,
         batch_size=space['batch_size'],
