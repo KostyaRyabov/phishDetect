@@ -752,13 +752,15 @@ def is_URL_accessible(url, time_out=5):
             try:
                 page = requests.get(url, timeout=time_out, headers=http_header)
             except:
-                print(url)
-                return False, -1
+                pass
 
     if page and page.status_code == 200 and page.content not in ["b''", "b' '"]:
         return True, page
     else:
-        return False, page.status_code
+        try:
+            return False, page.status_code
+        except:
+            return False, -1
 
 @indicate
 def check_Language(text):
@@ -1090,7 +1092,19 @@ m.append(pickle.load(open('data/models/GradientBoost/GradientBoost.pkl', 'rb')))
 m.append(pickle.load(open('data/models/HistGradientBoost/HistGradientBoost.pkl', 'rb')))
 m.append(pickle.load(open('data/models/kNN/8NN.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Multinomial_NB/Multinomial_NB.pkl', 'rb')))
-m.append(keras.models.load_model('data/models/neural_networks/nn1.h5'))
+
+import tensorflow.keras.backend as K
+
+def f_score(y_true, y_pred):
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+    precision = true_positives / (predicted_positives + K.epsilon())
+    recall = true_positives / (possible_positives + K.epsilon())
+    f1_val = 2 * (precision * recall) / (precision + recall + K.epsilon())
+    return f1_val
+
+m.append(keras.models.load_model('data/models/neural_networks/nn1.h5', custom_objects={'f_score': f_score}))
 m.append(pickle.load(open('data/models/RF/RF.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Stacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)/StackingClassifier.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Stacking (All)/StackingClassifier.pkl', 'rb')))
