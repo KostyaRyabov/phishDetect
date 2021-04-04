@@ -1,0 +1,1 @@
+{'batch_size': 64, 'init': 'glorot_uniform', 'layers': {'BatchNormalization': True, 'activation': 'sigmoid', 'dropout': {'dropout_rate': 0.35}, 'next': None, 'nodes_count': 20}, 'optimizer': {'learning_rate': 0.04, 'type': 'Nadam'}, 'shuffle': True, 'trainable_BatchNormalization': True, 'trainable_dropouts': False}

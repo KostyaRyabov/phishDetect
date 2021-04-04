@@ -18,7 +18,6 @@ import gc
 # utilities
 from itertools import chain
 
-
 class FeatureSelector():
     def __init__(self, data, labels=None):
 

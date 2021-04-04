@@ -1,4 +1,4 @@
-state = 10
+state = 24
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -9,24 +9,24 @@ state = 10
 # 6 - run example without shield
 # 7 - collect all datasets
 # 8 - select features
-# 9 - generate hyperoptions for neural_networks_archSearch
-# 10 - learn neural_networks
-# 11 - generate hyperoptions for kNN
-# 12 - generate hyperoptions for SVM
-# 13 - generate hyperoptions for DT
-# 14 - generate hyperoptions for ET
-# 15 - generate hyperoptions for RF
-# 16 - generate hyperoptions for AdaBoost_DT
-# 17 - generate hyperoptions for GradientBoost
-# 18 - generate hyperoptions for HistGradientBoost
-# 19 - learn Gaussian_NB
-# 20 - learn Bernoulli_NB
-# 21 - learn Complement_NB
-# 22 - learn Multinomial_NB
-# 23 - get ratings
-# 24 - Bagging_DT
-# 25 - Stacking
-# 26 - find_best_NN
+# 9 - learn neural_networks_kfold
+# 10 - generate hyperoptions for kNN
+# 11 - generate hyperoptions for SVM
+# 12 - generate hyperoptions for DT
+# 13 - generate hyperoptions for ET
+# 14 - generate hyperoptions for RF
+# 15 - generate hyperoptions for AdaBoost_DT
+# 16 - generate hyperoptions for GradientBoost
+# 17 - generate hyperoptions for HistGradientBoost
+# 18 - learn Gaussian_NB
+# 19 - learn Bernoulli_NB
+# 20 - learn Complement_NB
+# 21 - learn Multinomial_NB
+# 22 - get ratings
+# 23 - Bagging_DT
+# 24 - Stacking
+# 25 - find_best_NN
+# 26 - learn neural_networks
 
 
 import feature_extractor as fe
@@ -66,56 +66,56 @@ if __name__ == "__main__":
     elif state == 8:
         fe.select_features(40)
     elif state == 9:
-        from ml_algs import neural_networks_archSearch
-        neural_networks_archSearch()
+        from ml_algs import neural_networks_kfold
+        neural_networks_kfold()
     elif state == 10:
-        from ml_algs import neural_networks
-        neural_networks()
-    elif state == 11:
         from ml_algs import KNN
         KNN()
-    elif state == 12:
+    elif state == 11:
         from ml_algs import SVM
         SVM()
-    elif state == 13:
+    elif state == 12:
         from ml_algs import DT
         DT()
-    elif state == 14:
+    elif state == 13:
         from ml_algs import ET
         ET()
-    elif state == 15:
+    elif state == 14:
         from ml_algs import RF
         RF()
-    elif state == 16:
+    elif state == 15:
         from ml_algs import AdaBoost_DT
         AdaBoost_DT()
-    elif state == 17:
+    elif state == 16:
         from ml_algs import GradientBoost
         GradientBoost()
-    elif state == 18:
+    elif state == 17:
         from ml_algs import HistGradientBoost
         HistGradientBoost()
-    elif state == 19:
+    elif state == 18:
         from ml_algs import Gaussian_NB
         Gaussian_NB()
-    elif state == 20:
+    elif state == 19:
         from ml_algs import Bernoulli_NB
         Bernoulli_NB()
-    elif state == 21:
+    elif state == 20:
         from ml_algs import Complement_NB
         Complement_NB()
-    elif state == 22:
+    elif state == 21:
         from ml_algs import Multinomial_NB
         Multinomial_NB()
-    elif state == 23:
+    elif state == 22:
         from ml_algs import get_rating
         get_rating()
-    elif state == 24:
+    elif state == 23:
         from ml_algs import Bagging_DT
         Bagging_DT()
-    elif state == 25:
+    elif state == 24:
         from ml_algs import Stacking
         Stacking()
-    elif state == 26:
+    elif state == 25:
         from ml_algs import find_best_NN
-        find_best_NN(-0.01, 100)
+        find_best_NN('score')
+    elif state == 26:
+        from ml_algs import neural_networks
+        neural_networks()

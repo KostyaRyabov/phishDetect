@@ -621,7 +621,7 @@ if state in range(2, 7):
         Title = ''
         Text = ''
 
-        soup = BeautifulSoup(content, 'html.parser')
+        soup = BeautifulSoup(content, 'html.parser')    # lxml
 
         # collect all external and internal hrefs from url
         for script in soup.find_all('script', src=True):

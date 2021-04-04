@@ -1,1 +1,1 @@
-{'learning_rate': 0.5410893212663248, 'loss': 'auto'}
+{'learning_rate': 0.25, 'loss': 'binary_crossentropy'}

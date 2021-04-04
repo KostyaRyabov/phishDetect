@@ -1,7 +1,7 @@
 {
   'criterion': 'mse',
-  'learning_rate': 0.7395211845757522,
+  'learning_rate': 0.62,
   'loss': 'deviance',
   'max_features': None,
-  'n_estimators': 92
+  'n_estimators': 100
 }

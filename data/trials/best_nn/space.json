@@ -1,1 +1,20 @@
-{'batch_size': 32, 'decay_steps': 870000, 'init': 'glorot_normal', 'layers': {'BatchNormalization': True, 'activation': 'softplus', 'dropout': None, 'next': {'BatchNormalization': True, 'activation': 'tanh', 'dropout': {'dropout_rate': 0.43934945742703146}, 'next': {'BatchNormalization': True, 'activation': 'elu', 'dropout': None, 'next': None, 'nodes_count': 195}, 'nodes_count': 121}, 'nodes_count': 112}, 'optimizer': {'learning_rate': 0.6785964241303374, 'type': 'Adadelta'}, 'shuffle': True, 'trainable_BatchNormalization': True, 'trainable_dropouts': False}
+{
+  'batch_size': 128,
+  'init': 'glorot_uniform',
+  'layers': {
+    'BatchNormalization': True,
+    'activation': 'sigmoid',
+    'dropout': {
+      'dropout_rate': 0.35
+    },
+    'next': None,
+    'nodes_count': 20
+  },
+  'optimizer': {
+    'learning_rate': 0.04,
+    'type': 'Nadam'
+  },
+  'shuffle': True,
+  'trainable_BatchNormalization': True,
+  'trainable_dropouts': False
+}
