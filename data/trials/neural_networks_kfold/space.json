@@ -1,26 +1,22 @@
 {
-  'batch_size': 128,
-  'init': 'glorot_uniform',
+  'batch_size': 64,
+  'decay_rate': 1.0,
+  'decay_steps': 45,
+  'init': 'glorot_normal',
   'layers': {
     'BatchNormalization': True,
-    'activation': 'relu',
+    'activation': 'tanh',
     'dropout': {
       'dropout_rate': 0.35
     },
-    'next': {
-      'BatchNormalization': True,
-      'activation': 'elu',
-      'dropout': None,
-      'next': None,
-      'nodes_count': 305
-    },
-    'nodes_count': 295
+    'next': None,
+    'nodes_count': 250
   },
+  'learning_rate': 0.03,
   'optimizer': {
-    'learning_rate': 0.04,
-    'type': 'Nadam'
+    'type': 'Adamax'
   },
   'shuffle': True,
   'trainable_BatchNormalization': True,
-  'trainable_dropouts': False
+  'trainable_dropouts': True
 }

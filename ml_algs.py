@@ -449,59 +449,40 @@ def neural_networks_kfold():
 
     space = {
         'layers': layer(5),
+        'learning_rate': hp.choice('lr', [0.0001, 0.0003, 0.0006, 0.001, 0.003, 0.006, 0.01, 0.03, 0.06, 0.1, 0.3, 0.6, 1.0]),
+        'decay_rate': 1 - hp.randint('dr', 40) / 160,
+        'decay_steps': hp.randint('ds', 50)+1,
         'optimizer':
             hp.choice('optimizer', [
                 {
                     'type': 'Adadelta',
-                    'learning_rate': hp.randint('Adadelta_lr', 200) / 200,
-                    'decay_rate': 1-hp.randint('Adadelta_dr', 40) / 160,
                 },
                 {
                     'type': 'Adagrad',
-                    'learning_rate': hp.randint('Adagrad_lr', 200) / 200,
-                    'decay_rate': 1 - hp.randint('Adagrad_dr', 40) / 160,
                 },
                 {
                     'type': 'Adamax',
-                    'learning_rate': hp.randint('Adamax_lr', 200) / 200,
-                    'decay_rate': 1 - hp.randint('Adamax_dr', 40) / 160,
                 },
                 {
                     'type': 'Adam',
-                    'learning_rate': hp.randint('Adam_lr', 200) / 200,
-                    'decay_rate': 1 - hp.randint('Adam_dr', 40) / 160,
                     'amsgrad': hp.choice('Adam_amsgrad', [False, True])
                 },
                 {
                     'type': 'Ftrl',
-                    'learning_rate': hp.randint('Ftrl_lr', 200) / 200,
-                    'decay_rate': 1 - hp.randint('Ftrl_dr', 40) / 160,
-                },
-                {
-                    'type': 'Nadam',
-                    'learning_rate': hp.randint('Nadam_lr', 200) / 200
                 },
                 {
                     'type': 'RMSprop',
-                    'learning_rate': hp.randint('RMSprop_lr', 200) / 200,
-                    'decay_rate': 1 - hp.randint('RMSprop_dr', 40) / 160,
                     'centered': hp.choice('RMSprop_centered', [False, True]),
                     'momentum': hp.randint('RMSprop_momentum', 50)/50,
                 },
                 {
                     'type': 'SGD',
-                    'learning_rate': hp.randint('SGD_lr', 200) / 200,
-                    'decay_rate': 1 - hp.randint('SGD_dr', 40) / 160,
                     'nesterov': hp.choice('SGD_nesterov', [False, True]),
                     'momentum': hp.randint('SGD_momentum', 50)/50,
                 }
             ]),
-        'batch_size': 128,
-        'init': hp.choice('init', [
-            'glorot_normal',
-            'truncated_normal',
-            'glorot_uniform'
-        ]),
+        'batch_size': 64,
+        'init': 'glorot_normal',
         'trainable_BatchNormalization': hp.choice('trainable_BatchNormalization', [False, True]),
         'trainable_dropouts': hp.choice('trainable_dropouts', [False, True]),
         'shuffle': True
@@ -519,10 +500,10 @@ def neural_networks_kfold():
 
         def on_epoch_end(self, epoch, logs=None):
             if epoch >= self.delay_epochs:
-                v_acc = logs.get('val_accuracy')
-                acc = logs.get('accuracy')
+                v_loss = np.around(logs.get('val_loss'), 3)
+                loss = np.around(logs.get('loss'), 3)
 
-                if np.less(acc, v_acc):
+                if np.less_equal(v_loss, loss):
                     self.wait = 0
                 else:
                     self.wait += 1
@@ -546,17 +527,17 @@ def neural_networks_kfold():
             ),
             tf.keras.callbacks.EarlyStopping(
                 monitor='val_accuracy',
-                patience=10,
-                # min_delta=1e-5,
+                patience=15,
+                # min_delta=1e-4,
                 mode='max'
             ),
             tf.keras.callbacks.EarlyStopping(
                 monitor='val_loss',
-                patience=10,
+                patience=15,
                 mode='min'
             ),
             CustomEarlyStopping(
-                patience=5,
+                patience=10,
                 delay_epochs=20
             )
         ]
@@ -591,21 +572,17 @@ def neural_networks_kfold():
             optimizer = optimizers.Adamax()
         elif space['optimizer']['type'] == 'Ftrl':
             optimizer = optimizers.Ftrl()
-        elif space['optimizer']['type'] == 'Nadam':
-            optimizer = optimizers.Nadam()
         elif space['optimizer']['type'] == 'RMSprop':
             optimizer = optimizers.RMSprop()
         elif space['optimizer']['type'] == 'SGD':
             optimizer = optimizers.SGD()
 
-        if 'decay_rate' in space['optimizer']:
-            optimizer.learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
-                space['optimizer']['learning_rate'],
-                decay_steps=1,
-                decay_rate=space['optimizer']['decay_rate'],
-                staircase=True)
-        else:
-            optimizer.learning_rate = space['optimizer']['learning_rate']
+        optimizer.learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
+            space['learning_rate'],
+            decay_steps=space['decay_steps'],
+            decay_rate=space['decay_rate'],
+            staircase=True
+        )
 
         if 'amsgrad' in space['optimizer']:
             optimizer.amsgrad = space['optimizer']['amsgrad']
@@ -638,7 +615,7 @@ def neural_networks_kfold():
             history = []
             scores = []
 
-            for train_index, test_index in KFold(5, shuffle=True, random_state=41).split(X):
+            for train_index, test_index in KFold(5, shuffle=True, random_state=40).split(X):
                 x_train, x_test = X[train_index], X[test_index]
                 y_train, y_test = Y[train_index], Y[test_index]
 
@@ -648,8 +625,8 @@ def neural_networks_kfold():
 
                 h = model.fit(
                     x_train, y_train,
-                    validation_split=0.2,
-                    # validation_data=(x_test, y_test),
+                    # validation_split=0.2,
+                    validation_data=(x_test, y_test),
                     epochs=500,
                     batch_size=space['batch_size'],
                     callbacks=tf_callbacks(),
@@ -657,7 +634,10 @@ def neural_networks_kfold():
                     verbose=2
                 )
 
-                if h.history['loss'][-1] >= h.history['val_loss'][-1]:
+                loss = np.round(h.history['loss'][-1], 3)
+                v_loss = np.round(h.history['val_loss'][-1], 3)
+
+                if np.less_equal(v_loss, loss):
                     history.append(h.history)
                     result.append(model.evaluate(x_test, y_test, verbose=0))
 
@@ -674,10 +654,11 @@ def neural_networks_kfold():
                         el = np.exp(l)
                         v = 1 + (1 - el) / (1 + el)
                         scores.append(2 * (v * s) / (v + s))
+
+                    if s < 0.94:
+                        break
                 else:
                     scores.append(-0.5)
-
-                if scores[-1] < 0.92:
                     break
 
             m = {
@@ -786,11 +767,42 @@ def neural_networks():
 
     tf.compat.v1.enable_eager_execution()
 
-    with open("data/trials/best_nn/space.json", 'r') as f:
-        space = json.loads(
-            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+    # with open("data/trials/best_nn/space.json", 'r') as f:
+    #     space = json.loads(
+    #         f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+    #
+    #     space['batch_size'] = 64
 
-        space['batch_size'] = 64
+    space = {
+      'batch_size': 64,
+      'decay_rate': 0.975,
+      'decay_steps': 31,
+      'init': 'glorot_normal',
+      'layers': {
+        'BatchNormalization': True,
+        'activation': 'softsign',
+        'dropout': None,
+        'next': {
+          'BatchNormalization': False,
+          'activation': 'elu',
+          'dropout': {
+            'dropout_rate': 0.375
+          },
+          'next': None,
+          'nodes_count': 455
+        },
+        'nodes_count': 490
+      },
+      'learning_rate': 0.003,
+      'optimizer': {
+        'centered': False,
+        'momentum': 0.1,
+        'type': 'RMSprop'
+      },
+      'shuffle': True,
+      'trainable_BatchNormalization': True,
+      'trainable_dropouts': True
+    }
 
     class CustomEarlyStopping(tf.keras.callbacks.Callback):
         def __init__(self, patience=0, delay_epochs=25):
@@ -804,10 +816,10 @@ def neural_networks():
 
         def on_epoch_end(self, epoch, logs=None):
             if epoch >= self.delay_epochs:
-                v_acc = logs.get('val_accuracy')
-                acc = logs.get('accuracy')
+                v_acc = np.round(logs.get('val_loss'), 3)
+                acc = np.round(logs.get('loss'), 3)
 
-                if np.less(acc, v_acc):
+                if np.less_equal(v_acc, acc):
                     self.wait = 0
                 else:
                     self.wait += 1
@@ -831,12 +843,12 @@ def neural_networks():
             ),
             tf.keras.callbacks.EarlyStopping(
                 monitor='val_accuracy',
-                patience=30,
+                patience=20,
                 mode='max'
             ),
             tf.keras.callbacks.EarlyStopping(
                 monitor='val_loss',
-                patience=30,
+                patience=20,
                 mode='min'
             ),
             CustomEarlyStopping(
@@ -881,14 +893,11 @@ def neural_networks():
     elif space['optimizer']['type'] == 'SGD':
         optimizer = optimizers.SGD()
 
-    if 'decay_rate' in space['optimizer']:
-        optimizer.learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
-            space['optimizer']['learning_rate'],
-            decay_steps=1,
-            decay_rate=space['optimizer']['decay_rate'],
-            staircase=True)
-    else:
-        optimizer.learning_rate = space['optimizer']['learning_rate']
+    optimizer.learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
+        space['learning_rate'],
+        decay_steps=space['decay_steps'],
+        decay_rate=space['decay_rate'],
+        staircase=True)
 
     if 'amsgrad' in space['optimizer']:
         optimizer.amsgrad = space['optimizer']['amsgrad']
@@ -1085,117 +1094,7 @@ def DT():
         pickle.dump(trials, output)
 
 
-# def SVM():
-#     from sklearn.svm import SVC
-#
-#     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-#
-#     try:
-#         with open("data/trials/SVM/results.pkl", 'rb') as file:
-#             trials = pickle.load(file)
-#     except:
-#         trials = Trials()
-#
-#     space = {
-#         'C': hp.uniform('C', 0, 100000),
-#         'random_state': 42,
-#         'kernel': hp.choice('kernel', [
-#             {
-#                 'type': 'linear',
-#             },
-#             {
-#                 'type': 'poly',
-#                 'degree': hp.randint('degree_poly', 360),
-#                 'coef0': hp.uniform('coef0_poly', -10, 10)
-#             },
-#             {
-#                 'type': 'rbf',
-#                 'gamma': hp.choice('gamma_rbf', ['scale', 'auto'])
-#             },
-#             {
-#                 'type': 'sigmoid',
-#                 'gamma': hp.choice('gamma_sigmoid', ['scale', 'auto']),
-#                 'coef0': hp.uniform('coef0_sigmoid', -10, 10)
-#             },
-#             {
-#                 'type': 'precomputed',
-#                 'gamma': hp.choice('gamma_precomputed', ['scale', 'auto'])
-#             }
-#         ]),
-#     }
-#
-#     def objective(space):
-#         clf = SVC(
-#             C=space['C'],
-#             random_state=space['random_state'],
-#             kernel=space['kernel']['type'],
-#             max_iter=10000,
-#             tol=1e-2
-#         )
-#
-#         if 'coef0' in space['kernel']:
-#             clf.coef0 = space['kernel']['coef0']
-#         if 'degree' in space['kernel']:
-#             clf.degree = space['kernel']['degree']
-#         if 'gamma' in space['kernel']:
-#             clf.gamma = space['kernel']['gamma']
-#
-#         try:
-#             clf.fit(x_train, y_train)
-#             y_pred = clf.predict(x_test)
-#             acc = accuracy_score(y_true=y_test, y_pred=y_pred)
-#         except:
-#             acc = -1
-#
-#         try:
-#             with open("data/trials/SVM/metric.txt") as f:
-#                 max_acc = float(f.read().strip())  # read best metric,
-#         except FileNotFoundError:
-#             max_acc = -1
-#
-#         if acc > max_acc:
-#             pickle.dump(clf, open('data/models/SVM/SVM.pkl', 'wb'))
-#             with open("data/trials/SVM/space.json", "w") as f:
-#                 f.write(str(space))
-#             with open("data/trials/SVM/metric.txt", "w") as f:
-#                 f.write(str(acc))
-#
-#             auc = roc_auc_score(y_test, y_pred)
-#             f_score = f1_score(y_test, y_pred)
-#             pre = precision_score(y_test, y_pred)
-#             recall = recall_score(y_test, y_pred)
-#             m = {
-#                 "accuracy": acc,
-#                 "Precision": pre,
-#                 "Recall": recall,
-#                 "AUC": auc,
-#                 "f_score": f_score
-#             }
-#             with open("data/trials/SVM/metrics.json", "w") as f:
-#                 json.dump(m, f)
-#
-#         return {'loss': -acc, 'status': STATUS_OK, 'space': space}
-#
-#     best = fmin(
-#         objective,
-#         space,
-#         algo=tpe.suggest,
-#         max_evals=200,
-#         trials=trials,
-#         timeout=60 * 30
-#     )
-#
-#     def typer(o):
-#         if isinstance(o, np.int32): return int(o)
-#         return o
-#
-#     with open("data/trials/SVM/best.json", "w") as f:
-#         json.dump(best, f, default=typer)
-#
-#     with open("data/trials/SVM/results.pkl", 'wb') as output:
-#         pickle.dump(trials, output)
-
-def SVM():
+def SVM_cv():
     from sklearn.svm import SVC
     from sklearn.model_selection import cross_val_predict
 
@@ -1303,8 +1202,54 @@ def SVM():
         pickle.dump(trials, output)
 
 
+def SVM():
+    from sklearn.svm import SVC
 
-def KNN():
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+    with open("data/trials/SVM/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    clf = SVC(
+        C=space['C'],
+        random_state=space['random_state'],
+        kernel=space['kernel']['type'],
+        max_iter=25000,
+        tol=1e-3
+    )
+
+    if 'coef0' in space['kernel']:
+        clf.coef0 = space['kernel']['coef0']
+    if 'degree' in space['kernel']:
+        clf.degree = space['kernel']['degree']
+    if 'gamma' in space['kernel']:
+        clf.gamma = space['kernel']['gamma']
+
+    clf = clf.fit(x_train, y_train)
+    y_pred = clf.predict(x_test)
+    acc = accuracy_score(y_true=y_test, y_pred=y_pred)
+    auc = roc_auc_score(y_test, y_pred)
+    pre = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f_score = f1_score(y_test, y_pred)
+
+    m = {
+        "accuracy": acc,
+        "Precision": pre,
+        "Recall": recall,
+        "AUC": auc,
+        "f_score": f_score
+    }
+
+    with open("data/trials/SVM/metrics.json", "w") as f:
+        json.dump(m, f)
+
+    with open("data/models/SVM/SVM.pkl", "w") as f:
+        json.dump(clf, f)
+
+
+def KNN_cv():
     from sklearn.neighbors import KNeighborsClassifier
     from sklearn.model_selection import cross_val_predict
 
@@ -1383,6 +1328,44 @@ def KNN():
 
     with open("data/trials/kNN/results.pkl", 'wb') as output:
         pickle.dump(trials, output)
+
+
+def SVM():
+    from sklearn.neighbors import KNeighborsClassifier
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+    with open("data/trials/kNN/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    clf = KNeighborsClassifier(
+        n_neighbors=space['k'],
+        p=space['p'],
+        weights=space['weights']
+    )
+
+    clf = clf.fit(x_train, y_train)
+    y_pred = clf.predict(x_test)
+    acc = accuracy_score(y_true=y_test, y_pred=y_pred)
+    auc = roc_auc_score(y_test, y_pred)
+    pre = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f_score = f1_score(y_test, y_pred)
+
+    m = {
+        "accuracy": acc,
+        "Precision": pre,
+        "Recall": recall,
+        "AUC": auc,
+        "f_score": f_score
+    }
+
+    with open("data/trials/kNN/metrics.json", "w") as f:
+        json.dump(m, f)
+
+    with open("data/models/kNN/kNN.pkl", "w") as f:
+        json.dump(clf, f)
 
 
 def Gaussian_NB():
@@ -1492,7 +1475,7 @@ def Multinomial_NB():
 # ansambles
 
 
-def ET():
+def ET_cv():
     from sklearn.ensemble import ExtraTreesClassifier
     from sklearn.model_selection import cross_val_predict
 
@@ -1578,7 +1561,46 @@ def ET():
         pickle.dump(trials, output)
 
 
-def RF():
+def ET():
+    from sklearn.ensemble import ExtraTreesClassifier
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+    with open("data/trials/ET/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    clf = ExtraTreesClassifier(
+        n_estimators=space['n_estimators'],
+        criterion=space['criterion'],
+        max_features=space['max_features'],
+        class_weight=space['class_weight']
+    )
+
+    clf = clf.fit(x_train, y_train)
+    y_pred = clf.predict(x_test)
+    acc = accuracy_score(y_true=y_test, y_pred=y_pred)
+    auc = roc_auc_score(y_test, y_pred)
+    pre = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f_score = f1_score(y_test, y_pred)
+
+    m = {
+        "accuracy": acc,
+        "Precision": pre,
+        "Recall": recall,
+        "AUC": auc,
+        "f_score": f_score
+    }
+
+    with open("data/trials/ET/metrics.json", "w") as f:
+        json.dump(m, f)
+
+    with open("data/models/ET/ET.pkl", "w") as f:
+        json.dump(clf, f)
+
+
+def RF_cv():
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.model_selection import cross_val_predict
 
@@ -1663,7 +1685,46 @@ def RF():
         pickle.dump(trials, output)
 
 
-def AdaBoost_DT():
+def RF():
+    from sklearn.ensemble import RandomForestClassifier
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+    with open("data/trials/RF/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    clf = RandomForestClassifier(
+        n_estimators=space['n_estimators'],
+        criterion=space['criterion'],
+        max_features=space['max_features'],
+        class_weight=space['class_weight']
+    )
+
+    clf = clf.fit(x_train, y_train)
+    y_pred = clf.predict(x_test)
+    acc = accuracy_score(y_true=y_test, y_pred=y_pred)
+    auc = roc_auc_score(y_test, y_pred)
+    pre = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f_score = f1_score(y_test, y_pred)
+
+    m = {
+        "accuracy": acc,
+        "Precision": pre,
+        "Recall": recall,
+        "AUC": auc,
+        "f_score": f_score
+    }
+
+    with open("data/trials/RF/metrics.json", "w") as f:
+        json.dump(m, f)
+
+    with open("data/models/RF/RF.pkl", "w") as f:
+        json.dump(clf, f)
+
+
+def AdaBoost_DT_cv():
     from sklearn.ensemble import AdaBoostClassifier
     from sklearn.tree import DecisionTreeClassifier
     from sklearn.model_selection import cross_val_predict
@@ -1752,7 +1813,47 @@ def AdaBoost_DT():
         pickle.dump(trials, output)
 
 
-def Bagging_DT():
+def AdaBoost_DT():
+    from sklearn.ensemble import AdaBoostClassifier
+    from sklearn.tree import DecisionTreeClassifier
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+    with open("data/trials/AdaBoost_DT/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    clf = AdaBoostClassifier(
+        DecisionTreeClassifier(max_depth=space['max_depth']),
+        n_estimators=space['n_estimators'],
+        learning_rate=space['learning_rate'],
+        algorithm=space['algorithm']
+    )
+
+    clf = clf.fit(x_train, y_train)
+    y_pred = clf.predict(x_test)
+    acc = accuracy_score(y_true=y_test, y_pred=y_pred)
+    auc = roc_auc_score(y_test, y_pred)
+    pre = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f_score = f1_score(y_test, y_pred)
+
+    m = {
+        "accuracy": acc,
+        "Precision": pre,
+        "Recall": recall,
+        "AUC": auc,
+        "f_score": f_score
+    }
+
+    with open("data/trials/AdaBoost_DT/metrics.json", "w") as f:
+        json.dump(m, f)
+
+    with open("data/models/AdaBoost_DT/AdaBoost_DT.pkl", "w") as f:
+        json.dump(clf, f)
+
+
+def Bagging_DT_cv():
     from sklearn.ensemble import BaggingClassifier
     from sklearn.tree import DecisionTreeClassifier
     from sklearn.model_selection import cross_val_predict
@@ -1837,7 +1938,46 @@ def Bagging_DT():
         pickle.dump(trials, output)
 
 
-def GradientBoost():
+def Bagging_DT():
+    from sklearn.ensemble import BaggingClassifier
+    from sklearn.tree import DecisionTreeClassifier
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+    with open("data/trials/Bagging_DT/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    clf = BaggingClassifier(
+        DecisionTreeClassifier(max_depth=space['max_depth']),
+        n_estimators=space['n_estimators'],
+        bootstrap_features=space['bootstrap_features']
+    )
+
+    clf = clf.fit(x_train, y_train)
+    y_pred = clf.predict(x_test)
+    acc = accuracy_score(y_true=y_test, y_pred=y_pred)
+    auc = roc_auc_score(y_test, y_pred)
+    pre = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f_score = f1_score(y_test, y_pred)
+
+    m = {
+        "accuracy": acc,
+        "Precision": pre,
+        "Recall": recall,
+        "AUC": auc,
+        "f_score": f_score
+    }
+
+    with open("data/trials/Bagging_DT/metrics.json", "w") as f:
+        json.dump(m, f)
+
+    with open("data/models/Bagging_DT/Bagging_DT.pkl", "w") as f:
+        json.dump(clf, f)
+
+
+def GradientBoost_cv():
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn.model_selection import cross_val_predict
 
@@ -1922,7 +2062,48 @@ def GradientBoost():
         pickle.dump(trials, output)
 
 
-def HistGradientBoost():
+def GradientBoost():
+    from sklearn.ensemble import GradientBoostingClassifier
+    from sklearn.model_selection import cross_val_predict
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+    with open("data/trials/GradientBoost/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    clf = GradientBoostingClassifier(
+        n_estimators=space['n_estimators'],
+        learning_rate=space['learning_rate'],
+        criterion=space['criterion'],
+        max_features=space['max_features'],
+        loss=space['loss']
+    )
+
+    clf = clf.fit(x_train, y_train)
+    y_pred = clf.predict(x_test)
+    acc = accuracy_score(y_true=y_test, y_pred=y_pred)
+    auc = roc_auc_score(y_test, y_pred)
+    pre = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f_score = f1_score(y_test, y_pred)
+
+    m = {
+        "accuracy": acc,
+        "Precision": pre,
+        "Recall": recall,
+        "AUC": auc,
+        "f_score": f_score
+    }
+
+    with open("data/trials/GradientBoost/metrics.json", "w") as f:
+        json.dump(m, f)
+
+    with open("data/models/GradientBoost/GradientBoost.pkl", "w") as f:
+        json.dump(clf, f)
+
+
+def HistGradientBoost_cv():
     from sklearn.experimental import enable_hist_gradient_boosting
     from sklearn.ensemble import HistGradientBoostingClassifier
     from sklearn.model_selection import cross_val_predict
@@ -2000,6 +2181,45 @@ def HistGradientBoost():
 
     with open("data/trials/HistGradientBoost/results.pkl", 'wb') as output:
         pickle.dump(trials, output)
+
+
+def HistGradientBoost():
+    from sklearn.experimental import enable_hist_gradient_boosting
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    from sklearn.model_selection import cross_val_predict
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+    with open("data/trials/HistGradientBoost/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    clf = HistGradientBoostingClassifier(
+        learning_rate=space['learning_rate'],
+        loss=space['loss']
+    )
+
+    clf = clf.fit(x_train, y_train)
+    y_pred = clf.predict(x_test)
+    acc = accuracy_score(y_true=y_test, y_pred=y_pred)
+    auc = roc_auc_score(y_test, y_pred)
+    pre = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f_score = f1_score(y_test, y_pred)
+
+    m = {
+        "accuracy": acc,
+        "Precision": pre,
+        "Recall": recall,
+        "AUC": auc,
+        "f_score": f_score
+    }
+
+    with open("data/trials/HistGradientBoost/metrics.json", "w") as f:
+        json.dump(m, f)
+
+    with open("data/models/HistGradientBoost/HistGradientBoost.pkl", "w") as f:
+        json.dump(clf, f)
 
 
 # summary
