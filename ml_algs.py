@@ -341,7 +341,7 @@ def draw(history, metrics, dir):
 
 
 def get_rating():
-    lst = os.listdir(os.getcwd() + '/data/trials')
+    lst = os.listdir(os.getcwd() + '/data/models')
     metrics = []
     for dir in lst:
         if 'kfold' in dir:
@@ -767,42 +767,9 @@ def neural_networks():
 
     tf.compat.v1.enable_eager_execution()
 
-    # with open("data/trials/best_nn/space.json", 'r') as f:
-    #     space = json.loads(
-    #         f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
-    #
-    #     space['batch_size'] = 64
-
-    space = {
-      'batch_size': 64,
-      'decay_rate': 0.975,
-      'decay_steps': 31,
-      'init': 'glorot_normal',
-      'layers': {
-        'BatchNormalization': True,
-        'activation': 'softsign',
-        'dropout': None,
-        'next': {
-          'BatchNormalization': False,
-          'activation': 'elu',
-          'dropout': {
-            'dropout_rate': 0.375
-          },
-          'next': None,
-          'nodes_count': 455
-        },
-        'nodes_count': 490
-      },
-      'learning_rate': 0.003,
-      'optimizer': {
-        'centered': False,
-        'momentum': 0.1,
-        'type': 'RMSprop'
-      },
-      'shuffle': True,
-      'trainable_BatchNormalization': True,
-      'trainable_dropouts': True
-    }
+    with open("data/trials/best_nn/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
     class CustomEarlyStopping(tf.keras.callbacks.Callback):
         def __init__(self, patience=0, delay_epochs=25):
@@ -816,10 +783,10 @@ def neural_networks():
 
         def on_epoch_end(self, epoch, logs=None):
             if epoch >= self.delay_epochs:
-                v_acc = np.round(logs.get('val_loss'), 3)
-                acc = np.round(logs.get('loss'), 3)
+                v_loss = np.round(logs.get('val_loss'), 3)
+                loss = np.round(logs.get('loss'), 3)
 
-                if np.less_equal(v_acc, acc):
+                if np.less_equal(v_loss, loss):
                     self.wait = 0
                 else:
                     self.wait += 1
@@ -836,24 +803,19 @@ def neural_networks():
         return [
             tf.keras.callbacks.ModelCheckpoint(
                 'data/models/neural_networks/tmp.h5',
-                monitor='val_accuracy',
+                monitor='accuracy',
                 mode='max',
                 verbose=0,
                 save_best_only=True
             ),
-            tf.keras.callbacks.EarlyStopping(
-                monitor='val_accuracy',
-                patience=20,
-                mode='max'
-            ),
-            tf.keras.callbacks.EarlyStopping(
-                monitor='val_loss',
-                patience=20,
-                mode='min'
-            ),
+            # tf.keras.callbacks.EarlyStopping(
+            #     monitor='accuracy',
+            #     patience=20,
+            #     mode='max'
+            # ),
             CustomEarlyStopping(
                 patience=5,
-                delay_epochs=20
+                delay_epochs=5
             )
         ]
 
@@ -886,18 +848,12 @@ def neural_networks():
         optimizer = optimizers.Adamax()
     elif space['optimizer']['type'] == 'Ftrl':
         optimizer = optimizers.Ftrl()
-    elif space['optimizer']['type'] == 'Nadam':
-        optimizer = optimizers.Nadam()
     elif space['optimizer']['type'] == 'RMSprop':
         optimizer = optimizers.RMSprop()
     elif space['optimizer']['type'] == 'SGD':
         optimizer = optimizers.SGD()
 
-    optimizer.learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
-        space['learning_rate'],
-        decay_steps=space['decay_steps'],
-        decay_rate=space['decay_rate'],
-        staircase=True)
+    optimizer.learning_rate = space['learning_rate']
 
     if 'amsgrad' in space['optimizer']:
         optimizer.amsgrad = space['optimizer']['amsgrad']
@@ -916,8 +872,8 @@ def neural_networks():
 
     history = model.fit(
         x_train, y_train,
-        validation_split=0.1,
-        # validation_data=(x_test, y_test),
+        # validation_split=0.1,
+        validation_data=(x_test, y_test),
         epochs=500,
         batch_size=space['batch_size'],
         callbacks=tf_callbacks(),
@@ -936,10 +892,11 @@ def neural_networks():
         "AUC": res[2],
         "Precision": res[3],
         "Recall": res[4],
-        "F_score": s,
+        "f_score": s,
     }
 
     model.save("data/models/neural_networks/nn1.h5")
+    model.save_weights("data/models/neural_networks/nn1_w.h5")
     with open("data/trials/neural_networks/space.json", "w") as f:
         f.write(str(space))
     with open("data/trials/neural_networks/metrics.json", "w") as f:
@@ -1215,7 +1172,7 @@ def SVM():
         C=space['C'],
         random_state=space['random_state'],
         kernel=space['kernel']['type'],
-        max_iter=25000,
+        # max_iter=25000,
         tol=1e-3
     )
 
@@ -1245,8 +1202,8 @@ def SVM():
     with open("data/trials/SVM/metrics.json", "w") as f:
         json.dump(m, f)
 
-    with open("data/models/SVM/SVM.pkl", "w") as f:
-        json.dump(clf, f)
+    with open("data/models/SVM/SVM.pkl", "wb") as f:
+        pickle.dump(clf, f)
 
 
 def KNN_cv():
@@ -1330,7 +1287,7 @@ def KNN_cv():
         pickle.dump(trials, output)
 
 
-def SVM():
+def KNN():
     from sklearn.neighbors import KNeighborsClassifier
 
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
@@ -1364,8 +1321,8 @@ def SVM():
     with open("data/trials/kNN/metrics.json", "w") as f:
         json.dump(m, f)
 
-    with open("data/models/kNN/kNN.pkl", "w") as f:
-        json.dump(clf, f)
+    with open("data/models/kNN/kNN.pkl", "wb") as f:
+        pickle.dump(clf, f)
 
 
 def Gaussian_NB():
@@ -1596,8 +1553,8 @@ def ET():
     with open("data/trials/ET/metrics.json", "w") as f:
         json.dump(m, f)
 
-    with open("data/models/ET/ET.pkl", "w") as f:
-        json.dump(clf, f)
+    with open("data/models/ET/ET.pkl", "wb") as f:
+        pickle.dump(clf, f)
 
 
 def RF_cv():
@@ -1720,8 +1677,8 @@ def RF():
     with open("data/trials/RF/metrics.json", "w") as f:
         json.dump(m, f)
 
-    with open("data/models/RF/RF.pkl", "w") as f:
-        json.dump(clf, f)
+    with open("data/models/RF/RF.pkl", "wb") as f:
+        pickle.dump(clf, f)
 
 
 def AdaBoost_DT_cv():
@@ -1849,8 +1806,8 @@ def AdaBoost_DT():
     with open("data/trials/AdaBoost_DT/metrics.json", "w") as f:
         json.dump(m, f)
 
-    with open("data/models/AdaBoost_DT/AdaBoost_DT.pkl", "w") as f:
-        json.dump(clf, f)
+    with open("data/models/AdaBoost_DT/AdaBoost_DT.pkl", "wb") as f:
+        pickle.dump(clf, f)
 
 
 def Bagging_DT_cv():
@@ -1973,8 +1930,8 @@ def Bagging_DT():
     with open("data/trials/Bagging_DT/metrics.json", "w") as f:
         json.dump(m, f)
 
-    with open("data/models/Bagging_DT/Bagging_DT.pkl", "w") as f:
-        json.dump(clf, f)
+    with open("data/models/Bagging_DT/Bagging_DT.pkl", "wb") as f:
+        pickle.dump(clf, f)
 
 
 def GradientBoost_cv():
@@ -2099,8 +2056,8 @@ def GradientBoost():
     with open("data/trials/GradientBoost/metrics.json", "w") as f:
         json.dump(m, f)
 
-    with open("data/models/GradientBoost/GradientBoost.pkl", "w") as f:
-        json.dump(clf, f)
+    with open("data/models/GradientBoost/GradientBoost.pkl", "wb") as f:
+        pickle.dump(clf, f)
 
 
 def HistGradientBoost_cv():
@@ -2218,13 +2175,109 @@ def HistGradientBoost():
     with open("data/trials/HistGradientBoost/metrics.json", "w") as f:
         json.dump(m, f)
 
-    with open("data/models/HistGradientBoost/HistGradientBoost.pkl", "w") as f:
-        json.dump(clf, f)
+    with open("data/models/HistGradientBoost/HistGradientBoost.pkl", "wb") as f:
+        pickle.dump(clf, f)
 
 
 # summary
 # - Stacking
 
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
+
+from tensorflow.keras import layers, models, optimizers, losses
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
+from tensorflow.python.keras.layers import deserialize, serialize
+from tensorflow.python.keras.saving import saving_utils
+
+def unpack(model, training_config, weights):
+    restored_model = deserialize(model)
+    if training_config is not None:
+        restored_model.compile(
+            **saving_utils.compile_args_from_training_config(
+                training_config
+            )
+        )
+    restored_model.set_weights(weights)
+    return restored_model
+
+# Hotfix function
+def make_keras_picklable():
+
+    def __reduce__(self):
+        model_metadata = saving_utils.model_metadata(self)
+        training_config = model_metadata.get("training_config", None)
+        model = serialize(self)
+        weights = self.get_weights()
+        return (unpack, (model, training_config, weights))
+
+    cls = models.Model
+    cls.__reduce__ = __reduce__
+
+# Run the function
+make_keras_picklable()
+
+def create_model():
+    with open("data/trials/best_nn/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    model = models.Sequential()
+
+    layer = space['layers']
+
+    while layer:
+        model.add(layers.Dense(
+            layer['nodes_count'],
+            kernel_initializer=space['init'],
+            activation=layer['activation'])
+        )
+        if layer['dropout']:
+            model.add(layers.Dropout(layer['dropout']['dropout_rate'], trainable=space['trainable_dropouts']))
+        if layer['BatchNormalization']:
+            model.add(layers.BatchNormalization(trainable=space['trainable_BatchNormalization']))
+
+        layer = layer['next']
+
+    model.add(layers.Dense(1, kernel_initializer=space['init'], activation='sigmoid'))
+
+    if space['optimizer']['type'] == 'Adadelta':
+        optimizer = optimizers.Adadelta()
+    elif space['optimizer']['type'] == 'Adagrad':
+        optimizer = optimizers.Adagrad()
+    elif space['optimizer']['type'] == 'Adam':
+        optimizer = optimizers.Adam()
+    elif space['optimizer']['type'] == 'Adamax':
+        optimizer = optimizers.Adamax()
+    elif space['optimizer']['type'] == 'Ftrl':
+        optimizer = optimizers.Ftrl()
+    elif space['optimizer']['type'] == 'RMSprop':
+        optimizer = optimizers.RMSprop()
+    elif space['optimizer']['type'] == 'SGD':
+        optimizer = optimizers.SGD()
+
+    optimizer.learning_rate = space['learning_rate']
+
+    if 'amsgrad' in space['optimizer']:
+        optimizer.amsgrad = space['optimizer']['amsgrad']
+    if 'centered' in space['optimizer']:
+        optimizer.centered = space['optimizer']['centered']
+    if 'momentrum' in space['optimizer']:
+        optimizer.momentum = space['optimizer']['momentum']
+    if 'nesterov' in space['optimizer']:
+        optimizer.nesterov = space['optimizer']['nesterov']
+
+    model.compile(
+        optimizer=optimizer,
+        loss=losses.BinaryCrossentropy(from_logits=True),
+        metrics=['accuracy']
+    )
+
+    return model
+
+ann = KerasClassifier(build_fn=create_model, epochs=200, batch_size=64, verbose=2)
+ann._estimator_type = "classifier"
 
 def Stacking():
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
@@ -2248,13 +2301,16 @@ def Stacking():
     from sklearn.linear_model import LogisticRegression
     from sklearn.ensemble import StackingClassifier
 
+
+
     estimators = [
+        # ('ANN', ann),
         # ('SVM', SVC(
         #     C=326.7,
         #     random_state=42,
         #     kernel='rbf',
         #     gamma='scale',
-        #     max_iter=10000,
+        #     tol=1e-3
         # )),
         # ('GNB', GaussianNB()),
         # ('BNB', BernoulliNB()),
@@ -2310,9 +2366,8 @@ def Stacking():
     clf = StackingClassifier(
         estimators=estimators,
         final_estimator=LogisticRegression(),
-        stack_method='predict',
         verbose=2,
-        n_jobs=2
+        n_jobs=1
     )
 
     clf.fit(x_train, y_train)
