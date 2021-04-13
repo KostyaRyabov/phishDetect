@@ -1090,27 +1090,15 @@ m.append(pickle.load(open('data/models/ET/ET.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Gaussian_NB/Gaussian_NB.pkl', 'rb')))
 m.append(pickle.load(open('data/models/GradientBoost/GradientBoost.pkl', 'rb')))
 m.append(pickle.load(open('data/models/HistGradientBoost/HistGradientBoost.pkl', 'rb')))
-m.append(pickle.load(open('data/models/kNN/8NN.pkl', 'rb')))
+m.append(pickle.load(open('data/models/kNN/kNN.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Multinomial_NB/Multinomial_NB.pkl', 'rb')))
-
-import tensorflow.keras.backend as K
-
-def f_score(y_true, y_pred):
-    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
-    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
-    precision = true_positives / (predicted_positives + K.epsilon())
-    recall = true_positives / (possible_positives + K.epsilon())
-    f1_val = 2 * (precision * recall) / (precision + recall + K.epsilon())
-    return f1_val
-
-m.append(keras.models.load_model('data/models/neural_networks/nn1.h5', custom_objects={'f_score': f_score}))
+m.append(keras.models.load_model('data/models/neural_networks/nn2.h5'))
 m.append(pickle.load(open('data/models/RF/RF.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Stacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)/StackingClassifier.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Stacking (All)/StackingClassifier.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Stacking (CNB, MNB, BNB, GNB)/StackingClassifier.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Stacking (RF,HGBC, GBC, AdaBoost, ET)/StackingClassifier.pkl', 'rb')))
-m.append(pickle.load(open('data/models/Stacking (SVM, kNN, DT)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (ANN, SVM, kNN, DT)/StackingClassifier.pkl', 'rb')))
 m.append(pickle.load(open('data/models/SVM/SVM.pkl', 'rb')))
 
 
@@ -1133,7 +1121,7 @@ estimators = [
                 'Stacking (All)',
                 'Stacking (CNB, MNB, BNB, GNB)',
                 'Stacking (RF,HGBC, GBC, AdaBoost, ET)',
-                'Stacking (SVM, kNN, DT)',
+                'Stacking (ANN, SVM, kNN, DT)',
                 'SVM'
             ]
 
@@ -1165,13 +1153,13 @@ if __name__ == "__main__":
 
             for i in range(len(m)):
                 start = time()
-                r = m[i].predict(data)
+                r = m[i].predict_proba(data)
                 dtime.append(time() - start)
 
                 if 'neural' in estimators[i+1]:
                     res.append(r.round().tolist()[0][0])
                 else:
-                    res.append(r.round().tolist()[0])
+                    res.append(r.round().tolist()[0][1])
                 result.configure(state='normal')
                 result.insert(tk.END, ('\n'+estimators[i+1], r))
                 result.configure(state='disabled')
@@ -1204,14 +1192,13 @@ if __name__ == "__main__":
                 header=['estimator', 'mean', 'max',
                         'min'], index=False)
 
-            df = pandas.DataFrame(res)
+            df = pandas.DataFrame(res+[url.get().split()[0]])
             df = (df == int(url.get().split()[0])).astype(int).T
-
 
             if os.path.isfile('data/logs/estimator_rate.csv'):
                 df.to_csv('data/logs/estimator_rate.csv', header=False, index=False, mode='a')
             else:
-                df.to_csv('data/logs/estimator_rate.csv', header=estimators[1:], index=False)
+                df.to_csv('data/logs/estimator_rate.csv', header=estimators[1:]+['phish'], index=False)
 
             df = pandas.read_csv('data/logs/estimator_rate.csv')
             df.sum().to_csv('data/logs/estimator_rate_voite.csv', header=['count'], index_label='estimator')

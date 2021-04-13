@@ -1,20 +1,21 @@
 estimator,count
-AdaBoost_DT,24
-Bagging_DT,18
-Bernoulli_NB,22
-Complement_NB,24
-DT,25
-ET,26
-Gaussian_NB,15
-GradientBoost,17
-HistGradientBoost,27
-kNN,25
-Multinomial_NB,24
-neural_networks,21
-RF,27
-"Stacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)",29
-Stacking (All),26
-"Stacking (CNB, MNB, BNB, GNB)",21
-"Stacking (RF,HGBC, GBC, AdaBoost, ET)",25
-"Stacking (SVM, kNN, DT)",22
-SVM,16
+AdaBoost_DT,1
+Bagging_DT,1
+Bernoulli_NB,1
+Complement_NB,1
+DT,1
+ET,1
+Gaussian_NB,1
+GradientBoost,0
+HistGradientBoost,1
+kNN,1
+Multinomial_NB,1
+neural_networks,0
+RF,1
+"Stacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)",1
+Stacking (All),1
+"Stacking (CNB, MNB, BNB, GNB)",1
+"Stacking (RF,HGBC, GBC, AdaBoost, ET)",1
+"Stacking (ANN, SVM, kNN, DT)",1
+SVM,1
+phish,0

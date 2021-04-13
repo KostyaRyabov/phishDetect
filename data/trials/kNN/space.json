@@ -1,1 +1,5 @@
-{'algorithm': 'kd_tree', 'k': 8, 'p': 1, 'weights': 'distance'}
+{
+  'k': 7,
+  'p': 1,
+  'weights': 'distance'
+}
