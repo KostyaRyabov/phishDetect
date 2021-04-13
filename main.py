@@ -1004,10 +1004,10 @@ def extract_features(url):
         parsed = urlparse(r_url)
         scheme = parsed.scheme
 
-        cert = get_cert(domain)
-
-        (Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc,
-         externals_script_doc) = extract_all_context_data(hostname, content, domain, r_url)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as e:
+            cert = e.submit(get_cert, domain).result()
+            (Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc, externals_script_doc) = e.submit(
+                extract_all_context_data, hostname, content, domain, r_url).result()
 
         content_di = get_html_from_js(remove_JScomments(internals_script_doc))
         content_de = get_html_from_js(remove_JScomments(externals_script_doc))
@@ -1017,8 +1017,9 @@ def extract_features(url):
 
         lang = check_Language(content)
 
-        internals_img_txt = image_to_text(Img['internals'], lang)
-        externals_img_txt = image_to_text(Img['externals'], lang)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as e:
+            internals_img_txt = e.submit(image_to_text, Img['internals'], lang).result()
+            externals_img_txt = e.submit(image_to_text, Img['externals'], lang).result()
 
         iImgTxt_words = clear_text(tokenize(internals_img_txt.lower()))
         eImgTxt_words = clear_text(tokenize(externals_img_txt.lower()))
@@ -1034,48 +1035,93 @@ def extract_features(url):
         eUrl_s = Href['externals'] + Link['externals'] + Media['externals'] + Form['externals']
         nUrl_s = Href['null'] + Link['null'] + Media['null'] + Form['null']
 
-        return [
-            word_ratio(Text_words),
-            good_netloc(netloc),
-            url_length(r_url),
-            count_at(r_url),
-            count_semicolumn(r_url),
-            count_equal(r_url),
-            count_percentage(r_url),
-            count_hyphens(r_url),
-            count_dots(r_url),
-            count_colon(r_url),
-            https_token(scheme),
-            count_phish_hints(url_words, phish_hints, lang),
-            count_redirection(request),
-            count_external_redirection(request, domain),
-            random_domain(second_level_domain),
-            random_words(words_raw, 86),
-            random_words(words_raw_host, 8),
-            domain_in_brand(second_level_domain),
-            count_www(words_raw),
-            length_word_raw(words_raw),
-            average_word_length(words_raw),
-            longest_word_length(words_raw),
-            count_links(len(iUrl_s) + len(eUrl_s)),
-            urls_ratio(iUrl_s, iUrl_s + eUrl_s + nUrl_s),
-            urls_ratio(nUrl_s, iUrl_s + eUrl_s + nUrl_s),
-            ratio_List(SCRIPT, 'internals'),
-            ratio_List(Img, 'internals'),
-            ratio_List(Media, 'externals'),
-            ratio_anchor(Anchor, 'unsafe'),
-            ratio_anchor(Anchor, 'safe'),
-            count_words(len(sContent_words)),
-            ratio_Txt(iImgTxt_words + eImgTxt_words, sContent_words),
-            ratio_Txt(iImgTxt_words, sContent_words),
-            count_io_commands(internals_script_doc, 487490),
-            count_io_commands(externals_script_doc, 713513),
-            whois_registered_domain(domain),
-            web_traffic(r_url),
-            page_rank(domain),
-            valid_cert_period(cert),
-            count_alt_names(cert)
-        ]
+        result = []
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as e:
+            result.append(e.submit(word_ratio, Text_words).result())
+            result.append(e.submit(good_netloc, netloc).result())
+            result.append(e.submit(url_length, r_url).result())
+            result.append(e.submit(count_at, r_url).result())
+            result.append(e.submit(count_semicolumn, r_url).result())
+            result.append(e.submit(count_equal, r_url).result())
+            result.append(e.submit(count_percentage, r_url).result())
+            result.append(e.submit(count_hyphens, r_url).result())
+            result.append(e.submit(count_dots, r_url).result())
+            result.append(e.submit(count_colon, r_url).result())
+            result.append(e.submit(https_token, scheme).result())
+            result.append(e.submit(count_phish_hints, url_words, phish_hints, lang).result())
+            result.append(e.submit(count_redirection, request).result())
+            result.append(e.submit(count_external_redirection, request, domain).result())
+            result.append(e.submit(random_domain, second_level_domain).result())
+            result.append(e.submit(random_words, words_raw, 86).result())
+            result.append(e.submit(random_words, words_raw_host, 8).result())
+            result.append(e.submit(domain_in_brand, second_level_domain).result())
+            result.append(e.submit(count_www, words_raw).result())
+            result.append(e.submit(length_word_raw, words_raw).result())
+            result.append(e.submit(average_word_length, words_raw).result())
+            result.append(e.submit(longest_word_length, words_raw).result())
+            result.append(e.submit(count_links, len(iUrl_s) + len(eUrl_s)).result())
+            result.append(e.submit(urls_ratio, iUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
+            result.append(e.submit(urls_ratio, nUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
+            result.append(e.submit(ratio_List, SCRIPT, 'internals').result())
+            result.append(e.submit(ratio_List, Img, 'internals').result())
+            result.append(e.submit(ratio_List, Media, 'externals').result())
+            result.append(e.submit(ratio_anchor, Anchor, 'unsafe').result())
+            result.append(e.submit(ratio_anchor, Anchor, 'safe').result())
+            result.append(e.submit(count_words, len(sContent_words)).result())
+            result.append(e.submit(ratio_Txt, iImgTxt_words + eImgTxt_words, sContent_words).result())
+            result.append(e.submit(ratio_Txt, iImgTxt_words, sContent_words).result())
+            result.append(e.submit(count_io_commands, internals_script_doc, 487490).result())
+            result.append(e.submit(count_io_commands, externals_script_doc, 713513).result())
+            result.append(e.submit(whois_registered_domain, domain).result())
+            result.append(e.submit(web_traffic, r_url).result())
+            result.append(e.submit(page_rank, domain).result())
+            result.append(e.submit(valid_cert_period, cert).result())
+            result.append(e.submit(count_alt_names, cert).result())
+
+        return result
+        # return [
+        #     word_ratio(Text_words),
+        #     good_netloc(netloc),
+        #     url_length(r_url),
+        #     count_at(r_url),
+        #     count_semicolumn(r_url),
+        #     count_equal(r_url),
+        #     count_percentage(r_url),
+        #     count_hyphens(r_url),
+        #     count_dots(r_url),
+        #     count_colon(r_url),
+        #     https_token(scheme),
+        #     count_phish_hints(url_words, phish_hints, lang),
+        #     count_redirection(request),
+        #     count_external_redirection(request, domain),
+        #     random_domain(second_level_domain),
+        #     random_words(words_raw, 86),
+        #     random_words(words_raw_host, 8),
+        #     domain_in_brand(second_level_domain),
+        #     count_www(words_raw),
+        #     length_word_raw(words_raw),
+        #     average_word_length(words_raw),
+        #     longest_word_length(words_raw),
+        #     count_links(len(iUrl_s) + len(eUrl_s)),
+        #     urls_ratio(iUrl_s, iUrl_s + eUrl_s + nUrl_s),
+        #     urls_ratio(nUrl_s, iUrl_s + eUrl_s + nUrl_s),
+        #     ratio_List(SCRIPT, 'internals'),
+        #     ratio_List(Img, 'internals'),
+        #     ratio_List(Media, 'externals'),
+        #     ratio_anchor(Anchor, 'unsafe'),
+        #     ratio_anchor(Anchor, 'safe'),
+        #     count_words(len(sContent_words)),
+        #     ratio_Txt(iImgTxt_words + eImgTxt_words, sContent_words),
+        #     ratio_Txt(iImgTxt_words, sContent_words),
+        #     count_io_commands(internals_script_doc, 487490),
+        #     count_io_commands(externals_script_doc, 713513),
+        #     whois_registered_domain(domain),
+        #     web_traffic(r_url),
+        #     page_rank(domain),
+        #     valid_cert_period(cert),
+        #     count_alt_names(cert)
+        # ]
     return request
 
 
@@ -1157,11 +1203,11 @@ if __name__ == "__main__":
                 dtime.append(time() - start)
 
                 if 'neural' in estimators[i+1]:
-                    res.append(r.round().tolist()[0][0])
+                    res.append(r.tolist()[0][0])
                 else:
-                    res.append(r.round().tolist()[0][1])
+                    res.append(r.tolist()[0][1])
                 result.configure(state='normal')
-                result.insert(tk.END, ('\n'+estimators[i+1], r))
+                result.insert(tk.END, ('\n'+estimators[i+1], res[-1]))
                 result.configure(state='disabled')
                 p_v += 1
                 result.configure(state='normal')
@@ -1192,7 +1238,7 @@ if __name__ == "__main__":
                 header=['estimator', 'mean', 'max',
                         'min'], index=False)
 
-            df = pandas.DataFrame(res+[url.get().split()[0]])
+            df = pandas.DataFrame(np.array(res).round().tolist()+[url.get().split()[0]])
             df = (df == int(url.get().split()[0])).astype(int).T
 
             if os.path.isfile('data/logs/estimator_rate.csv'):

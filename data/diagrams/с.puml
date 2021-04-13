@@ -1,0 +1,62 @@
+@startuml
+
+left to right direction
+scale 4
+
+() GUI
+
+component "приложение"{
+    port " " as output
+    port "  " as input
+
+    file tesseract
+    file BeautifulSoup
+    file pandas
+    file sklearn
+    file ssl
+    file "модель машинного обучения" as ml
+
+    () "обработанные данные" as data
+
+    BeautifulSoup .> [сборщик статистики] : use
+    ssl .u.> [сборщик статистики] : use
+    pandas .l.> [сборщик статистики] : use
+    tesseract .u.> [сборщик статистики] : use
+    [сборщик статистики] -d-- input
+
+    [сборщик статистики] -d- data
+    [классификатор] -u-( data
+
+    ml .l.> [классификатор] : use
+    sklearn .> [классификатор] : use
+    [классификатор] -u- output
+}
+
+output -l- GUI
+
+cloud {
+    [http]
+    [whois]
+    database Alexa
+    database OpenPageRank
+}
+
+() сайт
+[http] -- сайт
+input -( сайт
+
+() рейтинг as r1
+() рейтинг as r2
+
+Alexa -- r1
+input -( r1
+
+OpenPageRank -- r2
+input -( r2
+
+() "доменное имя" as domain
+whois -d- domain
+input -r( domain
+
+
+@enduml
