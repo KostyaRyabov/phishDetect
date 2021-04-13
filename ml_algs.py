@@ -1173,7 +1173,8 @@ def SVM():
         random_state=space['random_state'],
         kernel=space['kernel']['type'],
         # max_iter=25000,
-        tol=1e-3
+        probability=True,
+        # tol=1e-3
     )
 
     if 'coef0' in space['kernel']:
