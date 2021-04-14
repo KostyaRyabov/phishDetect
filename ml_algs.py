@@ -413,7 +413,7 @@ def neural_networks_kfold():
                 ]),
                 'nodes_count': hp.randint('nodes_count_0', 100) * 5 + 5,
                 'dropout': hp.choice('dropout_0', [
-                    {'dropout_rate': (hp.randint('dropout_rate_0', 19) + 1) / 40},
+                    {'dropout_rate': (hp.randint('dropout_rate_0', 29) + 1) / 60},
                     None
                 ]),
                 'BatchNormalization': hp.choice('BatchNormalization_0', [False, True]),
@@ -438,7 +438,7 @@ def neural_networks_kfold():
                 ]),
                 'nodes_count': hp.randint('nodes_count_{}'.format(M - N), 100)*5+5,
                 'dropout': hp.choice('dropout_{}'.format(M - N), [
-                    {'dropout_rate': (hp.randint('dropout_rate_{}'.format(M - N), 19)+1)/40},
+                    {'dropout_rate': (hp.randint('dropout_rate_{}'.format(M - N), 29)+1)/60},
                     None
                 ]),
                 'BatchNormalization': hp.choice('BatchNormalization_{}'.format(M - N), [False, True]),
@@ -449,38 +449,7 @@ def neural_networks_kfold():
 
     space = {
         'layers': layer(5),
-        'learning_rate': hp.choice('lr', [0.0001, 0.0003, 0.0006, 0.001, 0.003, 0.006, 0.01, 0.03, 0.06, 0.1, 0.3, 0.6, 1.0]),
-        'decay_rate': 1 - hp.randint('dr', 40) / 160,
-        'decay_steps': hp.randint('ds', 50)+1,
-        'optimizer':
-            hp.choice('optimizer', [
-                {
-                    'type': 'Adadelta',
-                },
-                {
-                    'type': 'Adagrad',
-                },
-                {
-                    'type': 'Adamax',
-                },
-                {
-                    'type': 'Adam',
-                    'amsgrad': hp.choice('Adam_amsgrad', [False, True])
-                },
-                {
-                    'type': 'Ftrl',
-                },
-                {
-                    'type': 'RMSprop',
-                    'centered': hp.choice('RMSprop_centered', [False, True]),
-                    'momentum': hp.randint('RMSprop_momentum', 50)/50,
-                },
-                {
-                    'type': 'SGD',
-                    'nesterov': hp.choice('SGD_nesterov', [False, True]),
-                    'momentum': hp.randint('SGD_momentum', 50)/50,
-                }
-            ]),
+        'learning_rate': hp.choice('lr', [0.0001, 0.0003, 0.0006, 0.001, 0.003, 0.006, 0.01, 0.03, 0.06, 0.1, 0.3, 0.6, 1.0, 1.5, 2.0]),
         'batch_size': 64,
         'init': 'glorot_normal',
         'trainable_BatchNormalization': hp.choice('trainable_BatchNormalization', [False, True]),
@@ -500,8 +469,8 @@ def neural_networks_kfold():
 
         def on_epoch_end(self, epoch, logs=None):
             if epoch >= self.delay_epochs:
-                v_loss = np.around(logs.get('val_loss'), 3)
-                loss = np.around(logs.get('loss'), 3)
+                v_loss = np.around(logs.get('val_loss'), 2)
+                loss = np.around(logs.get('loss'), 2)
 
                 if np.less_equal(v_loss, loss):
                     self.wait = 0
@@ -531,13 +500,8 @@ def neural_networks_kfold():
                 # min_delta=1e-4,
                 mode='max'
             ),
-            tf.keras.callbacks.EarlyStopping(
-                monitor='val_loss',
-                patience=15,
-                mode='min'
-            ),
             CustomEarlyStopping(
-                patience=10,
+                patience=5,
                 delay_epochs=20
             )
         ]
@@ -562,39 +526,8 @@ def neural_networks_kfold():
 
         model.add(layers.Dense(1, kernel_initializer=space['init'], activation='sigmoid'))
 
-        if space['optimizer']['type'] == 'Adadelta':
-            optimizer = optimizers.Adadelta()
-        elif space['optimizer']['type'] == 'Adagrad':
-            optimizer = optimizers.Adagrad()
-        elif space['optimizer']['type'] == 'Adam':
-            optimizer = optimizers.Adam()
-        elif space['optimizer']['type'] == 'Adamax':
-            optimizer = optimizers.Adamax()
-        elif space['optimizer']['type'] == 'Ftrl':
-            optimizer = optimizers.Ftrl()
-        elif space['optimizer']['type'] == 'RMSprop':
-            optimizer = optimizers.RMSprop()
-        elif space['optimizer']['type'] == 'SGD':
-            optimizer = optimizers.SGD()
-
-        optimizer.learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(
-            space['learning_rate'],
-            decay_steps=space['decay_steps'],
-            decay_rate=space['decay_rate'],
-            staircase=True
-        )
-
-        if 'amsgrad' in space['optimizer']:
-            optimizer.amsgrad = space['optimizer']['amsgrad']
-        if 'centered' in space['optimizer']:
-            optimizer.centered = space['optimizer']['centered']
-        if 'momentrum' in space['optimizer']:
-            optimizer.momentum = space['optimizer']['momentum']
-        if 'nesterov' in space['optimizer']:
-            optimizer.nesterov = space['optimizer']['nesterov']
-
         model.compile(
-            optimizer=optimizer,
+            optimizer=optimizers.Adam(learning_rate=space['learning_rate']),
             loss=losses.BinaryCrossentropy(from_logits=True),
             metrics=metrics
         )
@@ -627,15 +560,15 @@ def neural_networks_kfold():
                     x_train, y_train,
                     # validation_split=0.2,
                     validation_data=(x_test, y_test),
-                    epochs=500,
+                    epochs=150,
                     batch_size=space['batch_size'],
                     callbacks=tf_callbacks(),
                     shuffle=space['shuffle'],
                     verbose=2
                 )
 
-                loss = np.round(h.history['loss'][-1], 3)
-                v_loss = np.round(h.history['val_loss'][-1], 3)
+                loss = np.round(h.history['loss'][-1], 2)
+                v_loss = np.round(h.history['val_loss'][-1], 2)
 
                 if np.less_equal(v_loss, loss):
                     history.append(h.history)
@@ -730,7 +663,7 @@ def neural_networks_kfold():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=10000,
+        max_evals=500,
                   # + len(trials),
         trials=trials,
         timeout=60 * 60 * 7,
@@ -756,7 +689,7 @@ def neural_networks():
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.20, random_state=42)
 
     metrics = [
         'accuracy',
@@ -810,7 +743,7 @@ def neural_networks():
             ),
             # tf.keras.callbacks.EarlyStopping(
             #     monitor='accuracy',
-            #     patience=20,
+            #     patience=25,
             #     mode='max'
             # ),
             CustomEarlyStopping(
@@ -838,43 +771,17 @@ def neural_networks():
 
     model.add(layers.Dense(1, kernel_initializer=space['init'], activation='sigmoid'))
 
-    if space['optimizer']['type'] == 'Adadelta':
-        optimizer = optimizers.Adadelta()
-    elif space['optimizer']['type'] == 'Adagrad':
-        optimizer = optimizers.Adagrad()
-    elif space['optimizer']['type'] == 'Adam':
-        optimizer = optimizers.Adam()
-    elif space['optimizer']['type'] == 'Adamax':
-        optimizer = optimizers.Adamax()
-    elif space['optimizer']['type'] == 'Ftrl':
-        optimizer = optimizers.Ftrl()
-    elif space['optimizer']['type'] == 'RMSprop':
-        optimizer = optimizers.RMSprop()
-    elif space['optimizer']['type'] == 'SGD':
-        optimizer = optimizers.SGD()
-
-    optimizer.learning_rate = space['learning_rate']
-
-    if 'amsgrad' in space['optimizer']:
-        optimizer.amsgrad = space['optimizer']['amsgrad']
-    if 'centered' in space['optimizer']:
-        optimizer.centered = space['optimizer']['centered']
-    if 'momentrum' in space['optimizer']:
-        optimizer.momentum = space['optimizer']['momentum']
-    if 'nesterov' in space['optimizer']:
-        optimizer.nesterov = space['optimizer']['nesterov']
-
     model.compile(
-        optimizer=optimizer,
+        optimizer=optimizers.Adam(learning_rate=space['learning_rate']),
         loss=losses.BinaryCrossentropy(from_logits=True),
         metrics=metrics
     )
 
     history = model.fit(
         x_train, y_train,
-        # validation_split=0.1,
-        validation_data=(x_test, y_test),
-        epochs=500,
+        validation_split=0.15,
+        # validation_data=(x_test, y_test),
+        epochs=150,
         batch_size=space['batch_size'],
         callbacks=tf_callbacks(),
         shuffle=space['shuffle'],
@@ -2243,41 +2150,15 @@ def create_model():
 
     model.add(layers.Dense(1, kernel_initializer=space['init'], activation='sigmoid'))
 
-    if space['optimizer']['type'] == 'Adadelta':
-        optimizer = optimizers.Adadelta()
-    elif space['optimizer']['type'] == 'Adagrad':
-        optimizer = optimizers.Adagrad()
-    elif space['optimizer']['type'] == 'Adam':
-        optimizer = optimizers.Adam()
-    elif space['optimizer']['type'] == 'Adamax':
-        optimizer = optimizers.Adamax()
-    elif space['optimizer']['type'] == 'Ftrl':
-        optimizer = optimizers.Ftrl()
-    elif space['optimizer']['type'] == 'RMSprop':
-        optimizer = optimizers.RMSprop()
-    elif space['optimizer']['type'] == 'SGD':
-        optimizer = optimizers.SGD()
-
-    optimizer.learning_rate = space['learning_rate']
-
-    if 'amsgrad' in space['optimizer']:
-        optimizer.amsgrad = space['optimizer']['amsgrad']
-    if 'centered' in space['optimizer']:
-        optimizer.centered = space['optimizer']['centered']
-    if 'momentrum' in space['optimizer']:
-        optimizer.momentum = space['optimizer']['momentum']
-    if 'nesterov' in space['optimizer']:
-        optimizer.nesterov = space['optimizer']['nesterov']
-
     model.compile(
-        optimizer=optimizer,
+        optimizer=optimizers.Adam(learning_rate=space['learning_rate']),
         loss=losses.BinaryCrossentropy(from_logits=True),
         metrics=['accuracy']
     )
 
     return model
 
-ann = KerasClassifier(build_fn=create_model, epochs=200, batch_size=64, verbose=2)
+ann = KerasClassifier(build_fn=create_model, epochs=150, batch_size=64, verbose=2)
 ann._estimator_type = "classifier"
 
 def Stacking():
@@ -2305,45 +2186,45 @@ def Stacking():
 
 
     estimators = [
-        # ('ANN', ann),
-        # ('SVM', SVC(
-        #     C=326.7,
-        #     random_state=42,
-        #     kernel='rbf',
-        #     gamma='scale',
-        #     tol=1e-3
-        # )),
-        # ('GNB', GaussianNB()),
-        # ('BNB', BernoulliNB()),
-        # ('CNB', ComplementNB()),
-        # ('MNB', MultinomialNB()),
+        ('ANN', ann),
+        ('SVM', SVC(
+            C=326.7,
+            random_state=42,
+            kernel='rbf',
+            gamma='scale',
+            # tol=1e-3
+        )),
+        ('GNB', GaussianNB()),
+        ('BNB', BernoulliNB()),
+        ('CNB', ComplementNB()),
+        ('MNB', MultinomialNB()),
         ('RF', RandomForestClassifier(
             class_weight='balanced_subsample',
             n_estimators=100,
             max_features='log2',
             criterion='entropy'
         )),
-        # ('HGBC', HistGradientBoostingClassifier(
-        #     learning_rate=0.25
-        # )),
-        # ('GBC', GradientBoostingClassifier(
-        #     criterion='mse',
-        #     learning_rate=0.62,
-        #     loss='deviance',
-        #     max_features=None,
-        #     n_estimators=100
-        # )),
+        ('HGBC', HistGradientBoostingClassifier(
+            learning_rate=0.25
+        )),
+        ('GBC', GradientBoostingClassifier(
+            criterion='mse',
+            learning_rate=0.62,
+            loss='deviance',
+            max_features=None,
+            n_estimators=100
+        )),
         ('AdaBoost_DT', AdaBoostClassifier(
             DecisionTreeClassifier(max_depth=10),
             n_estimators=100,
             learning_rate=0.93,
             algorithm='SAMME'
         )),
-        # ('kNN', KNeighborsClassifier(
-        #     weights='distance',
-        #     n_neighbors=7,
-        #     p=1
-        # )),
+        ('kNN', KNeighborsClassifier(
+            weights='distance',
+            n_neighbors=7,
+            p=1
+        )),
         ('ET', ExtraTreesClassifier(
             n_estimators=100,
             max_features='sqrt',
@@ -2375,7 +2256,7 @@ def Stacking():
     y_pred = clf.predict(x_test)
     acc = accuracy_score(y_true=y_test, y_pred=y_pred)
 
-    pickle.dump(clf, open('data/models/Stacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)/StackingClassifier.pkl', 'wb'))
+    pickle.dump(clf, open('data/models/Stacking (All)/StackingClassifier.pkl', 'wb'))
 
     auc = roc_auc_score(y_test, y_pred)
     f_score = f1_score(y_test, y_pred)
@@ -2388,5 +2269,5 @@ def Stacking():
         "AUC": auc,
         "f_score": f_score
     }
-    with open("data/trials/Stacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)/metrics.json", "w") as f:
+    with open("data/trials/Stacking (All)/metrics.json", "w") as f:
         json.dump(m, f)
