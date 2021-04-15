@@ -1238,8 +1238,10 @@ if __name__ == "__main__":
                 header=['estimator', 'mean', 'max',
                         'min'], index=False)
 
-            df = pandas.DataFrame(np.array(res).round().tolist()+[url.get().split()[0]])
+            df = pandas.DataFrame(np.array(res).round().tolist())
             df = (df == int(url.get().split()[0])).astype(int).T
+
+            df[-1] = int(url.get().split()[0])
 
             if os.path.isfile('data/logs/estimator_rate.csv'):
                 df.to_csv('data/logs/estimator_rate.csv', header=False, index=False, mode='a')
