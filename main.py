@@ -1250,6 +1250,11 @@ if __name__ == "__main__":
 
             df = pandas.read_csv('data/logs/estimator_rate.csv')
             df.sum().to_csv('data/logs/estimator_rate_voite.csv', header=['count'], index_label='estimator')
+
+            df[df['phish'] == 0].sum().to_csv('data/logs/estimator_rate_legit', header=['count'],
+                                              index_label='estimator')
+            df[df['phish'] == 1].sum().to_csv('data/logs/estimator_rate_phish', header=['count'],
+                                              index_label='estimator')
         else:
             result.configure(state='normal')
             result.insert(tk.END, "ERROR: {}".format(data[0]))
