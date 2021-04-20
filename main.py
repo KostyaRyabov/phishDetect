@@ -1,7 +1,5 @@
 import os
-from operator import index
 
-import lxml
 import pandas
 import tldextract
 import concurrent.futures
@@ -27,26 +25,15 @@ from iso639 import languages
 import threading
 import pickle
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
-from tensorflow import keras
-
 import tkinter as tk
 from tkinter.ttk import Progressbar, Style
-from tkinter import simpledialog
-
-
-# import configparser
-# config = configparser.ConfigParser()
-# config.read('settings.ini')
-
 
 p_v = 0
 
 
 def indicate(func):
     def wrapper(*args, **kwargs):
-        global progress, p_v, timer
+        global progress, p_v
         p_v += 1
         progress['value'] = p_v
         res = func(*args, **kwargs)
@@ -57,7 +44,6 @@ def indicate(func):
     return wrapper
 
 
-import trace
 import sys
 
 progress_task = None
@@ -698,19 +684,19 @@ def count_io_commands(string, limit):
 #                       OCR
 ########################################################################################################################
 
-# todo: качество изображения: scale, blur
+
 def translate_image(obj):
     try:
         resp = requests.get(obj[0], stream=True).raw
         image = np.asarray(bytearray(resp.read()), dtype="uint8")
         img = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        img = cv2.resize(img, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
+        img = cv2.resize(img, None, fx=0.35, fy=0.35, interpolation=cv2.INTER_AREA)
         img = cv2.GaussianBlur(img, (5, 5), 0)
         return pytesseract.image_to_string(img, lang=obj[1])
     except:
         return ""
 
-# todo: кол-во потоков для распознавания текста с изображений: img_workers
+
 @indicate
 def image_to_text(img, lang):
     try:
@@ -720,8 +706,8 @@ def image_to_text(img, lang):
             lang = 'eng+' + lang
 
         if type(img) == list:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-                docs = [req for req in executor.map(translate_image, [(url, lang) for url in img], timeout=30)]
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                docs = [req for req in executor.map(translate_image, [(url, lang) for url in img], timeout=15)]
 
                 if docs:
                     return ' '.join(docs)
@@ -1201,28 +1187,6 @@ if __name__ == "__main__":
     window = tk.Tk()
     window.title("phishDetect")
     window.resizable(0, 0)
-
-    mb = tk.Menubutton(window, text="settings", relief=tk.RAISED)
-    mb.grid(column=0, row=0, sticky=tk.N+tk.W, pady=(0, 10))
-    mb.menu = tk.Menu(mb, tearoff=0)
-    mb["menu"] = mb.menu
-
-    mayoVar = tk.IntVar()
-    ketchVar = tk.IntVar()
-
-    mb.menu.add_checkbutton(label="mayo",
-                            variable=mayoVar)
-    mb.menu.add_checkbutton(label="ketchup",
-                            variable=ketchVar)
-
-
-    def take_user_input_for_something():
-        user_input = simpledialog.askstring("Pop up for user input!", "What do you want to ask the user to input here?")
-        if user_input != "":
-            print(user_input)
-
-
-    mb.menu.add_command(label="Do something", command=take_user_input_for_something)
 
     url = tk.StringVar()
 
