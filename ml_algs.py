@@ -263,24 +263,6 @@ X = frame[cols].to_numpy()
 Y = frame['status'].to_numpy()
 
 
-def plot_lr(lr, n_epochs, decay):
-    from math import exp
-
-    path = [lr]
-
-    for epoch in range(n_epochs):
-        lr = lr * exp(-epoch / decay)
-        path.append(lr)
-
-    plt.plot(path)
-    plt.title("изменение скорости обучения")
-    plt.xlabel='эпоха'
-    plt.ylabel='скорость обучения'
-    plt.show()
-    plt.clf()
-    plt.close()
-
-
 def plot_hyperop_score(dir):
     with open("data/trials/{}/results.pkl".format(dir), 'rb') as f:
         data = pickle.load(f)
@@ -378,7 +360,6 @@ def neural_networks_kfold():
 
     import telepot
 
-
     metrics = [
         'accuracy',
         'AUC',
@@ -411,7 +392,7 @@ def neural_networks_kfold():
                     'sigmoid',
                     'exponential'
                 ]),
-                'nodes_count': hp.randint('nodes_count_0', 100) * 5 + 5,
+                'nodes_count': hp.randint('nodes_count_0', 20) * 5+5,
                 'dropout': hp.choice('dropout_0', [
                     {'dropout_rate': (hp.randint('dropout_rate_0', 29) + 1) / 60},
                     None
@@ -436,7 +417,7 @@ def neural_networks_kfold():
                     'sigmoid',
                     'exponential'
                 ]),
-                'nodes_count': hp.randint('nodes_count_{}'.format(M - N), 100)*5+5,
+                'nodes_count': hp.randint('nodes_count_{}'.format(M - N), 20)*5+5,
                 'dropout': hp.choice('dropout_{}'.format(M - N), [
                     {'dropout_rate': (hp.randint('dropout_rate_{}'.format(M - N), 29)+1)/60},
                     None
@@ -447,14 +428,24 @@ def neural_networks_kfold():
             None
         ])
 
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
+
     space = {
         'layers': layer(5),
-        'learning_rate': hp.choice('lr', [0.0001, 0.0003, 0.0006, 0.001, 0.003, 0.006, 0.01, 0.03, 0.06, 0.1, 0.3, 0.6, 1.0, 1.5, 2.0]),
+        'learning_rate': hp.choice(
+            'lr', [0.0001, 0.0003, 0.0006, 0.001, 0.003, 0.006, 0.01, 0.03, 0.06, 0.1, 0.3, 0.6]
+        ),
         'batch_size': 64,
         'init': 'glorot_normal',
-        'trainable_BatchNormalization': hp.choice('trainable_BatchNormalization', [False, True]),
-        'trainable_dropouts': hp.choice('trainable_dropouts', [False, True]),
-        'shuffle': True
+        # 'trainable_BatchNormalization': hp.choice('trainable_BatchNormalization', [False, True]),
+        # 'trainable_dropouts': hp.choice('trainable_dropouts', [False, True]),
+        'trainable_BatchNormalization': True,
+        'trainable_dropouts': True,
+        'shuffle': True,
+        'x_train': x_train,
+        'y_train': y_train,
+        'x_test': x_test,
+        'y_test': y_test,
     }
 
     class CustomEarlyStopping(tf.keras.callbacks.Callback):
@@ -502,7 +493,7 @@ def neural_networks_kfold():
             ),
             CustomEarlyStopping(
                 patience=5,
-                delay_epochs=20
+                delay_epochs=15
             )
         ]
 
@@ -534,33 +525,24 @@ def neural_networks_kfold():
 
         return model
 
-    model = None
-
-    result = []
-    history = []
-    scores = []
-
     def objective(space):
-        global model, result, history, scores
+        result = []
+        history = []
+        scores = []
 
         try:
-            result = []
-            history = []
-            scores = []
-
-            for train_index, test_index in KFold(5, shuffle=True, random_state=40).split(X):
-                x_train, x_test = X[train_index], X[test_index]
-                y_train, y_test = Y[train_index], Y[test_index]
+            for train_index, val_index in KFold(5, shuffle=True, random_state=40).split(space['x_train']):
+                xTrain, xVal = X[train_index], X[val_index]
+                yTrain, yVal = Y[train_index], Y[val_index]
 
                 print(len(result))
 
                 model = create_model(space)
 
                 h = model.fit(
-                    x_train, y_train,
-                    # validation_split=0.2,
-                    validation_data=(x_test, y_test),
-                    epochs=150,
+                    xTrain, yTrain,
+                    validation_data=(xVal, yVal),
+                    epochs=50,
                     batch_size=space['batch_size'],
                     callbacks=tf_callbacks(),
                     shuffle=space['shuffle'],
@@ -572,7 +554,7 @@ def neural_networks_kfold():
 
                 if np.less_equal(v_loss, loss):
                     history.append(h.history)
-                    result.append(model.evaluate(x_test, y_test, verbose=0))
+                    result.append(model.evaluate(space['x_test'], space['y_test'], verbose=0))
 
                     p = result[-1][-2]
                     r = result[-1][-1]
@@ -689,7 +671,7 @@ def neural_networks():
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.20, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     metrics = [
         'accuracy',
@@ -735,7 +717,7 @@ def neural_networks():
     def tf_callbacks():
         return [
             tf.keras.callbacks.ModelCheckpoint(
-                'data/models/neural_networks/tmp.h5',
+                'data/models/neural_networks/nn2.h5',
                 monitor='accuracy',
                 mode='max',
                 verbose=0,
@@ -781,7 +763,7 @@ def neural_networks():
         x_train, y_train,
         validation_split=0.15,
         # validation_data=(x_test, y_test),
-        epochs=150,
+        epochs=250,
         batch_size=space['batch_size'],
         callbacks=tf_callbacks(),
         shuffle=space['shuffle'],
@@ -791,7 +773,7 @@ def neural_networks():
     res = model.evaluate(x_test, y_test, verbose=0)
     p = res[3]
     r = res[4]
-    s = 2 * ((p * r) / (p + r + 0.001))
+    s = 2 * ((p * r) / (p + r + 0.0001))
 
     m = {
         "loss": res[0],

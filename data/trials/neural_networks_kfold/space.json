@@ -3,20 +3,30 @@
   'init': 'glorot_normal',
   'layers': {
     'BatchNormalization': True,
-    'activation': 'softplus',
-    'dropout': None,
+    'activation': 'elu',
+    'dropout': {
+      'dropout_rate': 0.3
+    },
     'next': {
       'BatchNormalization': True,
       'activation': 'softsign',
       'dropout': {
-        'dropout_rate': 0.36666666666666664
+        'dropout_rate': 0.3
       },
-      'next': None,
-      'nodes_count': 145
+      'next': {
+        'BatchNormalization': True,
+        'activation': 'softmax',
+        'dropout': {
+          'dropout_rate': 0.15
+        },
+        'next': None,
+        'nodes_count': 70
+      },
+      'nodes_count': 100
     },
-    'nodes_count': 250
+    'nodes_count': 85
   },
-  'learning_rate': 0.0003,
+  'learning_rate': 0.0006,
   'shuffle': True,
   'trainable_BatchNormalization': True,
   'trainable_dropouts': True
