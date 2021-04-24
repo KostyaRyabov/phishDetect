@@ -1,4 +1,4 @@
-state = 26
+state = 28
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -27,6 +27,8 @@ state = 26
 # 24 - Stacking
 # 25 - find_best_NN
 # 26 - learn neural_networks
+# 27 - learn logistic regression
+# 28 - learn autoencoder
 
 
 import feature_extractor as fe
@@ -119,3 +121,6 @@ if __name__ == "__main__":
     elif state == 26:
         from ml_algs import neural_networks
         neural_networks()
+    elif state == 27:
+        from ml_algs import logistic_regression
+        logistic_regression()

@@ -1732,7 +1732,7 @@ def Bagging_DT_cv():
 
         try:
             with open("data/trials/Bagging_DT/metric.txt") as f:
-                max_acc = float(f.read().strip())  # read best metric,
+                max_acc = float(f.read().strip())
         except FileNotFoundError:
             max_acc = -1
 
@@ -2069,6 +2069,95 @@ def HistGradientBoost():
         pickle.dump(clf, f)
 
 
+def logistic_regression():
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import cross_val_predict
+
+    try:
+        with open("data/trials/logistic_regression/results.pkl", 'rb') as file:
+            trials = pickle.load(file)
+    except:
+        trials = Trials()
+
+    space = {
+        'C': hp.uniform('C', 0, 10),
+        'l1_ratio': hp.uniform('l1_ratio', 0, 1),
+        'fit_intercept': hp.choice('fit_intercept', [False, True]),
+        'class_weight': hp.choice('class_weight', ['balanced', None])
+    }
+
+    def objective(space):
+        clf = LogisticRegression(
+            random_state=41,
+            multi_class='ovr',
+            n_jobs=2,
+            C=space['C'],
+            l1_ratio=space['l1_ratio'],
+            fit_intercept=space['fit_intercept'],
+            class_weight=space['class_weight'],
+            solver='saga',
+            penalty='elasticnet',
+            max_iter=100
+        )
+
+        try:
+            y_pred = cross_val_predict(clf, X, Y, cv=5, n_jobs=3)
+            acc = accuracy_score(Y, y_pred)
+        except:
+            acc = -1
+
+        try:
+            with open("data/trials/logistic_regression/metric.txt") as f:
+                max_acc = float(f.read().strip())
+        except FileNotFoundError:
+            max_acc = -1
+
+        if acc > max_acc:
+            pickle.dump(clf, open('data/models/logistic_regression/logistic_regression.pkl', 'wb'))
+            with open("data/trials/logistic_regression/space.json", "w") as f:
+                f.write(str(space))
+            with open("data/trials/logistic_regression/metric.txt", "w") as f:
+                f.write(str(acc))
+
+            auc = roc_auc_score(Y, y_pred)
+            f_score = f1_score(Y, y_pred)
+            pre = precision_score(Y, y_pred)
+            recall = recall_score(Y, y_pred)
+            m = {
+                "accuracy": acc,
+                "Precision": pre,
+                "Recall": recall,
+                "AUC": auc,
+                "f_score": f_score
+            }
+            with open("data/trials/logistic_regression/metrics.json", "w") as f:
+                json.dump(m, f)
+
+        with open("data/trials/logistic_regression/results.pkl", 'wb') as output:
+            pickle.dump(trials, output)
+
+        return {'loss': -acc, 'status': STATUS_OK, 'space': space}
+
+    best = fmin(
+        objective,
+        space,
+        algo=tpe.suggest,
+        max_evals=50,
+        trials=trials,
+        timeout=60 * 30
+    )
+
+    def typer(o):
+        if isinstance(o, np.int32): return int(o)
+        return o
+
+    with open("data/trials/logistic_regression/best.json", "w") as f:
+        json.dump(best, f, default=typer)
+
+    with open("data/trials/logistic_regression/results.pkl", 'wb') as output:
+        pickle.dump(trials, output)
+
+
 # summary
 # - Stacking
 
@@ -2147,6 +2236,7 @@ def Stacking():
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     from sklearn.experimental import enable_hist_gradient_boosting
+    from sklearn.linear_model import LogisticRegression
     from sklearn.ensemble import HistGradientBoostingClassifier
     from sklearn.ensemble import AdaBoostClassifier
     from sklearn.ensemble import RandomForestClassifier
@@ -2168,6 +2258,17 @@ def Stacking():
 
 
     estimators = [
+        ('LR', LogisticRegression(
+            random_state=41,
+            multi_class='ovr',
+            C=9.911243936390331,
+            l1_ratio=0.9613737389869554,
+            fit_intercept=False,
+            class_weight=None,
+            solver='saga',
+            penalty='elasticnet',
+            max_iter=100
+        )),
         ('ANN', ann),
         ('SVM', SVC(
             C=326.7,
@@ -2176,43 +2277,43 @@ def Stacking():
             gamma='scale',
             # tol=1e-3
         )),
-        ('GNB', GaussianNB()),
-        ('BNB', BernoulliNB()),
-        ('CNB', ComplementNB()),
-        ('MNB', MultinomialNB()),
-        ('RF', RandomForestClassifier(
-            class_weight='balanced_subsample',
-            n_estimators=100,
-            max_features='log2',
-            criterion='entropy'
-        )),
-        ('HGBC', HistGradientBoostingClassifier(
-            learning_rate=0.25
-        )),
-        ('GBC', GradientBoostingClassifier(
-            criterion='mse',
-            learning_rate=0.62,
-            loss='deviance',
-            max_features=None,
-            n_estimators=100
-        )),
-        ('AdaBoost_DT', AdaBoostClassifier(
-            DecisionTreeClassifier(max_depth=10),
-            n_estimators=100,
-            learning_rate=0.93,
-            algorithm='SAMME'
-        )),
+        # ('GNB', GaussianNB()),
+        # ('BNB', BernoulliNB()),
+        # ('CNB', ComplementNB()),
+        # ('MNB', MultinomialNB()),
+        # ('RF', RandomForestClassifier(
+        #     class_weight='balanced_subsample',
+        #     n_estimators=100,
+        #     max_features='log2',
+        #     criterion='entropy'
+        # )),
+        # ('HGBC', HistGradientBoostingClassifier(
+        #     learning_rate=0.25
+        # )),
+        # ('GBC', GradientBoostingClassifier(
+        #     criterion='mse',
+        #     learning_rate=0.62,
+        #     loss='deviance',
+        #     max_features=None,
+        #     n_estimators=100
+        # )),
+        # ('AdaBoost_DT', AdaBoostClassifier(
+        #     DecisionTreeClassifier(max_depth=10),
+        #     n_estimators=100,
+        #     learning_rate=0.93,
+        #     algorithm='SAMME'
+        # )),
         ('kNN', KNeighborsClassifier(
             weights='distance',
             n_neighbors=7,
             p=1
         )),
-        ('ET', ExtraTreesClassifier(
-            n_estimators=100,
-            max_features='sqrt',
-            criterion='gini',
-            class_weight='balanced_subsample'
-        )),
+        # ('ET', ExtraTreesClassifier(
+        #     n_estimators=100,
+        #     max_features='sqrt',
+        #     criterion='gini',
+        #     class_weight='balanced_subsample'
+        # )),
         ('DT', DecisionTreeClassifier(
             criterion='entropy',
             splitter='best',
@@ -2220,11 +2321,11 @@ def Stacking():
             min_samples_leaf=1,
             max_features=None
         )),
-        ('Bagging_DT', BaggingClassifier(
-            DecisionTreeClassifier(max_depth=14),
-            n_estimators=100,
-            bootstrap_features=True
-        ))
+        # ('Bagging_DT', BaggingClassifier(
+        #     DecisionTreeClassifier(max_depth=14),
+        #     n_estimators=100,
+        #     bootstrap_features=True
+        # ))
     ]
 
     clf = StackingClassifier(
@@ -2238,7 +2339,7 @@ def Stacking():
     y_pred = clf.predict(x_test)
     acc = accuracy_score(y_true=y_test, y_pred=y_pred)
 
-    pickle.dump(clf, open('data/models/Stacking (All)/StackingClassifier.pkl', 'wb'))
+    pickle.dump(clf, open('data/models/Stacking (ANN, SVM, kNN, DT, LR)/StackingClassifier.pkl', 'wb'))
 
     auc = roc_auc_score(y_test, y_pred)
     f_score = f1_score(y_test, y_pred)
@@ -2251,5 +2352,5 @@ def Stacking():
         "AUC": auc,
         "f_score": f_score
     }
-    with open("data/trials/Stacking (All)/metrics.json", "w") as f:
+    with open("data/trials/Stacking (ANN, SVM, kNN, DT, LR)/metrics.json", "w") as f:
         json.dump(m, f)
