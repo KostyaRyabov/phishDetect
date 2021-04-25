@@ -1,4 +1,4 @@
-state = 28
+state = 22
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -28,7 +28,8 @@ state = 28
 # 25 - find_best_NN
 # 26 - learn neural_networks
 # 27 - learn logistic regression
-# 28 - learn autoencoder
+# 28 - gen XGB
+# 29 - learn XGB
 
 
 import feature_extractor as fe
@@ -117,10 +118,16 @@ if __name__ == "__main__":
         Stacking()
     elif state == 25:
         from ml_algs import find_best_NN
-        find_best_NN('score')
+        find_best_NN('mcc')
     elif state == 26:
         from ml_algs import neural_networks
         neural_networks()
     elif state == 27:
         from ml_algs import logistic_regression
         logistic_regression()
+    elif state == 28:
+        from ml_algs import XGB_cv
+        XGB_cv()
+    elif state == 29:
+        from ml_algs import XGB
+        XGB()
