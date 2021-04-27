@@ -1151,6 +1151,7 @@ m.append(pickle.load(open('data/models/XGB/XGB.pkl', 'rb')))
 
 
 estimators = [
+    'extraction_data',
     "AdaBoost_DT",
     "Bagging_DT",
     "Bernoulli_NB",
@@ -1196,23 +1197,22 @@ if __name__ == "__main__":
         timer = {}
 
         start = time()
-        data = [extract_features(url.get().split()[1])]
+        data = extract_features(url.get().split()[1])
         dtime.append(time() - start)
 
-        if type(data[0]) is list:
+        if type(data) is list:
+            data = np.array(extract_features(url.get().split()[1])).reshape((1, -1))
+
             result.configure(state='normal')
             result.insert(tk.END, " -> {} sec".format(dtime[-1]))
 
             for i in range(len(m)):
                 start = time()
 
-                a = estimators[i]
-                b = type(m[i])
-
                 r = m[i].predict_proba(data)
                 dtime.append(time() - start)
 
-                if 'neural' in estimators[i]:
+                if 'neural' in estimators[i+1]:
                     res.append(r.tolist()[0][0])
                 else:
                     res.append(r.tolist()[0][1])
@@ -1267,7 +1267,7 @@ if __name__ == "__main__":
                                               index_label='estimator')
         else:
             result.configure(state='normal')
-            result.insert(tk.END, "ERROR: {}".format(data[0]))
+            result.insert(tk.END, "ERROR: {}".format(data))
             result.configure(state='disabled')
 
     window = tk.Tk()
