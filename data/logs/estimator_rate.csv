@@ -1,8 +1,0 @@
-AdaBoost_DT,Bagging_DT,Bernoulli_NB,Complement_NB,DT,ET,Gaussian_NB,GradientBoost,HistGradientBoost,kNN,Multinomial_NB,neural_networks,RF,"Stacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)",Stacking (All),"Stacking (CNB, MNB, BNB, GNB)","Stacking (RF,HGBC, GBC, AdaBoost, ET)","Stacking (ANN, SVM, kNN, DT)",SVM,phish
-0,0,1,1,0,1,0,0,0,1,1,1,1,1,0,0,1,1,0,0
-0,0,1,1,0,1,0,0,0,1,1,1,1,1,0,0,1,1,0,0
-0,0,1,1,0,1,0,0,0,1,1,1,1,1,0,0,1,1,0,0
-0,0,0,0,0,1,1,0,0,0,0,1,0,0,0,0,0,1,1,0
-1,1,0,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,0
-0,0,0,1,1,0,0,1,1,0,1,0,1,1,0,0,0,0,0,1
-1,0,1,1,0,1,0,0,1,1,1,0,1,1,1,1,1,1,1,1

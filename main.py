@@ -1145,8 +1145,10 @@ def extract_features(url):
         return result
     return request
 
-m = pickle.load(open('data/models/Stacking (RF,HGBC, GBC, AdaBoost, ET)/StackingClassifier.pkl', 'rb'))
+from tensorflow import keras
 
+m = pickle.load(open('data/models/ET/ET.pkl', 'rb'))
+# m = keras.models.load_model('data/models/neural_networks/nn2.h5')
 
 from colour import Color
 
@@ -1163,10 +1165,14 @@ if __name__ == "__main__":
         p_v = 0
         progress['value'] = p_v
 
-        data = [extract_features(url.get().strip())]
+        data = extract_features(url.get().strip())
 
-        if type(data[0]) is list:
+        if type(data) is list:
+            # data = np.array(data).reshape((1, -1))
+            data = np.array(data).reshape((1, -1)) * 0.998 + 0.001
+
             res = m.predict_proba(data).tolist()[0][1]
+            # res = m.predict_proba(data).tolist()[0][0]
 
             result.configure(state='normal')
             result.configure(background=Color(hsl=(0.2778*(1-res), 1, 0.5)).get_hex_l())
@@ -1181,7 +1187,7 @@ if __name__ == "__main__":
             progress['value'] = p_v
         else:
             result.configure(state='normal')
-            result.insert(tk.END, "ERROR: {}".format(data[0]))
+            result.insert(tk.END, "ERROR: {}".format(data))
             result.configure(state='disabled')
 
     window = tk.Tk()
