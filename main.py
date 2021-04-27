@@ -34,10 +34,7 @@ import tkinter as tk
 from tkinter.ttk import Progressbar, Style
 from tkinter import simpledialog
 
-
-# import configparser
-# config = configparser.ConfigParser()
-# config.read('settings.ini')
+import xgboost as xgb
 
 
 p_v = 0
@@ -1137,39 +1134,48 @@ m.append(pickle.load(open('data/models/Gaussian_NB/Gaussian_NB.pkl', 'rb')))
 m.append(pickle.load(open('data/models/GradientBoost/GradientBoost.pkl', 'rb')))
 m.append(pickle.load(open('data/models/HistGradientBoost/HistGradientBoost.pkl', 'rb')))
 m.append(pickle.load(open('data/models/kNN/kNN.pkl', 'rb')))
+m.append(pickle.load(open('data/models/logistic_regression/logistic_regression.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Multinomial_NB/Multinomial_NB.pkl', 'rb')))
 m.append(keras.models.load_model('data/models/neural_networks/nn2.h5'))
 m.append(pickle.load(open('data/models/RF/RF.pkl', 'rb')))
-m.append(pickle.load(open('data/models/Stacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (AB, RF, ET, B, HGB, GB, DT, XGB)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (AB, RF, ET, B, XGB)/StackingClassifier.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Stacking (All)/StackingClassifier.pkl', 'rb')))
-m.append(pickle.load(open('data/models/Stacking (CNB, MNB, BNB, GNB)/StackingClassifier.pkl', 'rb')))
-m.append(pickle.load(open('data/models/Stacking (RF,HGBC, GBC, AdaBoost, ET)/StackingClassifier.pkl', 'rb')))
-m.append(pickle.load(open('data/models/Stacking (ANN, SVM, kNN, DT)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (ANN, LR, GB, HGB, XGB, AB)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (GNB, BNB, CNB, MNB)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (kNN, SVM, ANN)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (kNN, SVM, ANN, DT, GNB, LR)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (LR, GNB, BNB, CNB, MNB)/StackingClassifier.pkl', 'rb')))
 m.append(pickle.load(open('data/models/SVM/SVM.pkl', 'rb')))
+m.append(pickle.load(open('data/models/XGB/XGB.pkl', 'rb')))
 
 
 estimators = [
-                'extraction_data',
-                'AdaBoost_DT',
-                'Bagging_DT',
-                'Bernoulli_NB',
-                'Complement_NB',
-                'DT',
-                'ET',
-                'Gaussian_NB',
-                'GradientBoost',
-                'HistGradientBoost',
-                'kNN',
-                'Multinomial_NB',
-                'neural_networks',
-                'RF',
-                'Stacking (AdaBoost_DT, ET, DT, Bagging_DT, RF)',
-                'Stacking (All)',
-                'Stacking (CNB, MNB, BNB, GNB)',
-                'Stacking (RF,HGBC, GBC, AdaBoost, ET)',
-                'Stacking (ANN, SVM, kNN, DT)',
-                'SVM'
-            ]
+    "AdaBoost_DT",
+    "Bagging_DT",
+    "Bernoulli_NB",
+    "Complement_NB",
+    "DT",
+    "ET",
+    "Gaussian_NB",
+    "GradientBoost",
+    "HistGradientBoost",
+    "kNN",
+    "logistic_regression",
+    "Multinomial_NB",
+    "neural_networks",
+    "RF",
+    "Stacking (AB, RF, ET, B, HGB, GB, DT, XGB)",
+    "Stacking (AB, RF, ET, B, XGB)",
+    "Stacking (All)",
+    "Stacking (ANN, LR, GB, HGB, XGB, AB)",
+    "Stacking (GNB, BNB, CNB, MNB)",
+    "Stacking (kNN, SVM, ANN)",
+    "Stacking (kNN, SVM, ANN, DT, GNB, LR)",
+    "Stacking (LR, GNB, BNB, CNB, MNB)",
+    "SVM",
+    "XGB"
+]
 
 
 from time import time
@@ -1199,10 +1205,14 @@ if __name__ == "__main__":
 
             for i in range(len(m)):
                 start = time()
+
+                a = estimators[i]
+                b = type(m[i])
+
                 r = m[i].predict_proba(data)
                 dtime.append(time() - start)
 
-                if 'neural' in estimators[i+1]:
+                if 'neural' in estimators[i]:
                     res.append(r.tolist()[0][0])
                 else:
                     res.append(r.tolist()[0][1])
@@ -1251,9 +1261,9 @@ if __name__ == "__main__":
             df = pandas.read_csv('data/logs/estimator_rate.csv')
             df.sum().to_csv('data/logs/estimator_rate_voite.csv', header=['count'], index_label='estimator')
 
-            df[df['phish'] == 0].sum().to_csv('data/logs/estimator_rate_legit', header=['count'],
+            df[df['phish'] == 0].sum().to_csv('data/logs/estimator_rate_legit.csv', header=['count'],
                                               index_label='estimator')
-            df[df['phish'] == 1].sum().to_csv('data/logs/estimator_rate_phish', header=['count'],
+            df[df['phish'] == 1].sum().to_csv('data/logs/estimator_rate_phish.csv', header=['count'],
                                               index_label='estimator')
         else:
             result.configure(state='normal')
