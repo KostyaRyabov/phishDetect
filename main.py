@@ -1,4 +1,4 @@
-state = 29
+state = 22
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains

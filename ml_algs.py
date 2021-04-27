@@ -876,22 +876,24 @@ def XGB_cv():
         trials = Trials()
 
     space = {
-        "learning_rate": hp.uniform("learning_rate", 0, 1),
-        "max_depth": hp.choice("max_depth", [1, 200]),
-        "gamma": hp.uniform("gamma", 0, 1)
-    }
+        'max_depth': hp.choice('max_depth', range(5, 30, 1)),
+        'learning_rate': hp.quniform('learning_rate', 0.01, 0.5, 0.01),
+        'n_estimators': hp.choice('n_estimators', range(20, 205, 5)),
+        'gamma': hp.quniform('gamma', 0, 0.50, 0.01),
+        'min_child_weight': hp.quniform('min_child_weight', 1, 10, 1),
+        'subsample': hp.quniform('subsample', 0.1, 1, 0.01),
+        'colsample_bytree': hp.quniform('colsample_bytree', 0.1, 1.0, 0.01)}
 
     def objective(space):
-        clf = xgb.XGBClassifier(
-            use_label_encoder=False,
-            objective='binary:logistic',
-            n_jobs=2,
-            random_state=42,
-            learning_rate=space['learning_rate'],
-            max_depth=space['max_depth'],
-            gamma=space['gamma'],
-            n_estimators=100
-        )
+        clf = xgb.XGBClassifier(n_estimators = space['n_estimators'],
+                            max_depth = int(space['max_depth']),
+                            learning_rate = space['learning_rate'],
+                            gamma = space['gamma'],
+                            min_child_weight = space['min_child_weight'],
+                            subsample = space['subsample'],
+                            colsample_bytree = space['colsample_bytree']
+                            )
+
 
         clf.fit(x_train, y_train,
                 eval_set=[(x_train, y_train), (x_test, y_test)],
@@ -900,7 +902,7 @@ def XGB_cv():
                 callbacks=[xgb.callback.EarlyStopping(rounds=4, save_best=True)])
 
         y_pred = clf.predict(x_test)
-        acc = accuracy_score(y_true=y_test, y_pred=y_pred)
+        acc = accuracy_score(y_test, y_pred)
         auc = roc_auc_score(y_test, y_pred)
         f_score = f1_score(y_test, y_pred)
         pre = precision_score(y_test, y_pred)
@@ -937,7 +939,7 @@ def XGB_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=100,
+        max_evals=200,
         trials=trials,
         timeout=60 * 30
     )
@@ -962,16 +964,14 @@ def XGB():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    clf = xgb.XGBClassifier(
-        use_label_encoder=False,
-        objective='binary:logistic',
-        n_jobs=2,
-        random_state=42,
-        learning_rate=space['learning_rate'],
-        max_depth=space['max_depth'],
-        gamma=space['gamma'],
-        n_estimators=100
-    )
+    clf = xgb.XGBClassifier(n_estimators = space['n_estimators'],
+                            max_depth = int(space['max_depth']),
+                            learning_rate = space['learning_rate'],
+                            gamma = space['gamma'],
+                            min_child_weight = space['min_child_weight'],
+                            subsample = space['subsample'],
+                            colsample_bytree = space['colsample_bytree']
+                            )
 
     clf.fit(x_train, y_train,
             eval_set=[(x_train, y_train), (x_test, y_test)],
@@ -2535,78 +2535,77 @@ def Stacking():
 
     estimators = [
         ("XGB", xgb.XGBClassifier(
-            use_label_encoder=False,
-            objective='binary:logistic',
-            n_jobs=2,
-            random_state=42,
-            learning_rate=0.2528642310131281,
-            max_depth=200,
-            gamma=0.3386002523438835,
-            n_estimators=60
+            colsample_bytree= 0.49,
+            gamma= 0.23,
+            learning_rate= 0.21,
+            max_depth= 19,
+            min_child_weight= 1.0,
+            n_estimators= 160,
+            subsample= 0.63
         )),
-        ('LR', LogisticRegression(
-            random_state=41,
-            multi_class='ovr',
-            C=9.911243936390331,
-            l1_ratio=0.9613737389869554,
-            fit_intercept=False,
-            class_weight=None,
-            solver='saga',
-            penalty='elasticnet',
-            max_iter=100
-        )),
-        ('ANN', ann),
-        ('SVM', SVC(
-            C=326.7,
-            random_state=42,
-            kernel='rbf',
-            gamma='scale',
-            # tol=1e-3
-        )),
-        ('GNB', GaussianNB()),
-        ('BNB', BernoulliNB()),
-        ('CNB', ComplementNB()),
-        ('MNB', MultinomialNB()),
+        # ('LR', LogisticRegression(
+        #     random_state=41,
+        #     multi_class='ovr',
+        #     C=9.911243936390331,
+        #     l1_ratio=0.9613737389869554,
+        #     fit_intercept=False,
+        #     class_weight=None,
+        #     solver='saga',
+        #     penalty='elasticnet',
+        #     max_iter=100
+        # )),
+        # ('ANN', ann),
+        # ('SVM', SVC(
+        #     C=326.7,
+        #     random_state=42,
+        #     kernel='rbf',
+        #     gamma='scale',
+        #     # tol=1e-3
+        # )),
+        # ('GNB', GaussianNB()),
+        # ('BNB', BernoulliNB()),
+        # ('CNB', ComplementNB()),
+        # ('MNB', MultinomialNB()),
         ('RF', RandomForestClassifier(
             class_weight='balanced_subsample',
             n_estimators=100,
             max_features='log2',
             criterion='entropy'
         )),
-        ('HGBC', HistGradientBoostingClassifier(
-            learning_rate=0.25
-        )),
-        ('GBC', GradientBoostingClassifier(
-            criterion='mse',
-            learning_rate=0.62,
-            loss='deviance',
-            max_features=None,
-            n_estimators=100
-        )),
+        # ('HGBC', HistGradientBoostingClassifier(
+        #     learning_rate=0.25
+        # )),
+        # ('GBC', GradientBoostingClassifier(
+        #     criterion='mse',
+        #     learning_rate=0.62,
+        #     loss='deviance',
+        #     max_features=None,
+        #     n_estimators=100
+        # )),
         ('AdaBoost_DT', AdaBoostClassifier(
             DecisionTreeClassifier(max_depth=10),
             n_estimators=100,
             learning_rate=0.93,
             algorithm='SAMME'
         )),
-        ('kNN', KNeighborsClassifier(
-            weights='distance',
-            n_neighbors=7,
-            p=1
-        )),
+        # ('kNN', KNeighborsClassifier(
+        #     weights='distance',
+        #     n_neighbors=7,
+        #     p=1
+        # )),
         ('ET', ExtraTreesClassifier(
             n_estimators=100,
             max_features='sqrt',
             criterion='gini',
             class_weight='balanced_subsample'
         )),
-        ('DT', DecisionTreeClassifier(
-            criterion='entropy',
-            splitter='best',
-            min_samples_split=2,
-            min_samples_leaf=1,
-            max_features=None
-        )),
+        # ('DT', DecisionTreeClassifier(
+        #     criterion='entropy',
+        #     splitter='best',
+        #     min_samples_split=2,
+        #     min_samples_leaf=1,
+        #     max_features=None
+        # )),
         ('Bagging_DT', BaggingClassifier(
             DecisionTreeClassifier(max_depth=14),
             n_estimators=100,
@@ -2618,14 +2617,14 @@ def Stacking():
         estimators=estimators,
         final_estimator=LogisticRegression(),
         verbose=2,
-        n_jobs=1
+        n_jobs=3
     )
 
     clf.fit(x_train, y_train)
     y_pred = clf.predict(x_test)
     acc = accuracy_score(y_true=y_test, y_pred=y_pred)
 
-    pickle.dump(clf, open('data/models/Stacking (All)/StackingClassifier.pkl', 'wb'))
+    pickle.dump(clf, open('data/models/Stacking (AB, RF, ET, B, XGB)/StackingClassifier.pkl', 'wb'))
 
     auc = roc_auc_score(y_test, y_pred)
     f_score = f1_score(y_test, y_pred)
@@ -2641,5 +2640,5 @@ def Stacking():
         "f_score": f_score,
         "mcc": mcc
     }
-    with open("data/trials/Stacking (All)/metrics.json", "w") as f:
+    with open("data/trials/Stacking (AB, RF, ET, B, XGB)/metrics.json", "w") as f:
         json.dump(m, f)
