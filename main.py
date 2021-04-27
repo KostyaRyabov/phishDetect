@@ -1212,10 +1212,7 @@ if __name__ == "__main__":
                 r = m[i].predict_proba(data)
                 dtime.append(time() - start)
 
-                if 'neural' in estimators[i+1]:
-                    res.append(r.tolist()[0][0])
-                else:
-                    res.append(r.tolist()[0][1])
+                res.append(r.tolist()[0][-1])
                 result.configure(state='normal')
                 result.insert(tk.END, ('\n'+estimators[i+1], res[-1]))
                 result.configure(state='disabled')
