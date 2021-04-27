@@ -996,9 +996,9 @@ def XGB():
         "f_score": f_score,
         "mcc": mcc
     }
-    with open("data/trials/DT/metrics.json", "w") as f:
+    with open("data/trials/XGB/metrics.json", "w") as f:
         json.dump(m, f)
-    pickle.dump(clf, open('data/models/DT/DT.pkl', 'wb'))
+    pickle.dump(clf, open('data/models/XGB/XGB.pkl', 'wb'))
 
 
 def DT_cv():
