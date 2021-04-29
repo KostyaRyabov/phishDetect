@@ -30,7 +30,6 @@ from tkinter.ttk import Progressbar, Style
 
 p_v = 0
 
-
 def indicate(func):
     def wrapper(*args, **kwargs):
         global progress, p_v
@@ -1153,7 +1152,75 @@ m = pickle.load(open('data/models/ET/ET.pkl', 'rb'))
 from colour import Color
 
 
+# def download_phishURLS():
+#     import pandas
+#     import requests
+#     import io
+#     from datetime import date
+#     import os
+#
+#     try:
+#         http_request = requests.get('http://data.phishtank.com/data/online-valid.csv')
+#         phish_url_list = pandas.read_csv(io.StringIO(http_request.content.decode('utf-8')), usecols=['url'])
+#         filename = "data/urls/phish/{0}.csv".format(date.today().strftime("%d-%m-%Y"))
+#         phish_url_list.to_csv(filename, index=False, header=False)
+#         phish_url_list = phish_url_list['url'].tolist()
+#     except requests.exceptions.RequestException as e:
+#         raise SystemExit('Access denied [PHISHTANK]')
+#
+#     return phish_url_list
+#
+# def load_sites(mylist):
+#     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+#         executor.map(load_site, mylist)
+#
+#
+# def load_site(url):
+#     try:
+#         data = extract_features(url)
+#
+#         if type(data) is list:
+#             s = pandas.DataFrame(data + [0]).T
+#             s.to_csv('data/datasets/OUTPUT/dataset.csv', mode='a', index=False, header=False)
+#     except Exception as ex:
+#         print(ex)
+#
+#
+# def filter_double_urls(urls):
+#     from urllib.parse import urlparse
+#
+#     domains = set()
+#     newlist = []
+#
+#     cs = 0
+#
+#     for url in urls:
+#         domains.add(urlparse(url).netloc)
+#
+#         if cs != len(domains):
+#             newlist.append(url)
+#
+#         cs = len(domains)
+#
+#     return newlist
+
+
 if __name__ == "__main__":
+#     mylist = """https://top-igruha.ru/page/2/
+# https://habr.com/ru/post/78728/
+# https://vulkan-tutorial.com/Introduction
+# https://dyakonov.org/2017/03/10/cтекинг-stacking-и-блендинг-blending/
+# https://neerc.ifmo.ru/wiki/index.php?title=Бустинг,_AdaBoost
+# https://www.machinelearningmastery.ru/metrics-evaluate-machine-learning-algorithms-python/
+# https://python-school.ru/top7-libraries-for-data-visualization/
+# https://stackoverflow.com/questions/13448064/how-to-find-the-intersection-of-two-stdset-in-c
+# https://neerc.ifmo.ru/wiki/index.php?title=Список_с_пропусками""".split('\n')
+
+    # mylist = filter_double_urls(pandas.read_csv('data/urls/phish/29-04-2021.csv', header=None)[0].tolist())
+    # load_sites(mylist[400:])
+
+    # load_sites(mylist)
+
     @run_in_thread
     def check_site():
         result.configure(background='white')
