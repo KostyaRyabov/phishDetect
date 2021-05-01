@@ -665,7 +665,6 @@ def neural_networks():
 
     X = X * 0.998 + 0.001
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=5)
-    x_test, x_val, y_test, y_val = train_test_split(x_test, y_test, test_size=0.5, random_state=5)
 
     metrics = [
         'accuracy',
@@ -702,7 +701,6 @@ def neural_networks():
                     if self.wait >= self.patience:
                         self.stopped_epoch = epoch
                         self.model.stop_training = True
-                        print("acc > v_acc")
 
         def on_train_end(self, logs=None):
             if self.stopped_epoch > 0:
@@ -756,8 +754,8 @@ def neural_networks():
 
     history = model.fit(
         x_train, y_train,
-        validation_data=(x_val, y_val),
-        epochs=100,
+        validation_data=(x_test, y_test),
+        epochs=150,
         batch_size=space['batch_size'],
         callbacks=tf_callbacks(),
         shuffle=space['shuffle'],
@@ -1996,6 +1994,7 @@ def SVM():
         random_state=space['random_state'],
         kernel=space['kernel']['type'],
         max_iter=100000,
+        probability=True
     )
 
     clf.fit(x_train, y_train)
