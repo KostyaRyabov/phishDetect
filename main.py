@@ -1,4 +1,4 @@
-state = 22
+state = 45
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -9,28 +9,45 @@ state = 22
 # 6 - run example without shield
 # 7 - collect all datasets
 # 8 - select features
-# 9 - learn neural_networks_kfold
-# 10 - generate hyperoptions for kNN
-# 11 - generate hyperoptions for SVM
-# 12 - generate hyperoptions for DT
-# 13 - generate hyperoptions for ET
-# 14 - generate hyperoptions for RF
-# 15 - generate hyperoptions for AdaBoost_DT
-# 16 - generate hyperoptions for GradientBoost
-# 17 - generate hyperoptions for HistGradientBoost
-# 18 - learn Gaussian_NB
-# 19 - learn Bernoulli_NB
-# 20 - learn Complement_NB
-# 21 - learn Multinomial_NB
-# 22 - get ratings
-# 23 - Bagging_DT
-# 24 - Stacking
-# 25 - find_best_NN
-# 26 - learn neural_networks
-# 27 - learn logistic regression
-# 28 - gen XGB
-# 29 - learn XGB
+# 9 - neural_networks_kfold
+# 10 - neural_networks
+# 11 - AdaBoost_DT_cv
+# 12 - AdaBoost_DT
+# 13 - Bagging_DT_cv
+# 14 - Bagging_DT
+# 15 - DT_cv
+# 16 - DT
+# 17 - ET_cv
+# 18 - ET
+# 19 - GradientBoost_cv
+# 20 - GradientBoost
+# 21 - HistGradientBoost_cv
+# 22 - HistGradientBoost
+# 23 - kNN_cv
+# 24 - KNN
+# 25 - logistic_regression_cv
+# 26 - logistic_regression
+# 27 - RF_cv
+# 28 - RF
+# 29 - SVM_cv
+# 30 - SVM
+# 31 - XGB_cv
+# 32 - XGB
+# 33 - Stacking (AB, RF, ET, B, HGB, GB, DT, XGB)
+# 34 - Stacking (AB, RF, ET, B, XGB)
+# 35 - Stacking (All)
+# 36 - Stacking (ANN, LR, GB, HGB, XGB, AB)
+# 37 - Stacking (GNB, BNB, CNB, MNB)
+# 38 - Stacking (KNN, SVM, ANN)
+# 39 - Stacking (KNN, SVM, ANN, DT, GNB, LR)
+# 40 - Stacking (LR, GNB, BNB, CNB, MNB)
 
+# 41 - Bernoulli_NB
+# 42 - Complement_NB
+# 43 - Gaussian_NB
+# 44 - Multinominal_NB
+
+# 45 - get_rating
 
 import feature_extractor as fe
 import data.collector as dc
@@ -72,62 +89,110 @@ if __name__ == "__main__":
         from ml_algs import neural_networks_kfold
         neural_networks_kfold()
     elif state == 10:
-        from ml_algs import KNN
-        KNN()
-    elif state == 11:
-        from ml_algs import SVM
-        SVM()
-    elif state == 12:
-        from ml_algs import DT
-        DT()
-    elif state == 13:
-        from ml_algs import ET
-        ET()
-    elif state == 14:
-        from ml_algs import RF
-        RF()
-    elif state == 15:
-        from ml_algs import AdaBoost_DT
-        AdaBoost_DT()
-    elif state == 16:
-        from ml_algs import GradientBoost
-        GradientBoost()
-    elif state == 17:
-        from ml_algs import HistGradientBoost
-        HistGradientBoost()
-    elif state == 18:
-        from ml_algs import Gaussian_NB
-        Gaussian_NB()
-    elif state == 19:
-        from ml_algs import Bernoulli_NB
-        Bernoulli_NB()
-    elif state == 20:
-        from ml_algs import Complement_NB
-        Complement_NB()
-    elif state == 21:
-        from ml_algs import Multinomial_NB
-        Multinomial_NB()
-    elif state == 22:
-        from ml_algs import get_rating
-        get_rating()
-    elif state == 23:
-        from ml_algs import Bagging_DT
-        Bagging_DT()
-    elif state == 24:
-        from ml_algs import Stacking
-        Stacking()
-    elif state == 25:
-        from ml_algs import find_best_NN
-        find_best_NN('mcc')
-    elif state == 26:
         from ml_algs import neural_networks
         neural_networks()
-    elif state == 27:
+    elif state == 11:
+        from ml_algs import AdaBoost_DT_cv
+        AdaBoost_DT_cv()
+    elif state == 12:
+        from ml_algs import AdaBoost_DT
+        AdaBoost_DT()
+    elif state == 13:
+        from ml_algs import Bagging_DT_cv
+        Bagging_DT_cv()
+    elif state == 14:
+        from ml_algs import Bagging_DT
+        Bagging_DT()
+    elif state == 15:
+        from ml_algs import DT_cv
+        DT_cv()
+    elif state == 16:
+        from ml_algs import DT
+        DT()
+    elif state == 17:
+        from ml_algs import ET_cv
+        ET_cv()
+    elif state == 18:
+        from ml_algs import ET
+        ET()
+    elif state == 19:
+        from ml_algs import GradientBoost_cv
+        GradientBoost_cv()
+    elif state == 20:
+        from ml_algs import GradientBoost
+        GradientBoost()
+    elif state == 21:
+        from ml_algs import HistGradientBoost_cv
+        HistGradientBoost_cv()
+    elif state == 22:
+        from ml_algs import HistGradientBoost
+        HistGradientBoost()
+    elif state == 23:
+        from ml_algs import KNN_cv
+        KNN_cv()
+    elif state == 24:
+        from ml_algs import KNN
+        KNN()
+    elif state == 25:
+        from ml_algs import logistic_regression_cv
+        logistic_regression_cv()
+    elif state == 26:
         from ml_algs import logistic_regression
         logistic_regression()
+    elif state == 27:
+        from ml_algs import RF_cv
+        RF_cv()
     elif state == 28:
+        from ml_algs import RF
+        RF()
+    elif state == 29:
+        from ml_algs import SVM_cv
+        SVM_cv()
+    elif state == 30:
+        from ml_algs import SVM
+        SVM()
+    elif state == 31:
         from ml_algs import XGB_cv
         XGB_cv()
-    elif state == 29:
+    elif state == 32:
         from ml_algs import XGB
         XGB()
+    elif state == 33:
+        from ml_algs import Stacking
+        Stacking("AB, RF, ET, B, HGB, GB, DT, XGB")
+    elif state == 34:
+        from ml_algs import Stacking
+        Stacking("AB, RF, ET, B, XGB")
+    elif state == 35:
+        from ml_algs import Stacking
+        Stacking("All")
+    elif state == 36:
+        from ml_algs import Stacking
+        Stacking("ANN, LR, GB, HGB, XGB, AB")
+    elif state == 37:
+        from ml_algs import Stacking
+        Stacking("GNB, BNB, CNB, MNB")
+    elif state == 38:
+        from ml_algs import Stacking
+        Stacking("KNN, SVM, ANN")
+    elif state == 39:
+        from ml_algs import Stacking
+        Stacking("KNN, SVM, ANN, DT, GNB, LR")
+    elif state == 40:
+        from ml_algs import Stacking
+        Stacking("LR, GNB, BNB, CNB, MNB")
+    elif state == 41:
+        from ml_algs import Bernoulli_NB
+        Bernoulli_NB()
+    elif state == 42:
+        from ml_algs import Complement_NB
+        Complement_NB()
+    elif state == 43:
+        from ml_algs import Gaussian_NB
+        Gaussian_NB()
+    elif state == 44:
+        from ml_algs import Multinomial_NB
+        Multinomial_NB()
+    elif state == 45:
+        from ml_algs import get_rating
+        get_rating()

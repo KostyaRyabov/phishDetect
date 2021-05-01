@@ -1,3 +1,5 @@
+import concurrent
+from concurrent.futures import wait, ALL_COMPLETED
 import os
 import pandas
 
@@ -263,30 +265,42 @@ X = frame[cols].to_numpy()
 Y = frame['status'].to_numpy()
 
 
-def plot_hyperop_score(dir, max=True):
+def plot_hyperop_score(dir, max=True, metric=None):
     with open("data/trials/{}/results.pkl".format(dir), 'rb') as f:
         data = pickle.load(f)
+        data = data.results
 
     path = []
-    max_v = 0.9
+    max_v = 0
 
-    if max:
-        for idx, raw in enumerate(data.results):
-            if 'loss' in raw:
-                if -raw['loss'] > max_v:
-                    max_v = -raw['loss']
-                path.append(max_v)
+    if metric == None:
+        if max:
+            for idx, raw in enumerate(data):
+                if 'loss' in raw:
+                    if -raw['loss'] > max_v:
+                        max_v = -raw['loss']
+                    path.append(max_v)
+        else:
+            for idx, raw in enumerate(data):
+                if metric in raw:
+                    path.append(-raw[metric])
     else:
-        for idx, raw in enumerate(data.results):
-            if 'loss' in raw:
-                path.append(-raw['loss'])
+        if max:
+            for idx, raw in enumerate(data):
+                if 'metrics' in raw:
+                    if raw['metrics'][metric] > max_v:
+                        max_v = raw['metrics'][metric]
+                    path.append(max_v)
+        else:
+            for idx, raw in enumerate(data):
+                if 'metrics' in raw:
+                    path.append(raw['metrics'][metric])
 
 
     plt.plot(path)
     plt.title("подбор гиперпараметров")
     plt.xlabel = 'итерация'
     plt.ylabel = 'точность'
-    plt.ylim(path[0]-0.01, path[-1]+0.01)
     plt.show()
     plt.clf()
     plt.close()
@@ -336,7 +350,7 @@ def get_rating():
         if 'kfold' in dir:
             continue
         try:
-            with open('data/trials/{}/metrics.json'.format(dir), 'r') as f:
+            with open('data/trials/{}/stats.json'.format(dir), 'r') as f:
                 metrics.append({
                     'dir': dir,
                     'm': json.load(f)
@@ -345,9 +359,9 @@ def get_rating():
             pass
 
     acc = [m['m']['accuracy'] for m in metrics]
-    pre = [m['m']['Precision'] for m in metrics]
-    rec = [m['m']['Recall'] for m in metrics]
-    auc = [m['m']['AUC'] for m in metrics]
+    pre = [m['m']['precision'] for m in metrics]
+    rec = [m['m']['recall'] for m in metrics]
+    auc = [m['m']['auc'] for m in metrics]
     f_score = [m['m']['f_score'] for m in metrics]
     mcc = [m['m']['mcc'] for m in metrics]
     names = [m['dir'] for m in metrics]
@@ -360,9 +374,6 @@ def get_rating():
 
 def neural_networks_kfold():
     global X
-
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
 
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
@@ -439,7 +450,6 @@ def neural_networks_kfold():
         ])
 
     X = X * 0.998 + 0.001
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     space = {
         'layers': layer(5),
@@ -448,15 +458,9 @@ def neural_networks_kfold():
         ),
         'batch_size': 64,
         'init': 'glorot_normal',
-        # 'trainable_BatchNormalization': hp.choice('trainable_BatchNormalization', [False, True]),
-        # 'trainable_dropouts': hp.choice('trainable_dropouts', [False, True]),
-        'trainable_BatchNormalization': True,
-        'trainable_dropouts': True,
-        'shuffle': True,
-        'x_train': x_train,
-        'y_train': y_train,
-        'x_test': x_test,
-        'y_test': y_test,
+        'trainable_BatchNormalization': hp.choice('trainable_BatchNormalization', [False, True]),
+        'trainable_dropouts': hp.choice('trainable_dropouts', [False, True]),
+        'shuffle': True
     }
 
     class CustomEarlyStopping(tf.keras.callbacks.Callback):
@@ -471,8 +475,8 @@ def neural_networks_kfold():
 
         def on_epoch_end(self, epoch, logs=None):
             if epoch >= self.delay_epochs:
-                v_loss = np.around(logs.get('val_loss'), 2)
-                loss = np.around(logs.get('loss'), 2)
+                v_loss = np.around(logs.get('val_loss'), 3)
+                loss = np.around(logs.get('loss'), 3)
 
                 if np.less_equal(v_loss, loss):
                     self.wait = 0
@@ -481,7 +485,6 @@ def neural_networks_kfold():
                     if self.wait >= self.patience:
                         self.stopped_epoch = epoch
                         self.model.stop_training = True
-                        print("acc > v_acc")
 
         def on_train_end(self, logs=None):
             if self.stopped_epoch > 0:
@@ -489,24 +492,18 @@ def neural_networks_kfold():
 
     def tf_callbacks():
         return [
-            tf.keras.callbacks.ModelCheckpoint(
-                'data/models/neural_networks_kfold/tmp.h5',
-                monitor='val_accuracy',
-                mode='max',
-                verbose=0,
-                save_best_only=True
-            ),
             tf.keras.callbacks.EarlyStopping(
                 monitor='val_accuracy',
                 patience=5,
-                # min_delta=1e-4,
+                min_delta=1e-4,
                 mode='max'
             ),
             CustomEarlyStopping(
-                patience=5,
-                delay_epochs=15
+                patience=3,
+                delay_epochs=5
             )
         ]
+
 
     def create_model(space):
         model = models.Sequential()
@@ -536,134 +533,113 @@ def neural_networks_kfold():
 
         return model
 
+
     def objective(space):
-        result = []
         history = []
-        scores = []
 
-        try:
-            for train_index, val_index in KFold(5, shuffle=True, random_state=40).split(space['x_train']):
-                xTrain, xVal = X[train_index], X[val_index]
-                yTrain, yVal = Y[train_index], Y[val_index]
+        stats = {'loss': [], 'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
 
-                print(len(result))
 
+        def task(obj):
+            train_index, val_index = obj
+
+            xTrain, xVal = X[train_index], X[val_index]
+            yTrain, yVal = Y[train_index], Y[val_index]
+
+            try:
                 model = create_model(space)
 
                 h = model.fit(
                     xTrain, yTrain,
                     validation_data=(xVal, yVal),
-                    epochs=75,
+                    epochs=50,
                     batch_size=space['batch_size'],
                     callbacks=tf_callbacks(),
                     shuffle=space['shuffle'],
-                    verbose=2
+                    verbose=0
                 )
 
                 history.append(h.history)
-                result.append(model.evaluate(space['x_test'], space['y_test'], verbose=0))
+                result = model.evaluate(xVal, yVal, verbose=0)
 
-                p = result[-1][-2]
-                r = result[-1][-1]
+                p = result[-2]
+                r = result[-1]
                 s = 2 * ((p * r) / (p + r + 0.00001))
-                result[-1].append(s)
 
-                y_pred = model.predict_classes(space['x_test'])
-                mcc = matthews_corrcoef(space['y_test'], y_pred)
-                print(mcc)
+                y_pred = (model.predict(xVal) > 0.5).astype("int32")
 
-                scores.append(mcc)
+                v_loss = np.around(h.history['val_loss'][-1], 3)
+                loss = np.around(h.history['loss'][-1], 3)
 
-                if s < 0.93:
-                    break
+                mcc = matthews_corrcoef(yVal, y_pred)
 
-            score = np.average(scores)
+                if not np.less_equal(v_loss, loss):
+                    print('[OVERFITTING]')
+                    result = [-r for r in result]
+                    mcc = -mcc
+                    s = -s
 
-            m = {
-                "loss": np.mean([r[0] for r in result]),
-                "accuracy": np.mean([r[1] for r in result]),
-                "AUC": np.mean([r[2] for r in result]),
-                "Precision": np.mean([r[3] for r in result]),
-                "Recall": np.mean([r[4] for r in result]),
-                "f_score": np.mean([r[5] for r in result]),
-                "mcc": score
-            }
+                stats["loss"].append(result[0])
+                stats['acc'].append(result[1])
+                stats['auc'].append(result[2])
+                stats['pre'].append(result[3])
+                stats['recall'].append(result[4])
+                stats['fscore'].append(s)
+                stats['mcc'].append(mcc)
+            except Exception as ex:
+                print(ex)
 
-            try:
-                with open("data/trials/neural_networks_kfold/metric.txt") as f:
-                    max_score = float(f.read().strip())
-            except FileNotFoundError:
-                max_score = -1
+        with concurrent.futures.ThreadPoolExecutor(3) as executor:
+            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
 
-            if 'x_test' in space: del space['x_test']
-            if 'y_test' in space: del space['y_test']
-            if 'x_train' in space: del space['x_train']
-            if 'y_train' in space: del space['y_train']
+        m = {
+            "loss": np.sum(stats['loss']) / 3,
+            "accuracy": np.sum(stats['acc']) / 3,
+            "Precision": np.sum(stats['pre']) / 3,
+            "Recall": np.sum(stats['recall']) / 3,
+            "AUC": np.sum(stats['auc']) / 3,
+            "f_score": np.sum(stats['fscore']) / 3,
+            "mcc": np.sum(stats['mcc']) / 3
+        }
 
-            if score > max_score:
-                model.save("data/models/neural_networks_kfold/nn1.h5")
-                move('data/models/neural_networks_kfold/tmp.h5', "data/models/neural_networks_kfold/nn2.h5")
+        try:
+            with open("data/trials/neural_networks_kfold/metric.txt") as f:
+                max_mcc = float(f.read().strip())
+        except FileNotFoundError:
+            max_mcc = -1
 
-                with open("data/trials/neural_networks_kfold/space.json", "w") as f:
-                    f.write(str(space))
+        if m['mcc'] >= max_mcc:
+            with open("data/trials/neural_networks_kfold/space.json", "w") as f:
+                f.write(str(space))
+            with open("data/trials/neural_networks_kfold/metric.txt", "w") as f:
+                f.write(str(m['mcc']))
+            with open("data/trials/neural_networks_kfold/metrics.json", "w") as f:
+                json.dump(m, f)
 
-                with open("data/trials/neural_networks_kfold/metric.txt", "w") as f:
-                    f.write(str(score).replace('[', '').replace(']', ''))
-                with open("data/trials/neural_networks_kfold/metrics.json", "w") as f:
-                    json.dump('[{}] -> {}'.format(len(result), str(m)), f)
-                with open("data/trials/neural_networks_kfold/history.pkl", 'wb') as f:
-                    pickle.dump(history, f)
+        try:
+            telegram_info = pandas.read_csv('telegram_client.csv')
+            bot = telepot.Bot(telegram_info['BOT_token'][0])
+            bot.sendMessage(int(telegram_info['CHAT_ID'][0]), str(space))
+            bot.sendMessage(int(telegram_info['CHAT_ID'][0]), str(m))
+            bot.sendMessage(int(telegram_info['CHAT_ID'][0]), '{} -> {}'.format([len(h['loss']) for h in history], str(m['mcc'])))
+            # draw(history, list(map(lambda x: x.lower(), metrics)) + ['loss', 'f1_score'], 'neural_networks_kfold')
+            # bot.sendPhoto(int(telegram_info['CHAT_ID'][0]), photo=open(
+            #     'data/trials/neural_networks_kfold/stats.png', 'rb'))
+        except:
+            pass
 
-            try:
-                telegram_info = pandas.read_csv('telegram_client.csv')
-                bot = telepot.Bot(telegram_info['BOT_token'][0])
-                bot.sendMessage(int(telegram_info['CHAT_ID'][0]), str(space))
-                bot.sendMessage(int(telegram_info['CHAT_ID'][0]), str(m))
-                bot.sendMessage(int(telegram_info['CHAT_ID'][0]), '[{}] -> {}'.format(len(result), str(score)))
-                # draw(history, list(map(lambda x: x.lower(), metrics)) + ['loss', 'f1_score'], 'neural_networks_kfold')
-                # bot.sendPhoto(int(telegram_info['CHAT_ID'][0]), photo=open(
-                #     'data/trials/neural_networks_kfold/stats.png', 'rb'))
-            except:
-                pass
+        with open("data/trials/neural_networks_kfold/results.pkl", 'wb') as output:
+            pickle.dump(trials, output)
 
-            with open("data/trials/neural_networks_kfold/results.pkl", 'wb') as output:
-                pickle.dump(trials, output)
-
-            return {
-                "loss": -score,
-                "status": STATUS_OK,
-                "history": history,
-                "space": space,
-                "metrics": m
-            }
-        except Exception as ex:
-            print(ex)
-
-            with open("data/trials/neural_networks/results.pkl", 'wb') as output:
-                pickle.dump(trials, output)
-
-            if 'x_test' in space: del space['x_test']
-            if 'y_test' in space: del space['y_test']
-            if 'x_train' in space: del space['x_train']
-            if 'y_train' in space: del space['y_train']
-
-            return {
-                "loss": 1,
-                "status": STATUS_OK,
-                "history": None,
-                "space": space,
-                "metrics": None
-            }
+        return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space, "history": history, "metrics": m}
 
     best = fmin(
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=200,
-                  # + len(trials),
+        max_evals=500,
         trials=trials,
-        timeout=60 * 60 * 3,
-
+        timeout=60 * 60 * 6
     )
 
     def typer(o):
@@ -688,7 +664,8 @@ def neural_networks():
     from tensorflow.keras import layers, models, optimizers, losses
 
     X = X * 0.998 + 0.001
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=5)
+    x_test, x_val, y_test, y_val = train_test_split(x_test, y_test, test_size=0.5, random_state=5)
 
     metrics = [
         'accuracy',
@@ -699,7 +676,7 @@ def neural_networks():
 
     tf.compat.v1.enable_eager_execution()
 
-    with open("data/trials/best_nn/space.json", 'r') as f:
+    with open("data/trials/neural_networks_kfold/space.json", 'r') as f:
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
@@ -734,20 +711,21 @@ def neural_networks():
     def tf_callbacks():
         return [
             tf.keras.callbacks.ModelCheckpoint(
-                'data/models/neural_networks/nn2.h5',
+                'data/models/neural_networks/ANN.h5',
                 monitor='accuracy',
                 mode='max',
                 verbose=0,
                 save_best_only=True
             ),
             tf.keras.callbacks.EarlyStopping(
-                monitor='accuracy',
+                monitor='val_accuracy',
                 patience=5,
-                mode='max'
+                mode='max',
+                verbose=2
             ),
             CustomEarlyStopping(
-                patience=5,
-                delay_epochs=5
+                patience=3,
+                delay_epochs=3
             )
         ]
 
@@ -778,8 +756,7 @@ def neural_networks():
 
     history = model.fit(
         x_train, y_train,
-        # validation_split=0.15,
-        validation_data=(x_test, y_test),
+        validation_data=(x_val, y_val),
         epochs=100,
         batch_size=space['batch_size'],
         callbacks=tf_callbacks(),
@@ -789,85 +766,30 @@ def neural_networks():
 
     res = model.evaluate(x_test, y_test)
 
-    y_pred = model.predict_classes(x_test)
+    y_pred = (model.predict(x_test) > 0.5).astype("int32")
     f_score = f1_score(y_test, y_pred)
     mcc = matthews_corrcoef(y_test, y_pred)
 
-    m = {
-        "loss": res[0],
+    stats = {
         "accuracy": res[1],
-        "AUC": res[2],
-        "Precision": res[3],
-        "Recall": res[4],
+        "auc": res[2],
+        "precision": res[3],
+        "recall": res[4],
         "f_score": f_score,
         "mcc": mcc
     }
 
-    model.save("data/models/neural_networks/nn1.h5")
-    model.save_weights("data/models/neural_networks/nn1_w.h5")
-    with open("data/trials/neural_networks/space.json", "w") as f:
-        f.write(str(space))
-    with open("data/trials/neural_networks/metrics.json", "w") as f:
-        json.dump(str(m), f)
+    with open("data/trials/neural_networks/stats.json", "w") as f:
+        json.dump(stats, f)
     with open("data/trials/neural_networks/history.pkl", 'wb') as f:
         pickle.dump(history.history, f)
 
     draw(history.history, list(map(lambda x: x.lower(), metrics)) + ['loss', 'f1_score'], 'neural_networks')
 
 
-def find_best_NN(param='mcc', check_overfitting=False):
-    with open("data/trials/neural_networks_kfold/results.pkl", 'rb') as f:
-        data = pickle.load(f)
-
-    metrics = []
-
-    for idx, raw in enumerate(data.results):
-        if 'history' in raw:
-            history = raw['history']
-            if history:
-                if len(history) == 5:
-                    if check_overfitting:
-                        l = np.round(sum([h['loss'][-1] for h in history]) / 5, 2)
-                        v_l = np.round(sum([h['val_loss'][-1] for h in history]) / 5, 2)
-
-                        if not np.less_equal(v_l, l):
-                            break
-
-                    metrics.append([idx, raw['metrics'][param]])
-
-    r = pandas.DataFrame(metrics, columns=['id', 'score']).sort_values(
-        'score', ascending=False
-    ).head(1)
-
-    if not r.empty:
-        id = int(r['id'])
-        best = data.results[id]
-
-        with open("data/trials/best_nn/space.json", "w") as f:
-            f.write(str(best['space']))
-        with open("data/trials/best_nn/metrics.json", "w") as f:
-            json.dump(str(best['metrics']), f)
-
-        from collections import defaultdict
-        history = defaultdict(list)
-
-        for h in data.results[id]['history']:
-            for key, value in h.items():
-                history[key] += value
-
-        draw(
-            history,
-            ['accuracy', 'auc', "precision", "recall", 'loss', 'f1_score'],
-            'best_NN'
-        )
-    else:
-        print('ERROR: selection criteria are too strict!')
-
-
 def XGB_cv():
     import xgboost as xgb
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
+    from sklearn.model_selection import KFold
 
     try:
         with open("data/trials/XGB/results.pkl", 'rb') as file:
@@ -885,61 +807,72 @@ def XGB_cv():
         'colsample_bytree': hp.quniform('colsample_bytree', 0.1, 1.0, 0.01)}
 
     def objective(space):
-        clf = xgb.XGBClassifier(n_estimators = space['n_estimators'],
-                            max_depth = int(space['max_depth']),
-                            learning_rate = space['learning_rate'],
-                            gamma = space['gamma'],
-                            min_child_weight = space['min_child_weight'],
-                            subsample = space['subsample'],
-                            colsample_bytree = space['colsample_bytree']
-                            )
+        stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
 
+        def task(obj):
+            train_index, test_index = obj
+            x_train, x_test = X[train_index], X[test_index]
+            y_train, y_test = Y[train_index], Y[test_index]
 
-        clf.fit(x_train, y_train,
-                eval_set=[(x_train, y_train), (x_test, y_test)],
-                eval_metric='logloss',
-                verbose=True,
-                callbacks=[xgb.callback.EarlyStopping(rounds=4, save_best=True)])
+            clf = xgb.XGBClassifier(
+                use_label_encoder=False,
+                n_estimators=space['n_estimators'],
+                max_depth=int(space['max_depth']),
+                learning_rate=space['learning_rate'],
+                gamma=space['gamma'],
+                min_child_weight=space['min_child_weight'],
+                subsample=space['subsample'],
+                colsample_bytree=space['colsample_bytree']
+            )
 
-        y_pred = clf.predict(x_test)
-        acc = accuracy_score(y_test, y_pred)
-        auc = roc_auc_score(y_test, y_pred)
-        f_score = f1_score(y_test, y_pred)
-        pre = precision_score(y_test, y_pred)
-        recall = recall_score(y_test, y_pred)
-        mcc = matthews_corrcoef(y_test, y_pred)
+            clf.fit(x_train, y_train,
+                    eval_set=[(x_train, y_train), (x_test, y_test)],
+                    eval_metric='logloss',
+                    early_stopping_rounds=3,
+                    verbose=False)
+
+            y_pred = clf.predict(x_test)
+
+            stats['acc'].append(accuracy_score(y_test, y_pred))
+            stats['auc'].append(roc_auc_score(y_test, y_pred))
+            stats['pre'].append(precision_score(y_test, y_pred))
+            stats['recall'].append(recall_score(y_test, y_pred))
+            stats['fscore'].append(f1_score(y_test, y_pred))
+            stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+        with concurrent.futures.ThreadPoolExecutor(3) as executor:
+            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
 
         m = {
-            "accuracy": acc,
-            "Precision": pre,
-            "Recall": recall,
-            "AUC": auc,
-            "f_score": f_score,
-            "mcc": mcc
+            "accuracy": np.average(stats['acc']),
+            "Precision": np.average(stats['pre']),
+            "Recall": np.average(stats['recall']),
+            "AUC": np.average(stats['auc']),
+            "f_score": np.average(stats['fscore']),
+            "mcc": np.average(stats['mcc'])
         }
 
         try:
             with open("data/trials/XGB/metric.txt") as f:
-                max_mcc = float(f.read().strip())  # read best metric,
+                max_mcc = float(f.read().strip())
         except FileNotFoundError:
             max_mcc = -1
 
-        if mcc > max_mcc:
-            pickle.dump(clf, open('data/models/XGB/XGB.pkl', 'wb'))
+        if m['mcc'] >= max_mcc:
             with open("data/trials/XGB/space.json", "w") as f:
                 f.write(str(space))
             with open("data/trials/XGB/metric.txt", "w") as f:
-                f.write(str(mcc))
+                f.write(str(m['mcc']))
             with open("data/trials/XGB/metrics.json", "w") as f:
                 json.dump(m, f)
 
-        return {'loss': -mcc, 'status': STATUS_OK, 'space': space}
+        return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
 
     best = fmin(
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=200,
+        max_evals=100,
         trials=trials,
         timeout=60 * 30
     )
@@ -955,56 +888,9 @@ def XGB_cv():
         pickle.dump(trials, output)
 
 
-def XGB():
-    import xgboost as xgb
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    with open("data/trials/XGB/space.json", 'r') as f:
-        space = json.loads(
-            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
-
-    clf = xgb.XGBClassifier(n_estimators = space['n_estimators'],
-                            max_depth = int(space['max_depth']),
-                            learning_rate = space['learning_rate'],
-                            gamma = space['gamma'],
-                            min_child_weight = space['min_child_weight'],
-                            subsample = space['subsample'],
-                            colsample_bytree = space['colsample_bytree']
-                            )
-
-    clf.fit(x_train, y_train,
-            eval_set=[(x_train, y_train), (x_test, y_test)],
-            eval_metric='logloss',
-            verbose=True,
-            callbacks=[xgb.callback.EarlyStopping(rounds=4, save_best=True)])
-
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-    with open("data/trials/XGB/metrics.json", "w") as f:
-        json.dump(m, f)
-    pickle.dump(clf, open('data/models/XGB/XGB.pkl', 'wb'))
-
-
 def DT_cv():
     from sklearn.tree import DecisionTreeClassifier
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
+    from sklearn.model_selection import KFold
 
     try:
         with open("data/trials/DT/results.pkl", 'rb') as file:
@@ -1016,57 +902,71 @@ def DT_cv():
         'criterion': hp.choice('criterion', ['gini', 'entropy']),
         'splitter': hp.choice('splitter', ['best', 'random']),
         'max_features': hp.choice('max_features', ['sqrt', 'log2', None]),
-        'min_samples_split': 2,
-        'min_samples_leaf': 1,
+        'max_depth': hp.randint('max_depth', 1, 100),
+        'min_samples_split': hp.uniform('min_samples_split', 0, 0.5),
+        'min_samples_leaf': hp.uniform('min_samples_leaf', 0, 0.5)
     }
 
     def objective(space):
-        clf = DecisionTreeClassifier(
-            criterion=space['criterion'],
-            splitter=space['splitter'],
-            max_features=space['max_features'],
-            min_samples_leaf=space['min_samples_leaf'],
-            min_samples_split=space['min_samples_split']
-        )
+        stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
 
-        clf.fit(x_train, y_train)
-        y_pred = clf.predict(x_test)
-        acc = accuracy_score(y_true=y_test, y_pred=y_pred)
+        def task(obj):
+            train_index, test_index = obj
+            x_train, x_test = X[train_index], X[test_index]
+            y_train, y_test = Y[train_index], Y[test_index]
+
+            clf = DecisionTreeClassifier(
+                criterion=space['criterion'],
+                splitter=space['splitter'],
+                max_features=space['max_features'],
+                min_samples_leaf=space['min_samples_leaf'],
+                min_samples_split=space['min_samples_split']
+            )
+
+            clf.fit(x_train, y_train)
+
+            y_pred = clf.predict(x_test)
+
+            stats['acc'].append(accuracy_score(y_test, y_pred))
+            stats['auc'].append(roc_auc_score(y_test, y_pred))
+            stats['pre'].append(precision_score(y_test, y_pred))
+            stats['recall'].append(recall_score(y_test, y_pred))
+            stats['fscore'].append(f1_score(y_test, y_pred))
+            stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+        with concurrent.futures.ThreadPoolExecutor(3) as executor:
+            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+
+        m = {
+            "accuracy": np.average(stats['acc']),
+            "Precision": np.average(stats['pre']),
+            "Recall": np.average(stats['recall']),
+            "AUC": np.average(stats['auc']),
+            "f_score": np.average(stats['fscore']),
+            "mcc": np.average(stats['mcc'])
+        }
 
         try:
             with open("data/trials/DT/metric.txt") as f:
-                max_acc = float(f.read().strip())  # read best metric,
+                max_mcc = float(f.read().strip())
         except FileNotFoundError:
-            max_acc = -1
+            max_mcc = -1
 
-        if acc > max_acc:
-            pickle.dump(clf, open('data/models/DT/DT.pkl', 'wb'))
+        if m['mcc'] >= max_mcc:
             with open("data/trials/DT/space.json", "w") as f:
                 f.write(str(space))
             with open("data/trials/DT/metric.txt", "w") as f:
-                f.write(str(acc))
-
-            auc = roc_auc_score(y_test, y_pred)
-            f_score = f1_score(y_test, y_pred)
-            pre = precision_score(y_test, y_pred)
-            recall = recall_score(y_test, y_pred)
-            m = {
-                "accuracy": acc,
-                "Precision": pre,
-                "Recall": recall,
-                "AUC": auc,
-                "f_score": f_score
-            }
+                f.write(str(m['mcc']))
             with open("data/trials/DT/metrics.json", "w") as f:
                 json.dump(m, f)
 
-        return {'loss': -acc, 'status': STATUS_OK, 'space': space}
+        return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
 
     best = fmin(
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=100,
+        max_evals=1000,
         trials=trials,
         timeout=60 * 30
     )
@@ -1082,53 +982,9 @@ def DT_cv():
         pickle.dump(trials, output)
 
 
-def DT():
-    from sklearn.tree import DecisionTreeClassifier
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    space = {
-        'criterion': 'entropy',
-        'max_features': None,
-        'min_samples_leaf': 1,
-        'min_samples_split': 2,
-        'splitter': 'best'
-    }
-
-    clf = DecisionTreeClassifier(
-        criterion=space['criterion'],
-        splitter=space['splitter'],
-        max_features=space['max_features'],
-        min_samples_leaf=space['min_samples_leaf'],
-        min_samples_split=space['min_samples_split']
-    )
-
-    clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-    with open("data/trials/DT/metrics.json", "w") as f:
-        json.dump(m, f)
-    pickle.dump(clf, open('data/models/DT/DT.pkl', 'wb'))
-
-
 def SVM_cv():
     from sklearn.svm import SVC
-    from sklearn.model_selection import cross_val_predict
+    from sklearn.model_selection import KFold
 
     try:
         with open("data/trials/SVM/results.pkl", 'rb') as file:
@@ -1161,66 +1017,74 @@ def SVM_cv():
     }
 
     def objective(space):
-        clf = SVC(
-            C=space['C'],
-            random_state=space['random_state'],
-            kernel=space['kernel']['type'],
-            max_iter=25000,
-            tol=1e-3
-        )
+        stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
 
-        if 'coef0' in space['kernel']:
-            clf.coef0 = space['kernel']['coef0']
-        if 'degree' in space['kernel']:
-            clf.degree = space['kernel']['degree']
-        if 'gamma' in space['kernel']:
-            clf.gamma = space['kernel']['gamma']
+        def task(obj):
+            train_index, test_index = obj
+            x_train, x_test = X[train_index], X[test_index]
+            y_train, y_test = Y[train_index], Y[test_index]
 
-        try:
-            y_pred = cross_val_predict(clf, X, Y, cv=5, n_jobs=2)
-            acc = accuracy_score(Y, y_pred)
-        except:
-            acc = -1
+            clf = SVC(
+                C=space['C'],
+                random_state=space['random_state'],
+                kernel=space['kernel']['type'],
+                max_iter=100000,
+                tol=1e-5
+            )
+
+            if 'coef0' in space['kernel']:
+                clf.coef0 = space['kernel']['coef0']
+            if 'degree' in space['kernel']:
+                clf.degree = space['kernel']['degree']
+            if 'gamma' in space['kernel']:
+                clf.gamma = space['kernel']['gamma']
+
+            clf.fit(x_train, y_train)
+
+            y_pred = clf.predict(x_test)
+
+            stats['acc'].append(accuracy_score(y_test, y_pred))
+            stats['auc'].append(roc_auc_score(y_test, y_pred))
+            stats['pre'].append(precision_score(y_test, y_pred))
+            stats['recall'].append(recall_score(y_test, y_pred))
+            stats['fscore'].append(f1_score(y_test, y_pred))
+            stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+        with concurrent.futures.ThreadPoolExecutor(3) as executor:
+            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+
+        m = {
+            "accuracy": np.average(stats['acc']),
+            "Precision": np.average(stats['pre']),
+            "Recall": np.average(stats['recall']),
+            "AUC": np.average(stats['auc']),
+            "f_score": np.average(stats['fscore']),
+            "mcc": np.average(stats['mcc'])
+        }
 
         try:
             with open("data/trials/SVM/metric.txt") as f:
-                max_acc = float(f.read().strip())  # read best metric,
+                max_mcc = float(f.read().strip())
         except FileNotFoundError:
-            max_acc = -1
+            max_mcc = -1
 
-        if acc > max_acc:
-            pickle.dump(clf, open('data/models/SVM/SVM.pkl', 'wb'))
+        if m['mcc'] >= max_mcc:
             with open("data/trials/SVM/space.json", "w") as f:
                 f.write(str(space))
             with open("data/trials/SVM/metric.txt", "w") as f:
-                f.write(str(acc))
-
-            auc = roc_auc_score(Y, y_pred)
-            f_score = f1_score(Y, y_pred)
-            pre = precision_score(Y, y_pred)
-            recall = recall_score(Y, y_pred)
-            m = {
-                "accuracy": acc,
-                "Precision": pre,
-                "Recall": recall,
-                "AUC": auc,
-                "f_score": f_score
-            }
+                f.write(str(m['mcc']))
             with open("data/trials/SVM/metrics.json", "w") as f:
                 json.dump(m, f)
 
-        with open("data/trials/SVM/results.pkl", 'wb') as output:
-            pickle.dump(trials, output)
-
-        return {'loss': -acc, 'status': STATUS_OK, 'space': space}
+        return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
 
     best = fmin(
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=2000,
+        max_evals=300,
         trials=trials,
-        timeout=60 * 60 * 8
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1234,296 +1098,93 @@ def SVM_cv():
         pickle.dump(trials, output)
 
 
-def SVM():
-    from sklearn.svm import SVC
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    with open("data/trials/SVM/space.json", 'r') as f:
-        space = json.loads(
-            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
-
-    clf = SVC(
-        C=space['C'],
-        random_state=space['random_state'],
-        kernel=space['kernel']['type'],
-        # max_iter=25000,
-        probability=True,
-        # tol=1e-3
-    )
-
-    if 'coef0' in space['kernel']:
-        clf.coef0 = space['kernel']['coef0']
-    if 'degree' in space['kernel']:
-        clf.degree = space['kernel']['degree']
-    if 'gamma' in space['kernel']:
-        clf.gamma = space['kernel']['gamma']
-
-    clf = clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-
-    with open("data/trials/SVM/metrics.json", "w") as f:
-        json.dump(m, f)
-
-    with open("data/models/SVM/SVM.pkl", "wb") as f:
-        pickle.dump(clf, f)
-
-
 def KNN_cv():
     from sklearn.neighbors import KNeighborsClassifier
-    from sklearn.model_selection import cross_val_predict
+    from sklearn.model_selection import KFold
 
     try:
-        with open("data/trials/kNN/results.pkl", 'rb') as file:
+        with open("data/trials/KNN/results.pkl", 'rb') as file:
             trials = pickle.load(file)
     except:
         trials = Trials()
 
     space = {
-        'k': hp.randint('k', 5)*2+3,
-        'p': hp.randint('p', 4) + 1,
+        'k': hp.randint('k', 4)*2+1,
+        'p': hp.randint('p', 2) + 1,
         'weights': hp.choice('weights', ['uniform', 'distance'])
     }
 
     def objective(space):
-        clf = KNeighborsClassifier(
-            n_neighbors=space['k'],
-            p=space['p'],
-            weights=space['weights']
-        )
+        stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
+
+        def task(obj):
+            train_index, test_index = obj
+            x_train, x_test = X[train_index], X[test_index]
+            y_train, y_test = Y[train_index], Y[test_index]
+
+            clf = KNeighborsClassifier(
+                n_neighbors=space['k'],
+                p=space['p'],
+                weights=space['weights']
+            )
+
+            clf.fit(x_train, y_train)
+
+            y_pred = clf.predict(x_test)
+
+            stats['acc'].append(accuracy_score(y_test, y_pred))
+            stats['auc'].append(roc_auc_score(y_test, y_pred))
+            stats['pre'].append(precision_score(y_test, y_pred))
+            stats['recall'].append(recall_score(y_test, y_pred))
+            stats['fscore'].append(f1_score(y_test, y_pred))
+            stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+        with concurrent.futures.ThreadPoolExecutor(3) as executor:
+            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+
+        m = {
+            "accuracy": np.average(stats['acc']),
+            "Precision": np.average(stats['pre']),
+            "Recall": np.average(stats['recall']),
+            "AUC": np.average(stats['auc']),
+            "f_score": np.average(stats['fscore']),
+            "mcc": np.average(stats['mcc'])
+        }
 
         try:
-            y_pred = cross_val_predict(clf, X, Y, cv=3, n_jobs=3)
-            acc = accuracy_score(Y, y_pred)
-        except:
-            acc = -1
-
-        try:
-            with open("data/trials/kNN/metric.txt") as f:
-                max_acc = float(f.read().strip())  # read best metric,
+            with open("data/trials/KNN/metric.txt") as f:
+                max_mcc = float(f.read().strip())
         except FileNotFoundError:
-            max_acc = -1
+            max_mcc = -1
 
-        if acc > max_acc:
-            pickle.dump(clf, open('data/models/kNN/{}NN.pkl'.format(space['k']), 'wb'))
-            with open("data/trials/kNN/space.json", "w") as f:
+        if m['mcc'] >= max_mcc:
+            with open("data/trials/KNN/space.json", "w") as f:
                 f.write(str(space))
-            with open("data/trials/kNN/metric.txt", "w") as f:
-                f.write(str(acc))
-
-            auc = roc_auc_score(Y, y_pred)
-            f_score = f1_score(Y, y_pred)
-            pre = precision_score(Y, y_pred)
-            recall = recall_score(Y, y_pred)
-            m = {
-                "accuracy": acc,
-                "Precision": pre,
-                "Recall": recall,
-                "AUC": auc,
-                "f_score": f_score
-            }
-            with open("data/trials/kNN/metrics.json", "w") as f:
+            with open("data/trials/KNN/metric.txt", "w") as f:
+                f.write(str(m['mcc']))
+            with open("data/trials/KNN/metrics.json", "w") as f:
                 json.dump(m, f)
 
-        with open("data/trials/kNN/results.pkl", 'wb') as output:
-            pickle.dump(trials, output)
-
-        return {'loss': -acc, 'status': STATUS_OK, 'space': space}
+        return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
 
     best = fmin(
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=100,
+        max_evals=25,
         trials=trials,
-        timeout=60 * 20 * 1
+        timeout=60 * 20
     )
 
     def typer(o):
         if isinstance(o, np.int32): return int(o)
         return o
 
-    with open("data/trials/kNN/best.json", "w") as f:
+    with open("data/trials/KNN/best.json", "w") as f:
         json.dump(best, f, default=typer)
 
-    with open("data/trials/kNN/results.pkl", 'wb') as output:
+    with open("data/trials/KNN/results.pkl", 'wb') as output:
         pickle.dump(trials, output)
-
-
-def KNN():
-    from sklearn.neighbors import KNeighborsClassifier
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    with open("data/trials/kNN/space.json", 'r') as f:
-        space = json.loads(
-            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
-
-    clf = KNeighborsClassifier(
-        n_neighbors=space['k'],
-        p=space['p'],
-        weights=space['weights']
-    )
-
-    clf = clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-
-    with open("data/trials/kNN/metrics.json", "w") as f:
-        json.dump(m, f)
-
-    with open("data/models/kNN/kNN.pkl", "wb") as f:
-        pickle.dump(clf, f)
-
-
-def Gaussian_NB():
-    from sklearn.naive_bayes import GaussianNB
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    clf = GaussianNB()
-    clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-    pickle.dump(clf, open('data/models/Gaussian_NB/Gaussian_NB.pkl', 'wb'))
-    with open("data/trials/Gaussian_NB/metrics.json", "w") as f:
-        json.dump(m, f)
-
-
-def Bernoulli_NB():
-    from sklearn.naive_bayes import BernoulliNB
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    clf = BernoulliNB()
-    clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-
-    pickle.dump(clf, open('data/models/Bernoulli_NB/Bernoulli_NB.pkl', 'wb'))
-    with open("data/trials/Bernoulli_NB/metrics.json", "w") as f:
-        json.dump(m, f)
-
-
-def Complement_NB():
-    from sklearn.naive_bayes import ComplementNB
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    clf = ComplementNB()
-    clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-
-    pickle.dump(clf, open('data/models/Complement_NB/Complement_NB.pkl', 'wb'))
-    with open("data/trials/Complement_NB/metrics.json", "w") as f:
-        json.dump(m, f)
-
-
-def Multinomial_NB():
-    from sklearn.naive_bayes import MultinomialNB
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    clf = MultinomialNB()
-    clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-
-    pickle.dump(clf, open('data/models/Multinomial_NB/Multinomial_NB.pkl', 'wb'))
-    with open("data/trials/Multinomial_NB/metrics.json", "w") as f:
-        json.dump(m, f)
 
 
 # ansambles
@@ -1531,7 +1192,7 @@ def Multinomial_NB():
 
 def ET_cv():
     from sklearn.ensemble import ExtraTreesClassifier
-    from sklearn.model_selection import cross_val_predict
+    from sklearn.model_selection import KFold
 
     try:
         with open("data/trials/ET/results.pkl", 'rb') as file:
@@ -1540,66 +1201,83 @@ def ET_cv():
         trials = Trials()
 
     space = {
-        'n_estimators': 100,
+        'n_estimators': hp.choice('n_estimators', range(20, 205, 5)),
+        'max_depth': hp.randint('max_depth', 1, 100),
         'criterion': hp.choice('criterion', ['gini', 'entropy']),
         'max_features': hp.choice('max_features', ['sqrt', 'log2', None]),
         'class_weight': hp.choice('class_weight', ['balanced', 'balanced_subsample', None]),
+        'min_samples_split': hp.uniform('min_samples_split', 0, 0.5),
+        'min_samples_leaf': hp.uniform('min_samples_leaf', 0, 0.5),
+        'bootstrap': hp.choice('bootstrap', [
+            {'value': True, 'oob_score': hp.choice('oob_score', [False, True])},
+            {'value': False, 'oob_score': False},
+        ]),
     }
 
     def objective(space):
-        clf = ExtraTreesClassifier(
-            n_estimators=space['n_estimators'],
-            criterion=space['criterion'],
-            max_features=space['max_features'],
-            class_weight=space['class_weight']
-        )
+        stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
 
+        def task(obj):
+            train_index, test_index = obj
+            x_train, x_test = X[train_index], X[test_index]
+            y_train, y_test = Y[train_index], Y[test_index]
 
+            clf = ExtraTreesClassifier(
+                n_estimators=space['n_estimators'],
+                max_depth=space['max_depth'],
+                criterion=space['criterion'],
+                max_features=space['max_features'],
+                class_weight=space['class_weight'],
+                min_samples_split=space['min_samples_split'],
+                min_samples_leaf=space['min_samples_leaf'],
+                bootstrap=space['bootstrap']['value'],
+                oob_score=space['bootstrap']['oob_score']
+            )
 
-        try:
-            y_pred = cross_val_predict(clf, X, Y, cv=5, n_jobs=3)
-            acc = accuracy_score(Y, y_pred)
-        except:
-            acc = -1
+            clf.fit(x_train, y_train)
+
+            y_pred = clf.predict(x_test)
+
+            stats['acc'].append(accuracy_score(y_test, y_pred))
+            stats['auc'].append(roc_auc_score(y_test, y_pred))
+            stats['pre'].append(precision_score(y_test, y_pred))
+            stats['recall'].append(recall_score(y_test, y_pred))
+            stats['fscore'].append(f1_score(y_test, y_pred))
+            stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+        with concurrent.futures.ThreadPoolExecutor(3) as executor:
+            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+
+        m = {
+            "accuracy": np.average(stats['acc']),
+            "Precision": np.average(stats['pre']),
+            "Recall": np.average(stats['recall']),
+            "AUC": np.average(stats['auc']),
+            "f_score": np.average(stats['fscore']),
+            "mcc": np.average(stats['mcc'])
+        }
 
         try:
             with open("data/trials/ET/metric.txt") as f:
-                max_acc = float(f.read().strip())  # read best metric,
+                max_mcc = float(f.read().strip())
         except FileNotFoundError:
-            max_acc = -1
+            max_mcc = -1
 
-        if acc > max_acc:
-            pickle.dump(clf, open('data/models/ET/ET.pkl', 'wb'))
+        if m['mcc'] >= max_mcc:
             with open("data/trials/ET/space.json", "w") as f:
                 f.write(str(space))
             with open("data/trials/ET/metric.txt", "w") as f:
-                f.write(str(acc))
-
-
-            auc = roc_auc_score(Y, y_pred)
-            f_score = f1_score(Y, y_pred)
-            pre = precision_score(Y, y_pred)
-            recall = recall_score(Y, y_pred)
-            m = {
-                "accuracy": acc,
-                "Precision": pre,
-                "Recall": recall,
-                "AUC": auc,
-                "f_score": f_score
-            }
+                f.write(str(m['mcc']))
             with open("data/trials/ET/metrics.json", "w") as f:
                 json.dump(m, f)
 
-        with open("data/trials/ET/results.pkl", 'wb') as output:
-            pickle.dump(trials, output)
-
-        return {'loss': -acc, 'status': STATUS_OK, 'space': space}
+        return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
 
     best = fmin(
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=100,
+        max_evals=200,
         trials=trials,
         timeout=60 * 30
     )
@@ -1615,51 +1293,9 @@ def ET_cv():
         pickle.dump(trials, output)
 
 
-def ET():
-    from sklearn.ensemble import ExtraTreesClassifier
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    with open("data/trials/ET/space.json", 'r') as f:
-        space = json.loads(
-            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
-
-    clf = ExtraTreesClassifier(
-        n_estimators=space['n_estimators'],
-        criterion=space['criterion'],
-        max_features=space['max_features'],
-        class_weight=space['class_weight']
-    )
-
-    clf = clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-
-    with open("data/trials/ET/metrics.json", "w") as f:
-        json.dump(m, f)
-
-    with open("data/models/ET/ET.pkl", "wb") as f:
-        pickle.dump(clf, f)
-
-
 def RF_cv():
     from sklearn.ensemble import RandomForestClassifier
-    from sklearn.model_selection import cross_val_predict
+    from sklearn.model_selection import KFold
 
     try:
         with open("data/trials/RF/results.pkl", 'rb') as file:
@@ -1668,65 +1304,83 @@ def RF_cv():
         trials = Trials()
 
     space = {
-        'n_estimators': 100,
+        'n_estimators': hp.choice('n_estimators', range(20, 205, 5)),
+        'max_depth': hp.randint('max_depth', 1, 100),
         'criterion': hp.choice('criterion', ['gini', 'entropy']),
-        'max_features': hp.choice('max_features', ['sqrt', 'log2']),
+        'max_features': hp.choice('max_features', ['sqrt', 'log2', None]),
         'class_weight': hp.choice('class_weight', ['balanced', 'balanced_subsample', None]),
+        'min_samples_split': hp.uniform('min_samples_split', 0, 0.5),
+        'min_samples_leaf': hp.uniform('min_samples_leaf', 0, 0.5),
+        'bootstrap': hp.choice('bootstrap', [
+            {'value': True, 'oob_score': hp.choice('oob_score', [False, True])},
+            {'value': False, 'oob_score': False},
+        ]),
     }
 
     def objective(space):
-        clf = RandomForestClassifier(
-            n_estimators=space['n_estimators'],
-            criterion=space['criterion'],
-            max_features=space['max_features'],
-            class_weight=space['class_weight']
-        )
+        stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
 
-        try:
-            y_pred = cross_val_predict(clf, X, Y, cv=5, n_jobs=3)
-            acc = accuracy_score(Y, y_pred)
-        except:
-            acc = -1
+        def task(obj):
+            train_index, test_index = obj
+            x_train, x_test = X[train_index], X[test_index]
+            y_train, y_test = Y[train_index], Y[test_index]
+
+            clf = RandomForestClassifier(
+                n_estimators=space['n_estimators'],
+                max_depth=space['max_depth'],
+                criterion=space['criterion'],
+                max_features=space['max_features'],
+                class_weight=space['class_weight'],
+                min_samples_split=space['min_samples_split'],
+                min_samples_leaf=space['min_samples_leaf'],
+                bootstrap=space['bootstrap']['value'],
+                oob_score=space['bootstrap']['oob_score']
+            )
+
+            clf.fit(x_train, y_train)
+
+            y_pred = clf.predict(x_test)
+
+            stats['acc'].append(accuracy_score(y_test, y_pred))
+            stats['auc'].append(roc_auc_score(y_test, y_pred))
+            stats['pre'].append(precision_score(y_test, y_pred))
+            stats['recall'].append(recall_score(y_test, y_pred))
+            stats['fscore'].append(f1_score(y_test, y_pred))
+            stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+        with concurrent.futures.ThreadPoolExecutor(3) as executor:
+            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+
+        m = {
+            "accuracy": np.average(stats['acc']),
+            "Precision": np.average(stats['pre']),
+            "Recall": np.average(stats['recall']),
+            "AUC": np.average(stats['auc']),
+            "f_score": np.average(stats['fscore']),
+            "mcc": np.average(stats['mcc'])
+        }
 
         try:
             with open("data/trials/RF/metric.txt") as f:
-                max_acc = float(f.read().strip())  # read best metric,
+                max_mcc = float(f.read().strip())
         except FileNotFoundError:
-            max_acc = -1
+            max_mcc = -1
 
-        if acc > max_acc:
-            pickle.dump(clf, open('data/models/RF/RF.pkl', 'wb'))
+        if m['mcc'] >= max_mcc:
             with open("data/trials/RF/space.json", "w") as f:
                 f.write(str(space))
             with open("data/trials/RF/metric.txt", "w") as f:
-                f.write(str(acc))
-
-            auc = roc_auc_score(Y, y_pred)
-            f_score = f1_score(Y, y_pred)
-            pre = precision_score(Y, y_pred)
-            recall = recall_score(Y, y_pred)
-            m = {
-                "accuracy": acc,
-                "Precision": pre,
-                "Recall": recall,
-                "AUC": auc,
-                "f_score": f_score
-            }
+                f.write(str(m['mcc']))
             with open("data/trials/RF/metrics.json", "w") as f:
                 json.dump(m, f)
 
-
-        with open("data/trials/RF/results.pkl", 'wb') as output:
-            pickle.dump(trials, output)
-
-
-        return {'loss': -acc, 'status': STATUS_OK, 'space': space}
+        return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
 
     best = fmin(
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=100,
+        max_evals=250,
         trials=trials,
         timeout=60 * 30
     )
@@ -1742,52 +1396,10 @@ def RF_cv():
         pickle.dump(trials, output)
 
 
-def RF():
-    from sklearn.ensemble import RandomForestClassifier
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    with open("data/trials/RF/space.json", 'r') as f:
-        space = json.loads(
-            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
-
-    clf = RandomForestClassifier(
-        n_estimators=space['n_estimators'],
-        criterion=space['criterion'],
-        max_features=space['max_features'],
-        class_weight=space['class_weight']
-    )
-
-    clf = clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-
-    with open("data/trials/RF/metrics.json", "w") as f:
-        json.dump(m, f)
-
-    with open("data/models/RF/RF.pkl", "wb") as f:
-        pickle.dump(clf, f)
-
-
 def AdaBoost_DT_cv():
     from sklearn.ensemble import AdaBoostClassifier
     from sklearn.tree import DecisionTreeClassifier
-    from sklearn.model_selection import cross_val_predict
+    from sklearn.model_selection import KFold
 
     try:
         with open("data/trials/AdaBoost_DT/results.pkl", 'rb') as file:
@@ -1796,62 +1408,76 @@ def AdaBoost_DT_cv():
         trials = Trials()
 
     space = {
-        'n_estimators': 100,
-        'learning_rate': hp.randint('learning_rate', 100)/100,
+        'n_estimators': hp.choice('n_estimators', range(20, 205, 5)),
+        'learning_rate': hp.quniform('learning_rate', 0.01, 0.5, 0.01),
         'algorithm': hp.choice('algorithm', ['SAMME', 'SAMME.R']),
-        'max_depth': hp.randint('max_depth', 19)+1
+        'criterion': hp.choice('criterion', ['gini', 'entropy']),
+        'splitter': hp.choice('splitter', ['best', 'random']),
+        'max_features': hp.choice('max_features', ['sqrt', 'log2', None]),
+        'max_depth': hp.randint('max_depth', 1, 100),
+        'min_samples_split': hp.uniform('min_samples_split', 0, 0.5),
+        'min_samples_leaf': hp.uniform('min_samples_leaf', 0, 0.5)
     }
 
     def objective(space):
-        clf = AdaBoostClassifier(
-            DecisionTreeClassifier(max_depth=space['max_depth']),
-            n_estimators=space['n_estimators'],
-            learning_rate=space['learning_rate'],
-            algorithm=space['algorithm']
-        )
+        stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
 
+        def task(obj):
+            train_index, test_index = obj
+            x_train, x_test = X[train_index], X[test_index]
+            y_train, y_test = Y[train_index], Y[test_index]
 
+            clf = AdaBoostClassifier(
+                DecisionTreeClassifier(
+                    criterion=space['criterion'],
+                    splitter=space['splitter'],
+                    max_features=space['max_features'],
+                    min_samples_leaf=space['min_samples_leaf'],
+                    min_samples_split=space['min_samples_split']
+                ),
+                n_estimators=space['n_estimators'],
+                learning_rate=space['learning_rate'],
+                algorithm=space['algorithm']
+            )
 
-        try:
-            y_pred = cross_val_predict(clf, X, Y, cv=3, n_jobs=3)
-            acc = accuracy_score(Y, y_pred)
-        except:
-            acc = -1
+            clf.fit(x_train, y_train)
+
+            y_pred = clf.predict(x_test)
+
+            stats['acc'].append(accuracy_score(y_test, y_pred))
+            stats['auc'].append(roc_auc_score(y_test, y_pred))
+            stats['pre'].append(precision_score(y_test, y_pred))
+            stats['recall'].append(recall_score(y_test, y_pred))
+            stats['fscore'].append(f1_score(y_test, y_pred))
+            stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+        with concurrent.futures.ThreadPoolExecutor(3) as executor:
+            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+
+        m = {
+            "accuracy": np.average(stats['acc']),
+            "Precision": np.average(stats['pre']),
+            "Recall": np.average(stats['recall']),
+            "AUC": np.average(stats['auc']),
+            "f_score": np.average(stats['fscore']),
+            "mcc": np.average(stats['mcc'])
+        }
 
         try:
             with open("data/trials/AdaBoost_DT/metric.txt") as f:
-                max_acc = float(f.read().strip())  # read best metric,
+                max_mcc = float(f.read().strip())
         except FileNotFoundError:
-            max_acc = -1
+            max_mcc = -1
 
-        if acc > max_acc:
-            pickle.dump(clf, open('data/models/AdaBoost_DT/AdaBoost_DT.pkl', 'wb'))
+        if m['mcc'] >= max_mcc:
             with open("data/trials/AdaBoost_DT/space.json", "w") as f:
                 f.write(str(space))
             with open("data/trials/AdaBoost_DT/metric.txt", "w") as f:
-                f.write(str(acc))
-
-
-            auc = roc_auc_score(Y, y_pred)
-            f_score = f1_score(Y, y_pred)
-            pre = precision_score(Y, y_pred)
-            recall = recall_score(Y, y_pred)
-            m = {
-                "accuracy": acc,
-                "Precision": pre,
-                "Recall": recall,
-                "AUC": auc,
-                "f_score": f_score
-            }
+                f.write(str(m['mcc']))
             with open("data/trials/AdaBoost_DT/metrics.json", "w") as f:
                 json.dump(m, f)
 
-
-        with open("data/trials/AdaBoost_DT/results.pkl", 'wb') as output:
-            pickle.dump(trials, output)
-
-
-        return {'loss': -acc, 'status': STATUS_OK, 'space': space}
+        return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
 
     best = fmin(
         objective,
@@ -1873,53 +1499,10 @@ def AdaBoost_DT_cv():
         pickle.dump(trials, output)
 
 
-def AdaBoost_DT():
-    from sklearn.ensemble import AdaBoostClassifier
-    from sklearn.tree import DecisionTreeClassifier
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    with open("data/trials/AdaBoost_DT/space.json", 'r') as f:
-        space = json.loads(
-            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
-
-    clf = AdaBoostClassifier(
-        DecisionTreeClassifier(max_depth=space['max_depth']),
-        n_estimators=space['n_estimators'],
-        learning_rate=space['learning_rate'],
-        algorithm=space['algorithm']
-    )
-
-    clf = clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-
-    with open("data/trials/AdaBoost_DT/metrics.json", "w") as f:
-        json.dump(m, f)
-
-    with open("data/models/AdaBoost_DT/AdaBoost_DT.pkl", "wb") as f:
-        pickle.dump(clf, f)
-
-
 def Bagging_DT_cv():
     from sklearn.ensemble import BaggingClassifier
     from sklearn.tree import DecisionTreeClassifier
-    from sklearn.model_selection import cross_val_predict
+    from sklearn.model_selection import KFold
 
     try:
         with open("data/trials/Bagging_DT/results.pkl", 'rb') as file:
@@ -1928,64 +1511,86 @@ def Bagging_DT_cv():
         trials = Trials()
 
     space = {
-        'n_estimators': 100,
+        'n_estimators': hp.choice('n_estimators', range(20, 205, 5)),
         'bootstrap_features': hp.choice('bootstrap_features', [False, True]),
-        'max_depth': hp.randint('max_depth', 19)+1
+        'criterion': hp.choice('criterion', ['gini', 'entropy']),
+        'splitter': hp.choice('splitter', ['best', 'random']),
+        'max_features': hp.choice('max_features', ['sqrt', 'log2', None]),
+        'max_depth': hp.randint('max_depth', 1, 100),
+        'min_samples_split': hp.uniform('min_samples_split', 0, 0.5),
+        'min_samples_leaf': hp.uniform('min_samples_leaf', 0, 0.5),
+        'bootstrap': hp.choice('bootstrap', [
+            {'value': True, 'oob_score': hp.choice('oob_score', [False, True])},
+            {'value': False, 'oob_score': False},
+        ]),
     }
 
     def objective(space):
-        clf = BaggingClassifier(
-            DecisionTreeClassifier(max_depth=space['max_depth']),
-            n_estimators=space['n_estimators'],
-            bootstrap_features=space['bootstrap_features']
-        )
+        stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
 
-        try:
-            y_pred = cross_val_predict(clf, X, Y, cv=5, n_jobs=3)
-            acc = accuracy_score(Y, y_pred)
-        except:
-            acc = -1
+        def task(obj):
+            train_index, test_index = obj
+            x_train, x_test = X[train_index], X[test_index]
+            y_train, y_test = Y[train_index], Y[test_index]
+
+            clf = BaggingClassifier(
+                DecisionTreeClassifier(
+                    criterion=space['criterion'],
+                    splitter=space['splitter'],
+                    max_features=space['max_features'],
+                    min_samples_leaf=space['min_samples_leaf'],
+                    min_samples_split=space['min_samples_split']
+                ),
+                n_estimators=space['n_estimators'],
+                bootstrap_features=space['bootstrap_features'],
+                bootstrap=space['bootstrap']['value'],
+                oob_score=space['bootstrap']['oob_score']
+            )
+
+            clf.fit(x_train, y_train)
+
+            y_pred = clf.predict(x_test)
+
+            stats['acc'].append(accuracy_score(y_test, y_pred))
+            stats['auc'].append(roc_auc_score(y_test, y_pred))
+            stats['pre'].append(precision_score(y_test, y_pred))
+            stats['recall'].append(recall_score(y_test, y_pred))
+            stats['fscore'].append(f1_score(y_test, y_pred))
+            stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+        with concurrent.futures.ThreadPoolExecutor(3) as executor:
+            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+
+        m = {
+            "accuracy": np.average(stats['acc']),
+            "Precision": np.average(stats['pre']),
+            "Recall": np.average(stats['recall']),
+            "AUC": np.average(stats['auc']),
+            "f_score": np.average(stats['fscore']),
+            "mcc": np.average(stats['mcc'])
+        }
 
         try:
             with open("data/trials/Bagging_DT/metric.txt") as f:
-                max_acc = float(f.read().strip())
+                max_mcc = float(f.read().strip())
         except FileNotFoundError:
-            max_acc = -1
+            max_mcc = -1
 
-        if acc > max_acc:
-            pickle.dump(clf, open('data/models/Bagging_DT/Bagging_DT.pkl', 'wb'))
+        if m['mcc'] >= max_mcc:
             with open("data/trials/Bagging_DT/space.json", "w") as f:
                 f.write(str(space))
             with open("data/trials/Bagging_DT/metric.txt", "w") as f:
-                f.write(str(acc))
-
-
-            auc = roc_auc_score(Y, y_pred)
-            f_score = f1_score(Y, y_pred)
-            pre = precision_score(Y, y_pred)
-            recall = recall_score(Y, y_pred)
-            m = {
-                "accuracy": acc,
-                "Precision": pre,
-                "Recall": recall,
-                "AUC": auc,
-                "f_score": f_score
-            }
+                f.write(str(m['mcc']))
             with open("data/trials/Bagging_DT/metrics.json", "w") as f:
                 json.dump(m, f)
 
-
-        with open("data/trials/Bagging_DT/results.pkl", 'wb') as output:
-            pickle.dump(trials, output)
-
-
-        return {'loss': -acc, 'status': STATUS_OK, 'space': space}
+        return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
 
     best = fmin(
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=200,
+        max_evals=250,
         trials=trials,
         timeout=60 * 30
     )
@@ -2001,51 +1606,9 @@ def Bagging_DT_cv():
         pickle.dump(trials, output)
 
 
-def Bagging_DT():
-    from sklearn.ensemble import BaggingClassifier
-    from sklearn.tree import DecisionTreeClassifier
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    with open("data/trials/Bagging_DT/space.json", 'r') as f:
-        space = json.loads(
-            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
-
-    clf = BaggingClassifier(
-        DecisionTreeClassifier(max_depth=space['max_depth']),
-        n_estimators=space['n_estimators'],
-        bootstrap_features=space['bootstrap_features']
-    )
-
-    clf = clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-
-    with open("data/trials/Bagging_DT/metrics.json", "w") as f:
-        json.dump(m, f)
-
-    with open("data/models/Bagging_DT/Bagging_DT.pkl", "wb") as f:
-        pickle.dump(clf, f)
-
-
 def GradientBoost_cv():
     from sklearn.ensemble import GradientBoostingClassifier
-    from sklearn.model_selection import cross_val_predict
+    from sklearn.model_selection import KFold
 
     try:
         with open("data/trials/GradientBoost/results.pkl", 'rb') as file:
@@ -2053,66 +1616,81 @@ def GradientBoost_cv():
     except:
         trials = Trials()
 
+
     space = {
-        'n_estimators': 100,
-        'learning_rate': hp.randint('learning_rate', 100)/100,
+        'n_estimators': hp.choice('n_estimators', range(20, 205, 5)),
+        'learning_rate': hp.quniform('learning_rate', 0.01, 0.5, 0.01),
         'loss': hp.choice('loss', ['deviance', 'exponential']),
         'criterion': hp.choice('criterion', ['friedman_mse', 'mse']),
-        'max_features': hp.choice('max_features', ['sqrt', 'log2', None])
+        'max_features': hp.choice('max_features', ['sqrt', 'log2', None]),
+        'max_depth': hp.randint('max_depth', 1, 100),
+        'min_samples_split': hp.uniform('min_samples_split', 0, 0.5),
+        'min_samples_leaf': hp.uniform('min_samples_leaf', 0, 0.5)
     }
 
     def objective(space):
-        clf = GradientBoostingClassifier(
-            n_estimators=space['n_estimators'],
-            learning_rate=space['learning_rate'],
-            criterion=space['criterion'],
-            max_features=space['max_features'],
-            loss=space['loss']
-        )
+        stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
 
-        try:
-            y_pred = cross_val_predict(clf, X, Y, cv=5, n_jobs=3)
-            acc = accuracy_score(Y, y_pred)
-        except:
-            acc = -1
+        def task(obj):
+            train_index, test_index = obj
+            x_train, x_test = X[train_index], X[test_index]
+            y_train, y_test = Y[train_index], Y[test_index]
+
+            clf = GradientBoostingClassifier(
+                n_estimators=space['n_estimators'],
+                learning_rate=space['learning_rate'],
+                criterion=space['criterion'],
+                max_features=space['max_features'],
+                min_samples_leaf=space['min_samples_leaf'],
+                min_samples_split=space['min_samples_split'],
+                max_depth=space['max_depth'],
+                loss=space['loss']
+            )
+
+            clf.fit(x_train, y_train)
+
+            y_pred = clf.predict(x_test)
+
+            stats['acc'].append(accuracy_score(y_test, y_pred))
+            stats['auc'].append(roc_auc_score(y_test, y_pred))
+            stats['pre'].append(precision_score(y_test, y_pred))
+            stats['recall'].append(recall_score(y_test, y_pred))
+            stats['fscore'].append(f1_score(y_test, y_pred))
+            stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+        with concurrent.futures.ThreadPoolExecutor(3) as executor:
+            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+
+        m = {
+            "accuracy": np.average(stats['acc']),
+            "Precision": np.average(stats['pre']),
+            "Recall": np.average(stats['recall']),
+            "AUC": np.average(stats['auc']),
+            "f_score": np.average(stats['fscore']),
+            "mcc": np.average(stats['mcc'])
+        }
 
         try:
             with open("data/trials/GradientBoost/metric.txt") as f:
-                max_acc = float(f.read().strip())  # read best metric,
+                max_mcc = float(f.read().strip())
         except FileNotFoundError:
-            max_acc = -1
+            max_mcc = -1
 
-        if acc > max_acc:
-            pickle.dump(clf, open('data/models/GradientBoost/GradientBoost.pkl', 'wb'))
+        if m['mcc'] >= max_mcc:
             with open("data/trials/GradientBoost/space.json", "w") as f:
                 f.write(str(space))
             with open("data/trials/GradientBoost/metric.txt", "w") as f:
-                f.write(str(acc))
-
-            auc = roc_auc_score(Y, y_pred)
-            f_score = f1_score(Y, y_pred)
-            pre = precision_score(Y, y_pred)
-            recall = recall_score(Y, y_pred)
-            m = {
-                "accuracy": acc,
-                "Precision": pre,
-                "Recall": recall,
-                "AUC": auc,
-                "f_score": f_score
-            }
+                f.write(str(m['mcc']))
             with open("data/trials/GradientBoost/metrics.json", "w") as f:
                 json.dump(m, f)
 
-        with open("data/trials/GradientBoost/results.pkl", 'wb') as output:
-            pickle.dump(trials, output)
-
-        return {'loss': -acc, 'status': STATUS_OK, 'space': space}
+        return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
 
     best = fmin(
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=500,
+        max_evals=250,
         trials=trials,
         timeout=60 * 30
     )
@@ -2128,54 +1706,10 @@ def GradientBoost_cv():
         pickle.dump(trials, output)
 
 
-def GradientBoost():
-    from sklearn.ensemble import GradientBoostingClassifier
-    from sklearn.model_selection import cross_val_predict
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    with open("data/trials/GradientBoost/space.json", 'r') as f:
-        space = json.loads(
-            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
-
-    clf = GradientBoostingClassifier(
-        n_estimators=space['n_estimators'],
-        learning_rate=space['learning_rate'],
-        criterion=space['criterion'],
-        max_features=space['max_features'],
-        loss=space['loss']
-    )
-
-    clf = clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-
-    with open("data/trials/GradientBoost/metrics.json", "w") as f:
-        json.dump(m, f)
-
-    with open("data/models/GradientBoost/GradientBoost.pkl", "wb") as f:
-        pickle.dump(clf, f)
-
-
 def HistGradientBoost_cv():
     from sklearn.experimental import enable_hist_gradient_boosting
     from sklearn.ensemble import HistGradientBoostingClassifier
-    from sklearn.model_selection import cross_val_predict
+    from sklearn.model_selection import KFold
 
     try:
         with open("data/trials/HistGradientBoost/results.pkl", 'rb') as file:
@@ -2184,59 +1718,71 @@ def HistGradientBoost_cv():
         trials = Trials()
 
     space = {
-        'learning_rate': hp.randint('learning_rate', 100) / 100,
-        'loss': 'binary_crossentropy'
+        'learning_rate': hp.quniform('learning_rate', 0.01, 0.5, 0.01),
+        'loss': 'binary_crossentropy',
+        'max_depth': hp.randint('max_depth', 1, 100),
+        'min_samples_leaf': hp.randint('min_samples_leaf', 0, 50)
     }
 
     def objective(space):
-        clf = HistGradientBoostingClassifier(
-            learning_rate=space['learning_rate'],
-            loss=space['loss']
-        )
+        stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
 
-        try:
-            y_pred = cross_val_predict(clf, X, Y, cv=5, n_jobs=3)
-            acc = accuracy_score(Y, y_pred)
-        except:
-            acc = -1
+        def task(obj):
+            train_index, test_index = obj
+            x_train, x_test = X[train_index], X[test_index]
+            y_train, y_test = Y[train_index], Y[test_index]
+
+            clf = HistGradientBoostingClassifier(
+                learning_rate=space['learning_rate'],
+                loss=space['loss'],
+                min_samples_leaf=space['min_samples_leaf'],
+                max_depth=space['max_depth']
+            )
+
+            clf.fit(x_train, y_train)
+
+            y_pred = clf.predict(x_test)
+
+            stats['acc'].append(accuracy_score(y_test, y_pred))
+            stats['auc'].append(roc_auc_score(y_test, y_pred))
+            stats['pre'].append(precision_score(y_test, y_pred))
+            stats['recall'].append(recall_score(y_test, y_pred))
+            stats['fscore'].append(f1_score(y_test, y_pred))
+            stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+        with concurrent.futures.ThreadPoolExecutor(3) as executor:
+            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+
+        m = {
+            "accuracy": np.average(stats['acc']),
+            "Precision": np.average(stats['pre']),
+            "Recall": np.average(stats['recall']),
+            "AUC": np.average(stats['auc']),
+            "f_score": np.average(stats['fscore']),
+            "mcc": np.average(stats['mcc'])
+        }
 
         try:
             with open("data/trials/HistGradientBoost/metric.txt") as f:
-                max_acc = float(f.read().strip())  # read best metric,
+                max_mcc = float(f.read().strip())
         except FileNotFoundError:
-            max_acc = -1
+            max_mcc = -1
 
-        if acc > max_acc:
-            pickle.dump(clf, open('data/models/HistGradientBoost/HistGradientBoost.pkl', 'wb'))
+        if m['mcc'] >= max_mcc:
             with open("data/trials/HistGradientBoost/space.json", "w") as f:
                 f.write(str(space))
             with open("data/trials/HistGradientBoost/metric.txt", "w") as f:
-                f.write(str(acc))
-
-            auc = roc_auc_score(Y, y_pred)
-            f_score = f1_score(Y, y_pred)
-            pre = precision_score(Y, y_pred)
-            recall = recall_score(Y, y_pred)
-            m = {
-                "accuracy": acc,
-                "Precision": pre,
-                "Recall": recall,
-                "AUC": auc,
-                "f_score": f_score
-            }
+                f.write(str(m['mcc']))
             with open("data/trials/HistGradientBoost/metrics.json", "w") as f:
                 json.dump(m, f)
 
-        with open("data/trials/HistGradientBoost/results.pkl", 'wb') as output:
-            pickle.dump(trials, output)
-
-        return {'loss': -acc, 'status': STATUS_OK, 'space': space}
+        return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
 
     best = fmin(
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=500,
+        max_evals=50,
         trials=trials,
         timeout=60 * 30
     )
@@ -2252,51 +1798,9 @@ def HistGradientBoost_cv():
         pickle.dump(trials, output)
 
 
-def HistGradientBoost():
-    from sklearn.experimental import enable_hist_gradient_boosting
-    from sklearn.ensemble import HistGradientBoostingClassifier
-    from sklearn.model_selection import cross_val_predict
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
-
-    with open("data/trials/HistGradientBoost/space.json", 'r') as f:
-        space = json.loads(
-            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
-
-    clf = HistGradientBoostingClassifier(
-        learning_rate=space['learning_rate'],
-        loss=space['loss']
-    )
-
-    clf = clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
-    }
-
-    with open("data/trials/HistGradientBoost/metrics.json", "w") as f:
-        json.dump(m, f)
-
-    with open("data/models/HistGradientBoost/HistGradientBoost.pkl", "wb") as f:
-        pickle.dump(clf, f)
-
-
 def logistic_regression_cv():
     from sklearn.linear_model import LogisticRegression
-    from sklearn.model_selection import cross_val_predict
+    from sklearn.model_selection import KFold
 
     try:
         with open("data/trials/logistic_regression/results.pkl", 'rb') as file:
@@ -2305,71 +1809,80 @@ def logistic_regression_cv():
         trials = Trials()
 
     space = {
-        'C': hp.uniform('C', 0, 10),
+        'C': hp.randint('C', 0, 100000)/10,
         'l1_ratio': hp.uniform('l1_ratio', 0, 1),
         'fit_intercept': hp.choice('fit_intercept', [False, True]),
         'class_weight': hp.choice('class_weight', ['balanced', None])
     }
 
     def objective(space):
-        clf = LogisticRegression(
-            random_state=41,
-            multi_class='ovr',
-            n_jobs=2,
-            C=space['C'],
-            l1_ratio=space['l1_ratio'],
-            fit_intercept=space['fit_intercept'],
-            class_weight=space['class_weight'],
-            solver='saga',
-            penalty='elasticnet',
-            max_iter=100
-        )
+        stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
 
-        try:
-            y_pred = cross_val_predict(clf, X, Y, cv=5, n_jobs=3)
-            acc = accuracy_score(Y, y_pred)
-        except:
-            acc = -1
+        def task(obj):
+            train_index, test_index = obj
+            x_train, x_test = X[train_index], X[test_index]
+            y_train, y_test = Y[train_index], Y[test_index]
+
+            clf = LogisticRegression(
+                random_state=41,
+                multi_class='ovr',
+                n_jobs=2,
+                C=space['C'],
+                l1_ratio=space['l1_ratio'],
+                fit_intercept=space['fit_intercept'],
+                class_weight=space['class_weight'],
+                solver='saga',
+                penalty='elasticnet',
+                max_iter=500,
+                tol=0.0001
+            )
+
+            clf.fit(x_train, y_train)
+
+            y_pred = clf.predict(x_test)
+
+            stats['acc'].append(accuracy_score(y_test, y_pred))
+            stats['auc'].append(roc_auc_score(y_test, y_pred))
+            stats['pre'].append(precision_score(y_test, y_pred))
+            stats['recall'].append(recall_score(y_test, y_pred))
+            stats['fscore'].append(f1_score(y_test, y_pred))
+            stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+        with concurrent.futures.ThreadPoolExecutor(3) as executor:
+            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+
+        m = {
+            "accuracy": np.average(stats['acc']),
+            "Precision": np.average(stats['pre']),
+            "Recall": np.average(stats['recall']),
+            "AUC": np.average(stats['auc']),
+            "f_score": np.average(stats['fscore']),
+            "mcc": np.average(stats['mcc'])
+        }
 
         try:
             with open("data/trials/logistic_regression/metric.txt") as f:
-                max_acc = float(f.read().strip())
+                max_mcc = float(f.read().strip())
         except FileNotFoundError:
-            max_acc = -1
+            max_mcc = -1
 
-        if acc > max_acc:
-            pickle.dump(clf, open('data/models/logistic_regression/logistic_regression.pkl', 'wb'))
+        if m['mcc'] >= max_mcc:
             with open("data/trials/logistic_regression/space.json", "w") as f:
                 f.write(str(space))
             with open("data/trials/logistic_regression/metric.txt", "w") as f:
-                f.write(str(acc))
-
-            auc = roc_auc_score(Y, y_pred)
-            f_score = f1_score(Y, y_pred)
-            pre = precision_score(Y, y_pred)
-            recall = recall_score(Y, y_pred)
-            m = {
-                "accuracy": acc,
-                "Precision": pre,
-                "Recall": recall,
-                "AUC": auc,
-                "f_score": f_score
-            }
+                f.write(str(m['mcc']))
             with open("data/trials/logistic_regression/metrics.json", "w") as f:
                 json.dump(m, f)
 
-        with open("data/trials/logistic_regression/results.pkl", 'wb') as output:
-            pickle.dump(trials, output)
-
-        return {'loss': -acc, 'status': STATUS_OK, 'space': space}
+        return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
 
     best = fmin(
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=50,
+        max_evals=150,
         trials=trials,
-        timeout=60 * 30
+        timeout=60 * 20
     )
 
     def typer(o):
@@ -2383,14 +1896,576 @@ def logistic_regression_cv():
         pickle.dump(trials, output)
 
 
+# ----------
+
+
+def XGB():
+    import xgboost as xgb
+
+    with open("data/trials/XGB/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=5)
+    x_test, x_val, y_test, y_val = train_test_split(x_test, y_test, test_size=0.5, random_state=5)
+
+    clf = xgb.XGBClassifier(
+        use_label_encoder=False,
+        n_estimators=space['n_estimators'],
+        max_depth=int(space['max_depth']),
+        learning_rate=space['learning_rate'],
+        gamma=space['gamma'],
+        min_child_weight=space['min_child_weight'],
+        subsample=space['subsample'],
+        colsample_bytree=space['colsample_bytree']
+    )
+
+    clf.fit(x_train, y_train,
+            eval_set=[(x_train, y_train), (x_val, y_val)],
+            eval_metric='logloss',
+            early_stopping_rounds=3,
+            verbose=True)
+
+    y_pred = clf.predict(x_test)
+
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
+    }
+
+    with open("data/models/XGB/XGB.pkl", "wb") as f:
+        pickle.dump(clf, f)
+    with open("data/trials/XGB/params.pkl", "wb") as f:
+        pickle.dump(clf.get_params(), f)
+    with open("data/trials/XGB/stats.json", "w") as f:
+        json.dump(stats, f)
+
+
+def DT():
+    from sklearn.tree import DecisionTreeClassifier
+
+    with open("data/trials/DT/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+
+    clf = DecisionTreeClassifier(
+        criterion=space['criterion'],
+        splitter=space['splitter'],
+        max_features=space['max_features'],
+        min_samples_leaf=space['min_samples_leaf'],
+        min_samples_split=space['min_samples_split']
+    )
+
+    clf.fit(x_train, y_train)
+
+    y_pred = clf.predict(x_test)
+
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
+    }
+
+    with open("data/models/DT/DT.pkl", "wb") as f:
+        pickle.dump(clf, f)
+    with open("data/trials/DT/params.pkl", "wb") as f:
+        pickle.dump(clf.get_params(), f)
+    with open("data/trials/DT/stats.json", "w") as f:
+        json.dump(stats, f)
+
+
+def SVM():
+    from sklearn.svm import SVC
+    with open("data/trials/SVM/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+
+    clf = SVC(
+        C=space['C'],
+        random_state=space['random_state'],
+        kernel=space['kernel']['type'],
+        max_iter=100000,
+    )
+
+    clf.fit(x_train, y_train)
+
+    y_pred = clf.predict(x_test)
+
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
+    }
+
+    with open("data/models/SVM/SVM.pkl", "wb") as f:
+        pickle.dump(clf, f)
+    with open("data/trials/SVM/params.pkl", "wb") as f:
+        pickle.dump(clf.get_params(), f)
+    with open("data/trials/SVM/stats.json", "w") as f:
+        json.dump(stats, f)
+
+
+def KNN():
+    from sklearn.neighbors import KNeighborsClassifier
+
+    with open("data/trials/KNN/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+
+    clf = KNeighborsClassifier(
+        n_neighbors=space['k'],
+        p=space['p'],
+        weights=space['weights']
+    )
+
+    clf.fit(x_train, y_train)
+
+    y_pred = clf.predict(x_test)
+
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
+    }
+
+    with open("data/models/KNN/KNN.pkl", "wb") as f:
+        pickle.dump(clf, f)
+    with open("data/trials/KNN/params.pkl", "wb") as f:
+        pickle.dump(clf.get_params(), f)
+    with open("data/trials/KNN/stats.json", "w") as f:
+        json.dump(stats, f)
+
+
+def Gaussian_NB():
+    from sklearn.naive_bayes import GaussianNB
+    from sklearn.model_selection import KFold
+
+    clf = GaussianNB()
+
+    stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
+
+    for train_index, test_index in KFold(3, shuffle=True, random_state=10).split(X, Y):
+        x_train, x_test = X[train_index], X[test_index]
+        y_train, y_test = Y[train_index], Y[test_index]
+
+        clf.fit(x_train, y_train)
+
+        y_pred = clf.predict(x_test)
+
+        stats['acc'].append(accuracy_score(y_test, y_pred))
+        stats['auc'].append(roc_auc_score(y_test, y_pred))
+        stats['pre'].append(precision_score(y_test, y_pred))
+        stats['recall'].append(recall_score(y_test, y_pred))
+        stats['fscore'].append(f1_score(y_test, y_pred))
+        stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+    m = {
+        "accuracy": np.average(stats['acc']),
+        "precision": np.average(stats['pre']),
+        "recall": np.average(stats['recall']),
+        "auc": np.average(stats['auc']),
+        "f_score": np.average(stats['fscore']),
+        "mcc": np.average(stats['mcc'])
+    }
+
+    pickle.dump(clf, open('data/models/Gaussian_NB/Gaussian_NB.pkl', 'wb'))
+    with open("data/trials/Gaussian_NB/stats.json", "w") as f:
+        json.dump(m, f)
+
+
+def Bernoulli_NB():
+    from sklearn.naive_bayes import BernoulliNB
+    from sklearn.model_selection import KFold
+
+    clf = BernoulliNB()
+
+    stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
+
+    for train_index, test_index in KFold(3, shuffle=True, random_state=10).split(X, Y):
+        x_train, x_test = X[train_index], X[test_index]
+        y_train, y_test = Y[train_index], Y[test_index]
+
+        clf.fit(x_train, y_train)
+
+        y_pred = clf.predict(x_test)
+
+        stats['acc'].append(accuracy_score(y_test, y_pred))
+        stats['auc'].append(roc_auc_score(y_test, y_pred))
+        stats['pre'].append(precision_score(y_test, y_pred))
+        stats['recall'].append(recall_score(y_test, y_pred))
+        stats['fscore'].append(f1_score(y_test, y_pred))
+        stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+    m = {
+        "accuracy": np.average(stats['acc']),
+        "precision": np.average(stats['pre']),
+        "recall": np.average(stats['recall']),
+        "auc": np.average(stats['auc']),
+        "f_score": np.average(stats['fscore']),
+        "mcc": np.average(stats['mcc'])
+    }
+
+    pickle.dump(clf, open('data/models/Bernoulli_NB/Bernoulli_NB.pkl', 'wb'))
+    with open("data/trials/Bernoulli_NB/stats.json", "w") as f:
+        json.dump(m, f)
+
+
+def Complement_NB():
+    from sklearn.naive_bayes import ComplementNB
+    from sklearn.model_selection import KFold
+
+    clf = ComplementNB()
+
+    stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
+
+    for train_index, test_index in KFold(3, shuffle=True, random_state=10).split(X, Y):
+        x_train, x_test = X[train_index], X[test_index]
+        y_train, y_test = Y[train_index], Y[test_index]
+
+        clf.fit(x_train, y_train)
+
+        y_pred = clf.predict(x_test)
+
+        stats['acc'].append(accuracy_score(y_test, y_pred))
+        stats['auc'].append(roc_auc_score(y_test, y_pred))
+        stats['pre'].append(precision_score(y_test, y_pred))
+        stats['recall'].append(recall_score(y_test, y_pred))
+        stats['fscore'].append(f1_score(y_test, y_pred))
+        stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+    m = {
+        "accuracy": np.average(stats['acc']),
+        "precision": np.average(stats['pre']),
+        "recall": np.average(stats['recall']),
+        "auc": np.average(stats['auc']),
+        "f_score": np.average(stats['fscore']),
+        "mcc": np.average(stats['mcc'])
+    }
+
+    pickle.dump(clf, open('data/models/Complement_NB/Complement_NB.pkl', 'wb'))
+    with open("data/trials/Complement_NB/stats.json", "w") as f:
+        json.dump(m, f)
+
+
+def Multinomial_NB():
+    from sklearn.naive_bayes import MultinomialNB
+    from sklearn.model_selection import KFold
+
+    clf = MultinomialNB()
+
+    stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
+
+    for train_index, test_index in KFold(3, shuffle=True, random_state=10).split(X, Y):
+        x_train, x_test = X[train_index], X[test_index]
+        y_train, y_test = Y[train_index], Y[test_index]
+
+        clf.fit(x_train, y_train)
+
+        y_pred = clf.predict(x_test)
+
+        stats['acc'].append(accuracy_score(y_test, y_pred))
+        stats['auc'].append(roc_auc_score(y_test, y_pred))
+        stats['pre'].append(precision_score(y_test, y_pred))
+        stats['recall'].append(recall_score(y_test, y_pred))
+        stats['fscore'].append(f1_score(y_test, y_pred))
+        stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+
+    m = {
+        "accuracy": np.average(stats['acc']),
+        "precision": np.average(stats['pre']),
+        "recall": np.average(stats['recall']),
+        "auc": np.average(stats['auc']),
+        "f_score": np.average(stats['fscore']),
+        "mcc": np.average(stats['mcc'])
+    }
+
+    pickle.dump(clf, open('data/models/Multinomial_NB/Multinomial_NB.pkl', 'wb'))
+    with open("data/trials/Multinomial_NB/stats.json", "w") as f:
+        json.dump(m, f)
+
+
+# ansambles
+
+
+def ET():
+    from sklearn.ensemble import ExtraTreesClassifier
+
+    with open("data/trials/ET/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+
+    clf = ExtraTreesClassifier(
+        n_estimators=space['n_estimators'],
+        max_depth=space['max_depth'],
+        criterion=space['criterion'],
+        max_features=space['max_features'],
+        class_weight=space['class_weight'],
+        min_samples_split=space['min_samples_split'],
+        min_samples_leaf=space['min_samples_leaf'],
+        bootstrap=space['bootstrap']['value'],
+        oob_score=space['bootstrap']['oob_score']
+    )
+
+    clf.fit(x_train, y_train)
+
+    y_pred = clf.predict(x_test)
+
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
+    }
+
+    with open("data/models/ET/ET.pkl", "wb") as f:
+        pickle.dump(clf, f)
+    with open("data/trials/ET/params.pkl", "wb") as f:
+        pickle.dump(clf.get_params(), f)
+    with open("data/trials/ET/stats.json", "w") as f:
+        json.dump(stats, f)
+
+
+def RF():
+    from sklearn.ensemble import RandomForestClassifier
+
+    with open("data/trials/RF/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+
+    clf = RandomForestClassifier(
+        n_estimators=space['n_estimators'],
+        max_depth=space['max_depth'],
+        criterion=space['criterion'],
+        max_features=space['max_features'],
+        class_weight=space['class_weight'],
+        min_samples_split=space['min_samples_split'],
+        min_samples_leaf=space['min_samples_leaf'],
+        bootstrap=space['bootstrap']['value'],
+        oob_score=space['bootstrap']['oob_score']
+    )
+
+    clf.fit(x_train, y_train)
+
+    y_pred = clf.predict(x_test)
+
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
+    }
+
+    with open("data/models/RF/RF.pkl", "wb") as f:
+        pickle.dump(clf, f)
+    with open("data/trials/RF/params.pkl", "wb") as f:
+        pickle.dump(clf.get_params(), f)
+    with open("data/trials/RF/stats.json", "w") as f:
+        json.dump(stats, f)
+
+
+def AdaBoost_DT():
+    from sklearn.ensemble import AdaBoostClassifier
+    from sklearn.tree import DecisionTreeClassifier
+
+    with open("data/trials/AdaBoost_DT/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+
+    clf = AdaBoostClassifier(
+        DecisionTreeClassifier(
+            criterion=space['criterion'],
+            splitter=space['splitter'],
+            max_features=space['max_features'],
+            min_samples_leaf=space['min_samples_leaf'],
+            min_samples_split=space['min_samples_split']
+        ),
+        n_estimators=space['n_estimators'],
+        learning_rate=space['learning_rate'],
+        algorithm=space['algorithm']
+    )
+
+    clf.fit(x_train, y_train)
+
+    y_pred = clf.predict(x_test)
+
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
+    }
+
+    with open("data/models/AdaBoost_DT/AdaBoost_DT.pkl", "wb") as f:
+        pickle.dump(clf, f)
+    with open("data/trials/AdaBoost_DT/params.pkl", "wb") as f:
+        pickle.dump(clf.get_params(), f)
+    with open("data/trials/AdaBoost_DT/stats.json", "w") as f:
+        json.dump(stats, f)
+
+
+def Bagging_DT():
+    from sklearn.ensemble import BaggingClassifier
+    from sklearn.tree import DecisionTreeClassifier
+
+    with open("data/trials/Bagging_DT/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+
+    clf = BaggingClassifier(
+        DecisionTreeClassifier(
+            criterion=space['criterion'],
+            splitter=space['splitter'],
+            max_features=space['max_features'],
+            min_samples_leaf=space['min_samples_leaf'],
+            min_samples_split=space['min_samples_split']
+        ),
+        n_estimators=space['n_estimators'],
+        bootstrap_features=space['bootstrap_features'],
+        bootstrap=space['bootstrap']['value'],
+        oob_score=space['bootstrap']['oob_score']
+    )
+
+    clf.fit(x_train, y_train)
+
+    y_pred = clf.predict(x_test)
+
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
+    }
+
+    with open("data/models/Bagging_DT/Bagging_DT.pkl", "wb") as f:
+        pickle.dump(clf, f)
+    with open("data/trials/Bagging_DT/params.pkl", "wb") as f:
+        pickle.dump(clf.get_params(), f)
+    with open("data/trials/Bagging_DT/stats.json", "w") as f:
+        json.dump(stats, f)
+
+
+def GradientBoost():
+    from sklearn.ensemble import GradientBoostingClassifier
+
+    with open("data/trials/GradientBoost/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=5)
+
+    clf = GradientBoostingClassifier(
+        n_estimators=space['n_estimators'],
+        learning_rate=space['learning_rate'],
+        criterion=space['criterion'],
+        max_features=space['max_features'],
+        min_samples_leaf=space['min_samples_leaf'],
+        min_samples_split=space['min_samples_split'],
+        max_depth=space['max_depth'],
+        loss=space['loss']
+    )
+
+    clf.fit(x_train, y_train)
+
+    y_pred = clf.predict(x_test)
+
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
+    }
+
+    with open("data/models/GradientBoost/GradientBoost.pkl", "wb") as f:
+        pickle.dump(clf, f)
+    with open("data/trials/GradientBoost/params.pkl", "wb") as f:
+        pickle.dump(clf.get_params(), f)
+    with open("data/trials/GradientBoost/stats.json", "w") as f:
+        json.dump(stats, f)
+
+
+def HistGradientBoost():
+    from sklearn.experimental import enable_hist_gradient_boosting
+    from sklearn.ensemble import HistGradientBoostingClassifier
+
+    with open("data/trials/HistGradientBoost/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=5)
+
+    clf = HistGradientBoostingClassifier(
+        learning_rate=space['learning_rate'],
+        loss=space['loss'],
+        min_samples_leaf=space['min_samples_leaf'],
+        max_depth=space['max_depth']
+    )
+
+    clf.fit(x_train, y_train)
+
+    y_pred = clf.predict(x_test)
+
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
+    }
+
+    with open("data/models/HistGradientBoost/HistGradientBoost.pkl", "wb") as f:
+        pickle.dump(clf, f)
+    with open("data/trials/HistGradientBoost/params.pkl", "wb") as f:
+        pickle.dump(clf.get_params(), f)
+    with open("data/trials/HistGradientBoost/stats.json", "w") as f:
+        json.dump(stats, f)
+
+
 def logistic_regression():
     from sklearn.linear_model import LogisticRegression
-
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
     with open("data/trials/logistic_regression/space.json", 'r') as f:
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
 
     clf = LogisticRegression(
         random_state=41,
@@ -2405,30 +2480,25 @@ def logistic_regression():
         max_iter=100
     )
 
-    clf = clf.fit(x_train, y_train)
+    clf.fit(x_train, y_train)
+
     y_pred = clf.predict(x_test)
 
-    acc = accuracy_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
     }
-
-    with open("data/trials/logistic_regression/metrics.json", "w") as f:
-        json.dump(m, f)
 
     with open("data/models/logistic_regression/logistic_regression.pkl", "wb") as f:
         pickle.dump(clf, f)
+    with open("data/trials/logistic_regression/params.pkl", "wb") as f:
+        pickle.dump(clf.get_params(), f)
+    with open("data/trials/logistic_regression/stats.json", "w") as f:
+        json.dump(stats, f)
 
 
 # summary
@@ -2471,7 +2541,7 @@ def make_keras_picklable():
 make_keras_picklable()
 
 def create_model():
-    with open("data/trials/best_nn/space.json", 'r') as f:
+    with open("data/trials/neural_networks_kfold/space.json", 'r') as f:
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
@@ -2502,10 +2572,10 @@ def create_model():
 
     return model
 
-ann = KerasClassifier(build_fn=create_model, epochs=20, batch_size=64, verbose=2)
+ann = KerasClassifier(build_fn=create_model, epochs=50, batch_size=64, verbose=2)
 ann._estimator_type = "classifier"
 
-def Stacking():
+def Stacking(estimators = 'All'):
     global X
 
     X = X * 0.998 + 0.001
@@ -2533,88 +2603,32 @@ def Stacking():
     from sklearn.ensemble import StackingClassifier
 
 
-    estimators = [
-        ("XGB", xgb.XGBClassifier(
-            colsample_bytree= 0.49,
-            gamma= 0.23,
-            learning_rate= 0.21,
-            max_depth= 19,
-            min_child_weight= 1.0,
-            n_estimators= 160,
-            subsample= 0.63
-        )),
-        # ('LR', LogisticRegression(
-        #     random_state=41,
-        #     multi_class='ovr',
-        #     C=9.911243936390331,
-        #     l1_ratio=0.9613737389869554,
-        #     fit_intercept=False,
-        #     class_weight=None,
-        #     solver='saga',
-        #     penalty='elasticnet',
-        #     max_iter=100
-        # )),
-        # ('ANN', ann),
-        # ('SVM', SVC(
-        #     C=326.7,
-        #     random_state=42,
-        #     kernel='rbf',
-        #     gamma='scale',
-        #     # tol=1e-3
-        # )),
-        # ('GNB', GaussianNB()),
-        # ('BNB', BernoulliNB()),
-        # ('CNB', ComplementNB()),
-        # ('MNB', MultinomialNB()),
-        ('RF', RandomForestClassifier(
-            class_weight='balanced_subsample',
-            n_estimators=100,
-            max_features='log2',
-            criterion='entropy'
-        )),
-        # ('HGBC', HistGradientBoostingClassifier(
-        #     learning_rate=0.25
-        # )),
-        # ('GBC', GradientBoostingClassifier(
-        #     criterion='mse',
-        #     learning_rate=0.62,
-        #     loss='deviance',
-        #     max_features=None,
-        #     n_estimators=100
-        # )),
-        ('AdaBoost_DT', AdaBoostClassifier(
-            DecisionTreeClassifier(max_depth=10),
-            n_estimators=100,
-            learning_rate=0.93,
-            algorithm='SAMME'
-        )),
-        # ('kNN', KNeighborsClassifier(
-        #     weights='distance',
-        #     n_neighbors=7,
-        #     p=1
-        # )),
-        ('ET', ExtraTreesClassifier(
-            n_estimators=100,
-            max_features='sqrt',
-            criterion='gini',
-            class_weight='balanced_subsample'
-        )),
-        # ('DT', DecisionTreeClassifier(
-        #     criterion='entropy',
-        #     splitter='best',
-        #     min_samples_split=2,
-        #     min_samples_leaf=1,
-        #     max_features=None
-        # )),
-        ('Bagging_DT', BaggingClassifier(
-            DecisionTreeClassifier(max_depth=14),
-            n_estimators=100,
-            bootstrap_features=True
-        ))
-    ]
+    clfs = {
+        "XGB": xgb.XGBClassifier(**pickle.load(open('data/trials/XGB/params.pkl', 'rb'))),
+        'LR': LogisticRegression(**pickle.load(open('data/trials/logistic_regression/params.pkl', 'rb'))),
+        'ANN': ann,
+        'SVM': SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+        'GNB': GaussianNB(),
+        'BNB': BernoulliNB(),
+        'CNB': ComplementNB(),
+        'MNB': MultinomialNB(),
+        'RF': RandomForestClassifier().set_params(**pickle.load(open('data/trials/RF/params.pkl', 'rb'))),
+        'HGB': HistGradientBoostingClassifier().set_params(**pickle.load(open('data/trials/HistGradientBoost/params.pkl', 'rb'))),
+        'GB': GradientBoostingClassifier().set_params(**pickle.load(open('data/trials/GradientBoost/params.pkl', 'rb'))),
+        'AB': AdaBoostClassifier().set_params(**pickle.load(open('data/trials/AdaBoost_DT/params.pkl', 'rb'))),
+        'KNN': KNeighborsClassifier().set_params(**pickle.load(open('data/trials/KNN/params.pkl', 'rb'))),
+        'ET': ExtraTreesClassifier().set_params(**pickle.load(open('data/trials/ET/params.pkl', 'rb'))),
+        'DT': DecisionTreeClassifier().set_params(**pickle.load(open('data/trials/DT/params.pkl', 'rb'))),
+        'B': BaggingClassifier().set_params(**pickle.load(open('data/trials/Bagging_DT/params.pkl', 'rb')))
+    }
+
+    if estimators == 'All':
+        models = [(k, v) for k, v in clfs.items()]
+    else:
+        models = [(t.upper(), clfs[t.upper()]) for t in estimators.replace(' ', '').split(',')]
 
     clf = StackingClassifier(
-        estimators=estimators,
+        estimators=models,
         final_estimator=LogisticRegression(),
         verbose=2,
         n_jobs=3
@@ -2622,23 +2636,16 @@ def Stacking():
 
     clf.fit(x_train, y_train)
     y_pred = clf.predict(x_test)
-    acc = accuracy_score(y_true=y_test, y_pred=y_pred)
 
-    pickle.dump(clf, open('data/models/Stacking (AB, RF, ET, B, XGB)/StackingClassifier.pkl', 'wb'))
-
-    auc = roc_auc_score(y_test, y_pred)
-    f_score = f1_score(y_test, y_pred)
-    pre = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    mcc = matthews_corrcoef(y_test, y_pred)
-
-    m = {
-        "accuracy": acc,
-        "Precision": pre,
-        "Recall": recall,
-        "AUC": auc,
-        "f_score": f_score,
-        "mcc": mcc
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
     }
-    with open("data/trials/Stacking (AB, RF, ET, B, XGB)/metrics.json", "w") as f:
-        json.dump(m, f)
+
+    pickle.dump(clf, open('data/models/Stacking ({})/StackingClassifier.pkl'.format(estimators), 'wb'))
+    with open("data/trials/Stacking ({})/stats.json".format(estimators), "w") as f:
+        json.dump(stats, f)
