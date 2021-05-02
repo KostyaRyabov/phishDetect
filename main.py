@@ -1201,7 +1201,7 @@ if __name__ == "__main__":
         dtime.append(time() - start)
 
         if type(data) is list:
-            data = np.array(extract_features(url.get().split()[1])).reshape((1, -1))
+            data = np.array(data).reshape((1, -1))
 
             result.configure(state='normal')
             result.insert(tk.END, " -> {} sec".format(dtime[-1]))
