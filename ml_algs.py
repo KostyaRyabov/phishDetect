@@ -664,7 +664,7 @@ def neural_networks():
     from tensorflow.keras import layers, models, optimizers, losses
 
     X = X * 0.998 + 0.001
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=5)
 
     metrics = [
         'accuracy',
@@ -1904,7 +1904,7 @@ def XGB():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=5)
     x_test, x_val, y_test, y_val = train_test_split(x_test, y_test, test_size=0.5, random_state=5)
 
     clf = xgb.XGBClassifier(
@@ -1950,7 +1950,7 @@ def DT():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
 
     clf = DecisionTreeClassifier(
         criterion=space['criterion'],
@@ -1987,14 +1987,15 @@ def SVM():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
 
     clf = SVC(
         C=space['C'],
         random_state=space['random_state'],
         kernel=space['kernel']['type'],
-        max_iter=100000,
-        probability=True
+        max_iter=1000000,
+        probability=True,
+        verbose=True
     )
 
     clf.fit(x_train, y_train)
@@ -2025,7 +2026,7 @@ def KNN():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
 
     clf = KNeighborsClassifier(
         n_neighbors=space['k'],
@@ -2056,34 +2057,21 @@ def KNN():
 
 def Gaussian_NB():
     from sklearn.naive_bayes import GaussianNB
-    from sklearn.model_selection import KFold
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
 
     clf = GaussianNB()
+    clf.fit(x_train, y_train)
 
-    stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
-
-    for train_index, test_index in KFold(3, shuffle=True, random_state=10).split(X, Y):
-        x_train, x_test = X[train_index], X[test_index]
-        y_train, y_test = Y[train_index], Y[test_index]
-
-        clf.fit(x_train, y_train)
-
-        y_pred = clf.predict(x_test)
-
-        stats['acc'].append(accuracy_score(y_test, y_pred))
-        stats['auc'].append(roc_auc_score(y_test, y_pred))
-        stats['pre'].append(precision_score(y_test, y_pred))
-        stats['recall'].append(recall_score(y_test, y_pred))
-        stats['fscore'].append(f1_score(y_test, y_pred))
-        stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+    y_pred = clf.predict(x_test)
 
     m = {
-        "accuracy": np.average(stats['acc']),
-        "precision": np.average(stats['pre']),
-        "recall": np.average(stats['recall']),
-        "auc": np.average(stats['auc']),
-        "f_score": np.average(stats['fscore']),
-        "mcc": np.average(stats['mcc'])
+        "accuracy": np.average(accuracy_score(y_test, y_pred)),
+        "precision": np.average(precision_score(y_test, y_pred)),
+        "recall": np.average(recall_score(y_test, y_pred)),
+        "auc": np.average(roc_auc_score(y_test, y_pred)),
+        "f_score": np.average(f1_score(y_test, y_pred)),
+        "mcc": np.average(matthews_corrcoef(y_test, y_pred))
     }
 
     pickle.dump(clf, open('data/models/Gaussian_NB/Gaussian_NB.pkl', 'wb'))
@@ -2093,34 +2081,20 @@ def Gaussian_NB():
 
 def Bernoulli_NB():
     from sklearn.naive_bayes import BernoulliNB
-    from sklearn.model_selection import KFold
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
 
     clf = BernoulliNB()
+    clf.fit(x_train, y_train)
 
-    stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
-
-    for train_index, test_index in KFold(3, shuffle=True, random_state=10).split(X, Y):
-        x_train, x_test = X[train_index], X[test_index]
-        y_train, y_test = Y[train_index], Y[test_index]
-
-        clf.fit(x_train, y_train)
-
-        y_pred = clf.predict(x_test)
-
-        stats['acc'].append(accuracy_score(y_test, y_pred))
-        stats['auc'].append(roc_auc_score(y_test, y_pred))
-        stats['pre'].append(precision_score(y_test, y_pred))
-        stats['recall'].append(recall_score(y_test, y_pred))
-        stats['fscore'].append(f1_score(y_test, y_pred))
-        stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+    y_pred = clf.predict(x_test)
 
     m = {
-        "accuracy": np.average(stats['acc']),
-        "precision": np.average(stats['pre']),
-        "recall": np.average(stats['recall']),
-        "auc": np.average(stats['auc']),
-        "f_score": np.average(stats['fscore']),
-        "mcc": np.average(stats['mcc'])
+        "accuracy": np.average(accuracy_score(y_test, y_pred)),
+        "precision": np.average(precision_score(y_test, y_pred)),
+        "recall": np.average(recall_score(y_test, y_pred)),
+        "auc": np.average(roc_auc_score(y_test, y_pred)),
+        "f_score": np.average(f1_score(y_test, y_pred)),
+        "mcc": np.average(matthews_corrcoef(y_test, y_pred))
     }
 
     pickle.dump(clf, open('data/models/Bernoulli_NB/Bernoulli_NB.pkl', 'wb'))
@@ -2130,34 +2104,20 @@ def Bernoulli_NB():
 
 def Complement_NB():
     from sklearn.naive_bayes import ComplementNB
-    from sklearn.model_selection import KFold
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
 
     clf = ComplementNB()
+    clf.fit(x_train, y_train)
 
-    stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
-
-    for train_index, test_index in KFold(3, shuffle=True, random_state=10).split(X, Y):
-        x_train, x_test = X[train_index], X[test_index]
-        y_train, y_test = Y[train_index], Y[test_index]
-
-        clf.fit(x_train, y_train)
-
-        y_pred = clf.predict(x_test)
-
-        stats['acc'].append(accuracy_score(y_test, y_pred))
-        stats['auc'].append(roc_auc_score(y_test, y_pred))
-        stats['pre'].append(precision_score(y_test, y_pred))
-        stats['recall'].append(recall_score(y_test, y_pred))
-        stats['fscore'].append(f1_score(y_test, y_pred))
-        stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+    y_pred = clf.predict(x_test)
 
     m = {
-        "accuracy": np.average(stats['acc']),
-        "precision": np.average(stats['pre']),
-        "recall": np.average(stats['recall']),
-        "auc": np.average(stats['auc']),
-        "f_score": np.average(stats['fscore']),
-        "mcc": np.average(stats['mcc'])
+        "accuracy": np.average(accuracy_score(y_test, y_pred)),
+        "precision": np.average(precision_score(y_test, y_pred)),
+        "recall": np.average(recall_score(y_test, y_pred)),
+        "auc": np.average(roc_auc_score(y_test, y_pred)),
+        "f_score": np.average(f1_score(y_test, y_pred)),
+        "mcc": np.average(matthews_corrcoef(y_test, y_pred))
     }
 
     pickle.dump(clf, open('data/models/Complement_NB/Complement_NB.pkl', 'wb'))
@@ -2167,34 +2127,20 @@ def Complement_NB():
 
 def Multinomial_NB():
     from sklearn.naive_bayes import MultinomialNB
-    from sklearn.model_selection import KFold
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
 
     clf = MultinomialNB()
+    clf.fit(x_train, y_train)
 
-    stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
-
-    for train_index, test_index in KFold(3, shuffle=True, random_state=10).split(X, Y):
-        x_train, x_test = X[train_index], X[test_index]
-        y_train, y_test = Y[train_index], Y[test_index]
-
-        clf.fit(x_train, y_train)
-
-        y_pred = clf.predict(x_test)
-
-        stats['acc'].append(accuracy_score(y_test, y_pred))
-        stats['auc'].append(roc_auc_score(y_test, y_pred))
-        stats['pre'].append(precision_score(y_test, y_pred))
-        stats['recall'].append(recall_score(y_test, y_pred))
-        stats['fscore'].append(f1_score(y_test, y_pred))
-        stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
+    y_pred = clf.predict(x_test)
 
     m = {
-        "accuracy": np.average(stats['acc']),
-        "precision": np.average(stats['pre']),
-        "recall": np.average(stats['recall']),
-        "auc": np.average(stats['auc']),
-        "f_score": np.average(stats['fscore']),
-        "mcc": np.average(stats['mcc'])
+        "accuracy": np.average(accuracy_score(y_test, y_pred)),
+        "precision": np.average(precision_score(y_test, y_pred)),
+        "recall": np.average(recall_score(y_test, y_pred)),
+        "auc": np.average(roc_auc_score(y_test, y_pred)),
+        "f_score": np.average(f1_score(y_test, y_pred)),
+        "mcc": np.average(matthews_corrcoef(y_test, y_pred))
     }
 
     pickle.dump(clf, open('data/models/Multinomial_NB/Multinomial_NB.pkl', 'wb'))
@@ -2212,7 +2158,7 @@ def ET():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
 
     clf = ExtraTreesClassifier(
         n_estimators=space['n_estimators'],
@@ -2254,7 +2200,7 @@ def RF():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
 
     clf = RandomForestClassifier(
         n_estimators=space['n_estimators'],
@@ -2297,7 +2243,7 @@ def AdaBoost_DT():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
 
     clf = AdaBoostClassifier(
         DecisionTreeClassifier(
@@ -2341,7 +2287,7 @@ def Bagging_DT():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
 
     clf = BaggingClassifier(
         DecisionTreeClassifier(
@@ -2385,7 +2331,7 @@ def GradientBoost():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=5)
 
     clf = GradientBoostingClassifier(
         n_estimators=space['n_estimators'],
@@ -2427,7 +2373,7 @@ def HistGradientBoost():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=5)
 
     clf = HistGradientBoostingClassifier(
         learning_rate=space['learning_rate'],
@@ -2464,7 +2410,7 @@ def logistic_regression():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
 
     clf = LogisticRegression(
         random_state=41,
@@ -2571,14 +2517,14 @@ def create_model():
 
     return model
 
-ann = KerasClassifier(build_fn=create_model, epochs=50, batch_size=64, verbose=2)
+ann = KerasClassifier(build_fn=create_model, epochs=30, batch_size=64, verbose=2)
 ann._estimator_type = "classifier"
 
 def Stacking(estimators = 'All'):
     global X
 
     X = X * 0.998 + 0.001
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
 
     import xgboost as xgb
     from sklearn.experimental import enable_hist_gradient_boosting
@@ -2629,8 +2575,8 @@ def Stacking(estimators = 'All'):
     clf = StackingClassifier(
         estimators=models,
         final_estimator=LogisticRegression(),
-        verbose=2,
-        n_jobs=3
+        verbose=0,
+        n_jobs=5
     )
 
     clf.fit(x_train, y_train)
