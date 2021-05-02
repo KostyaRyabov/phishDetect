@@ -1,26 +1,26 @@
 estimator,count
-AdaBoost_DT,1
-Bagging_DT,0
-Bernoulli_NB,1
-Complement_NB,1
-DT,0
-ET,1
-Gaussian_NB,0
-GradientBoost,0
-HistGradientBoost,1
-kNN,1
-logistic_regression,1
-Multinomial_NB,1
-neural_networks,1
-RF,1
-"Stacking (AB, RF, ET, B, HGB, GB, DT, XGB)",1
-"Stacking (AB, RF, ET, B, XGB)",1
-Stacking (All),1
-"Stacking (ANN, LR, GB, HGB, XGB, AB)",1
-"Stacking (GNB, BNB, CNB, MNB)",1
-"Stacking (kNN, SVM, ANN)",1
-"Stacking (kNN, SVM, ANN, DT, GNB, LR)",1
-"Stacking (LR, GNB, BNB, CNB, MNB)",1
-SVM,1
-XGB,1
-phish,1
+AdaBoost_DT,14.567807552117914
+Bagging_DT,21.37423588065889
+Bernoulli_NB,18.929930738859596
+Complement_NB,15.694069430014215
+DT,9.0
+ET,20.852884744473847
+Gaussian_NB,3.1373278407527314
+GradientBoost,23.60153758241896
+HistGradientBoost,23.566717456164106
+kNN,19.275769717473615
+logistic_regression,6.437670545024897
+Multinomial_NB,15.53228378477333
+neural_networks,4.950470112813885
+RF,20.265701035092167
+"Stacking (AB, RF, ET, B, HGB, GB, DT, XGB)",21.61353033350392
+"Stacking (AB, RF, ET, B, XGB)",21.987305928491814
+Stacking (All),19.79589914732365
+"Stacking (ANN, LR, GB, HGB, XGB, AB)",22.113205184133644
+"Stacking (GNB, BNB, CNB, MNB)",12.638875296063386
+"Stacking (kNN, SVM, ANN)",16.723336591137315
+"Stacking (kNN, SVM, ANN, DT, GNB, LR)",11.25704422620684
+"Stacking (LR, GNB, BNB, CNB, MNB)",5.535818649660809
+SVM,15.21651560602343
+XGB,21.03827590122819
+phish,25.0

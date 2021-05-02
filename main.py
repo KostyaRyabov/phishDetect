@@ -1133,10 +1133,10 @@ m.append(pickle.load(open('data/models/ET/ET.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Gaussian_NB/Gaussian_NB.pkl', 'rb')))
 m.append(pickle.load(open('data/models/GradientBoost/GradientBoost.pkl', 'rb')))
 m.append(pickle.load(open('data/models/HistGradientBoost/HistGradientBoost.pkl', 'rb')))
-m.append(pickle.load(open('data/models/kNN/kNN.pkl', 'rb')))
+m.append(pickle.load(open('data/models/KNN/kNN.pkl', 'rb')))
 m.append(pickle.load(open('data/models/logistic_regression/logistic_regression.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Multinomial_NB/Multinomial_NB.pkl', 'rb')))
-m.append(keras.models.load_model('data/models/neural_networks/nn2.h5'))
+m.append(keras.models.load_model('data/models/neural_networks/ANN.h5'))
 m.append(pickle.load(open('data/models/RF/RF.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Stacking (AB, RF, ET, B, HGB, GB, DT, XGB)/StackingClassifier.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Stacking (AB, RF, ET, B, XGB)/StackingClassifier.pkl', 'rb')))
@@ -1245,9 +1245,12 @@ if __name__ == "__main__":
                 header=['estimator', 'mean', 'max',
                         'min'], index=False)
 
-            df = pandas.DataFrame(np.array(res).round().tolist())
-            df = (df == int(url.get().split()[0])).astype(int).T
+            phish = int(url.get().split()[0])
 
+            if phish == 0:
+                res = [1-r for r in res]
+
+            df = pandas.DataFrame(res).T
             df[-1] = int(url.get().split()[0])
 
             if os.path.isfile('data/logs/estimator_rate.csv'):
@@ -1257,10 +1260,16 @@ if __name__ == "__main__":
 
             df = pandas.read_csv('data/logs/estimator_rate.csv')
             df.sum().to_csv('data/logs/estimator_rate_voite.csv', header=['count'], index_label='estimator')
+            df.mean().to_csv('data/logs/estimator_rate_mean.csv', header=['rate'], index_label='estimator')
 
             df[df['phish'] == 0].sum().to_csv('data/logs/estimator_rate_legit.csv', header=['count'],
                                               index_label='estimator')
             df[df['phish'] == 1].sum().to_csv('data/logs/estimator_rate_phish.csv', header=['count'],
+                                              index_label='estimator')
+
+            df[df['phish'] == 0].mean().to_csv('data/logs/estimator_rate_mean_legit.csv', header=['rate'],
+                                              index_label='estimator')
+            df[df['phish'] == 1].mean().to_csv('data/logs/estimator_rate_mean_phish.csv', header=['rate'],
                                               index_label='estimator')
         else:
             result.configure(state='normal')

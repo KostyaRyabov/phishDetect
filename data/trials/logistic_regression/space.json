@@ -1,6 +1,1 @@
-{
-  'C': 9.911243936390331,
-  'class_weight': None,
-  'fit_intercept': False,
-  'l1_ratio': 0.9613737389869554
-}
+{'C': 4403.2, 'class_weight': 'balanced', 'fit_intercept': True, 'l1_ratio': 0.9981555750628635}

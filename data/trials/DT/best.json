@@ -1,1 +1,1 @@
-{"criterion": 1, "max_features": 2, "min_samples_leaf": 0, "min_samples_split": 0, "splitter": 0}
+{"criterion": 0, "max_depth": 43, "max_features": 2, "min_samples_leaf": 3.497502460601872e-05, "min_samples_split": 0.0003485982674705903, "splitter": 0}
