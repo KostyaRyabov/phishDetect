@@ -781,7 +781,14 @@ def is_URL_accessible(url, time_out=3):
 def check_Language(text):
     global phish_hints
 
-    language = translator.detect(str(text)[0:100]).lang
+    size = len(text)
+    if size > 10000:
+        size = 10000
+
+    language = translator.detect(str(text)[:size]).lang
+
+    if type(language) is list:
+        language = language[-1]
 
     if language not in phish_hints.keys():
         words = translator.translate(" ".join(phish_hints['en'][:25]), src='en', dest=language).text.split(" ")
