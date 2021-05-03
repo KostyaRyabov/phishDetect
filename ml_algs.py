@@ -716,9 +716,9 @@ def neural_networks():
                 save_best_only=True
             ),
             tf.keras.callbacks.EarlyStopping(
-                monitor='val_accuracy',
+                monitor='val_loss',
                 patience=5,
-                mode='max',
+                mode='min',
                 verbose=2
             ),
             CustomEarlyStopping(
@@ -2517,7 +2517,7 @@ def create_model():
 
     return model
 
-ann = KerasClassifier(build_fn=create_model, epochs=30, batch_size=64, verbose=2)
+ann = KerasClassifier(build_fn=create_model, epochs=len(pickle.load(open('data/trials/neural_networks/history.pkl','rb'))['loss'])-3, batch_size=64, verbose=2)
 ann._estimator_type = "classifier"
 
 def Stacking(estimators = 'All'):

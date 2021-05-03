@@ -1,4 +1,4 @@
-state = 45
+state = 46
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -47,7 +47,9 @@ state = 45
 # 43 - Gaussian_NB
 # 44 - Multinominal_NB
 
-# 45 - get_rating
+# 45 - get all models
+
+# 46 - get_rating
 
 import feature_extractor as fe
 import data.collector as dc
@@ -194,5 +196,32 @@ if __name__ == "__main__":
         from ml_algs import Multinomial_NB
         Multinomial_NB()
     elif state == 45:
+        from ml_algs import *
+
+        # neural_networks()
+        # AdaBoost_DT()
+        # Bagging_DT()
+        # DT()
+        # ET()
+        # GradientBoost()
+        # HistGradientBoost()
+        # KNN()
+        # logistic_regression()
+        # RF()
+        # SVM()
+        # XGB()
+        # Bernoulli_NB()
+        # Complement_NB()
+        # Gaussian_NB()
+        # Multinomial_NB()
+        Stacking("AB, RF, ET, B, HGB, GB, DT, XGB")
+        Stacking("AB, RF, ET, B, XGB")
+        Stacking("All")
+        Stacking("ANN, LR, GB, HGB, XGB, AB")
+        Stacking("GNB, BNB, CNB, MNB")
+        Stacking("KNN, SVM, ANN")
+        Stacking("KNN, SVM, ANN, DT, GNB, LR")
+        Stacking("LR, GNB, BNB, CNB, MNB")
+    elif state == 46:
         from ml_algs import get_rating
         get_rating()
