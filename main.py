@@ -29,7 +29,7 @@ import tkinter as tk
 from tkinter.ttk import Progressbar, Style
 
 p_v = 0
-progress = {'value': 0}     # todo: remove
+progress = {'value': 0}
 
 def indicate(func):
     def wrapper(*args, **kwargs):
@@ -1147,64 +1147,64 @@ def extract_features(url):
 
 from tensorflow import keras
 
-m = pickle.load(open('data/models/Stacking (ANN, LR, GB, HGB, XGB, AB)/StackingClassifier.pkl', 'rb'))
+m = pickle.load(open('data/models/Stacking (All)/StackingClassifier.pkl', 'rb'))
 # m = keras.models.load_model('data/models/neural_networks/nn2.h5')
 
 from colour import Color
 
 
-def download_phishURLS():
-    import pandas
-    import requests
-    import io
-    from datetime import date
-    import os
-
-    try:
-        http_request = requests.get('http://data.phishtank.com/data/online-valid.csv')
-        phish_url_list = pandas.read_csv(io.StringIO(http_request.content.decode('utf-8')), usecols=['url'])
-        filename = "data/urls/phish/{0}.csv".format(date.today().strftime("%d-%m-%Y"))
-        phish_url_list.to_csv(filename, index=False, header=False)
-        phish_url_list = phish_url_list['url'].tolist()
-    except requests.exceptions.RequestException as e:
-        raise SystemExit('Access denied [PHISHTANK]')
-
-    return phish_url_list
-
-
-def load_sites(mylist):
-    with concurrent.futures.ThreadPoolExecutor(10) as executor:
-        executor.map(load_site, mylist)
-
-
-def load_site(url):
-    try:
-        data = extract_features(url)
-
-        if type(data) is list:
-            s = pandas.DataFrame(data + [0]).T
-            s.to_csv('data/datasets/OUTPUT/dataset.csv', mode='a', index=False, header=False)
-    except Exception as ex:
-        print(ex)
-
-
-def filter_double_urls(urls):
-    from urllib.parse import urlparse
-
-    domains = set()
-    newlist = []
-
-    cs = 0
-
-    for url in urls:
-        domains.add(urlparse(url).netloc)
-
-        if cs != len(domains):
-            newlist.append(url)
-
-        cs = len(domains)
-
-    return newlist
+# def download_phishURLS():
+#     import pandas
+#     import requests
+#     import io
+#     from datetime import date
+#     import os
+#
+#     try:
+#         http_request = requests.get('http://data.phishtank.com/data/online-valid.csv')
+#         phish_url_list = pandas.read_csv(io.StringIO(http_request.content.decode('utf-8')), usecols=['url'])
+#         filename = "data/urls/phish/{0}.csv".format(date.today().strftime("%d-%m-%Y"))
+#         phish_url_list.to_csv(filename, index=False, header=False)
+#         phish_url_list = phish_url_list['url'].tolist()
+#     except requests.exceptions.RequestException as e:
+#         raise SystemExit('Access denied [PHISHTANK]')
+#
+#     return phish_url_list
+#
+#
+# def load_sites(mylist):
+#     with concurrent.futures.ThreadPoolExecutor(10) as executor:
+#         executor.map(load_site, mylist)
+#
+#
+# def load_site(url):
+#     try:
+#         data = extract_features(url)
+#
+#         if type(data) is list:
+#             s = pandas.DataFrame(data + [0]).T
+#             s.to_csv('data/datasets/OUTPUT/dataset.csv', mode='a', index=False, header=False)
+#     except Exception as ex:
+#         print(ex)
+#
+#
+# def filter_double_urls(urls):
+#     from urllib.parse import urlparse
+#
+#     domains = set()
+#     newlist = []
+#
+#     cs = 0
+#
+#     for url in urls:
+#         domains.add(urlparse(url).netloc)
+#
+#         if cs != len(domains):
+#             newlist.append(url)
+#
+#         cs = len(domains)
+#
+#     return newlist
 
 
 if __name__ == "__main__":
@@ -1212,83 +1212,82 @@ if __name__ == "__main__":
     # """.split('\n')
     #
     # load_sites(mylist)
-
-    mylist = pandas.read_csv("data/urls/legitimate/30-01-2021.csv", header=None)[0].tolist()
-
-    load_sites([mylist[17105]])
+    #
+    # mylist = pandas.read_csv("data/urls/legitimate/30-01-2021.csv", header=None)[0].tolist()
+    #
+    # load_sites([mylist[17105]])
 
     # mylist = filter_double_urls(pandas.read_csv('data/urls/phish/02-05-2021.csv', header=None)[0].tolist())
     # load_sites(mylist[-500:])
 
-    # @run_in_thread
-    # def check_site():
-    #     result.configure(background='white')
-    #     result.configure(state='normal')
-    #     result.delete(1.0, tk.END)
-    #     result.configure(state='disabled')
-    #
-    #     global p_v, progress
-    #     p_v = 0
-    #     progress['value'] = p_v
-    #
-    #     data = extract_features(url.get().strip())
-    #
-    #     if type(data) is list:
-    #         # data = np.array(data).reshape((1, -1))
-    #         data = np.array(data).reshape((1, -1)) * 0.998 + 0.001
-    #
-    #         res = m.predict_proba(data).tolist()[0][-1]
-    #
-    #         result.configure(state='normal')
-    #         result.configure(background=Color(hsl=(0.2778*(1-res), 1, 0.5)).get_hex_l())
-    #
-    #         if res < 0.5:
-    #             result.insert(tk.END, "\nС {:3.1f}% вероятностью это легитимный сайт!".format((1-res)*100), 'tag-center')
-    #         else:
-    #             result.insert(tk.END, "\nС {:3.1f}% вероятностью это фишинговый сайт!".format(res * 100), 'tag-center')
-    #
-    #         result.configure(state='disabled')
-    #         p_v += 1
-    #         progress['value'] = p_v
-    #     else:
-    #         result.configure(state='normal')
-    #         result.insert(tk.END, "ERROR: {}".format(data))
-    #         result.configure(state='disabled')
-    #
-    # window = tk.Tk()
-    # window.title("phishDetect")
-    # window.resizable(0, 0)
-    #
-    # url = tk.StringVar()
-    #
-    # textArea = tk.Entry(textvariable=url, width=80, exportselection=0)
-    # textArea.grid(column=0, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
-    #
-    # btn = tk.Button(window, text="check", command=check_site)
-    # btn.grid(column=1, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
-    #
-    # s = Style()
-    # s.theme_use("default")
-    # s.configure("TProgressbar", thickness=2)
-    #
-    # progress = Progressbar(
-    #     window,
-    #     orient=tk.HORIZONTAL,
-    #     maximum=139,
-    #     length=100,
-    #     mode='determinate',
-    #     style="TProgressbar"
-    # )
-    # progress.grid(column=0, row=2, columnspan=2,  sticky=tk.N + tk.S + tk.W + tk.E)
-    #
-    # result = tk.Text(
-    #     window,
-    #     height=3,
-    #     width=80,
-    #     state='disabled'
-    # )
-    # result.tag_configure('tag-center', justify='center')
-    #
-    # result.grid(column=0, row=3, columnspan=2)
-    #
-    # window.mainloop()
+    @run_in_thread
+    def check_site():
+        result.configure(background='white')
+        result.configure(state='normal')
+        result.delete(1.0, tk.END)
+        result.configure(state='disabled')
+
+        global p_v, progress
+        p_v = 0
+        progress['value'] = p_v
+
+        data = extract_features(url.get().strip())
+
+        if type(data) is list:
+            data = np.array(data).reshape((1, -1)) * 0.998 + 0.001
+
+            res = m.predict_proba(data).tolist()[0][-1]
+
+            result.configure(state='normal')
+            result.configure(background=Color(hsl=(0.2778*(1-res), 1, 0.5)).get_hex_l())
+
+            if res < 0.5:
+                result.insert(tk.END, "\nС {:3.1f}% вероятностью это легитимный сайт!".format((1-res)*100), 'tag-center')
+            else:
+                result.insert(tk.END, "\nС {:3.1f}% вероятностью это фишинговый сайт!".format(res * 100), 'tag-center')
+
+            result.configure(state='disabled')
+            p_v += 1
+            progress['value'] = p_v
+        else:
+            result.configure(state='normal')
+            result.insert(tk.END, "ERROR: {}".format(data))
+            result.configure(state='disabled')
+
+    window = tk.Tk()
+    window.title("phishDetect")
+    window.resizable(0, 0)
+
+    url = tk.StringVar()
+
+    textArea = tk.Entry(textvariable=url, width=80, exportselection=0)
+    textArea.grid(column=0, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
+
+    btn = tk.Button(window, text="check", command=check_site)
+    btn.grid(column=1, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
+
+    s = Style()
+    s.theme_use("default")
+    s.configure("TProgressbar", thickness=2)
+
+    progress = Progressbar(
+        window,
+        orient=tk.HORIZONTAL,
+        maximum=139,
+        length=100,
+        mode='determinate',
+        style="TProgressbar"
+    )
+    progress.grid(column=0, row=2, columnspan=2,  sticky=tk.N + tk.S + tk.W + tk.E)
+
+    result = tk.Text(
+        window,
+        height=3,
+        width=80,
+        state='disabled'
+    )
+    result.tag_configure('tag-center', justify='center')
+
+    result.grid(column=0, row=3, columnspan=2)
+
+    window.mainloop()
