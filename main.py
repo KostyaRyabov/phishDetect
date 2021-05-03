@@ -1,5 +1,4 @@
 import os
-from operator import index
 
 import pandas
 import tldextract
@@ -26,30 +25,18 @@ from iso639 import languages
 import threading
 import pickle
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
-from tensorflow import keras
-
 import tkinter as tk
 from tkinter.ttk import Progressbar, Style
-from tkinter import simpledialog
-
-import xgboost as xgb
-
 
 p_v = 0
-
-
-timer = {}
-
+progress = {'value': 0}
 
 def indicate(func):
     def wrapper(*args, **kwargs):
-        global progress, p_v, timer
-        start = time()
+        global progress, p_v
+        p_v += 1
+        progress['value'] = p_v
         res = func(*args, **kwargs)
-        end = time()
-        timer[func.__name__] = end - start
         p_v += 1
         progress['value'] = p_v
         return res
@@ -57,7 +44,40 @@ def indicate(func):
     return wrapper
 
 
+import sys
+
 progress_task = None
+
+
+class KThread(threading.Thread):
+    def __init__(self, *args, **keywords):
+        threading.Thread.__init__(self, *args, **keywords)
+        self.killed = False
+
+    def start(self):
+        self.__run_backup = self.run
+        self.run = self.__run
+        threading.Thread.start(self)
+
+    def __run(self):
+        sys.settrace(self.globaltrace)
+        self.__run_backup()
+        self.run = self.__run_backup
+
+    def globaltrace(self, frame, why, arg):
+        if why == 'call':
+            return self.localtrace
+        else:
+            return None
+
+    def localtrace(self, frame, why, arg):
+        if self.killed:
+            if why == 'line':
+                raise SystemExit()
+        return self.localtrace
+
+    def kill(self):
+        self.killed = True
 
 
 def run_in_thread(fn):
@@ -65,10 +85,9 @@ def run_in_thread(fn):
         global progress_task
         if progress_task:
             if progress_task.is_alive():
-                progress_task.join(0)
-                print('terminated')
+                progress_task.kill()
 
-        progress_task = threading.Thread(target=fn, args=k, kwargs=kw)
+        progress_task = KThread(target=fn, args=k, kwargs=kw)
         progress_task.start()
     return run
 
@@ -122,10 +141,8 @@ def load_phishHints():
 
         return hints
 
-
 translator = Translator()
 phish_hints = load_phishHints()
-
 
 headers = [
     'коэффициент уникальности всех слов',
@@ -673,11 +690,12 @@ def translate_image(obj):
         resp = requests.get(obj[0], stream=True).raw
         image = np.asarray(bytearray(resp.read()), dtype="uint8")
         img = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        img = cv2.resize(img, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
+        img = cv2.resize(img, None, fx=0.35, fy=0.35, interpolation=cv2.INTER_AREA)
         img = cv2.GaussianBlur(img, (5, 5), 0)
         return pytesseract.image_to_string(img, lang=obj[1])
     except:
         return ""
+
 
 @indicate
 def image_to_text(img, lang):
@@ -688,8 +706,8 @@ def image_to_text(img, lang):
             lang = 'eng+' + lang
 
         if type(img) == list:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-                docs = [req for req in executor.map(translate_image, [(url, lang) for url in img], timeout=30)]
+            with concurrent.futures.ThreadPoolExecutor(100) as executor:
+                docs = [req for req in executor.map(translate_image, [(url, lang) for url in img], timeout=15)]
 
                 if docs:
                     return ' '.join(docs)
@@ -734,7 +752,7 @@ def count_phish_hints(word_raw, phish_hints, lang):
 http_header = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
 
 
-def is_URL_accessible(url, time_out=5):
+def is_URL_accessible(url, time_out=3):
     page = None
 
     if not url.startswith('http'):
@@ -763,7 +781,7 @@ def is_URL_accessible(url, time_out=5):
 def check_Language(text):
     global phish_hints
 
-    language = translator.detect(str(text)[0:5000]).lang
+    language = translator.detect(str(text)[0:100]).lang
 
     if language not in phish_hints.keys():
         words = translator.translate(" ".join(phish_hints['en'][:25]), src='en', dest=language).text.split(" ")
@@ -783,6 +801,8 @@ def get_domain(url):
 
 @indicate
 def extract_all_context_data(hostname, content, domain, base_url):
+    global p_v
+
     Null_format = ["", "#", "#nothing", "#doesnotexist", "#null", "#void", "#whatever",
                    "#content", "javascript::void(0)", "javascript::void(0);", "javascript::;", "javascript"]
 
@@ -794,141 +814,174 @@ def extract_all_context_data(hostname, content, domain, base_url):
     Form = {'internals': [], 'externals': [], 'null': []}
     SCRIPT = {'internals': [], 'externals': [], 'null': [], 'embedded': 0}  # JavaScript
 
-    soup = BeautifulSoup(content, 'html.parser')
+    soup = BeautifulSoup(content, 'lxml')
 
-    # collect all external and internal hrefs from url
-    for script in soup.find_all('script', src=True):
-        url = script['src']
+    def collector1():
+        global p_v
+        for script in soup.find_all('script', src=True):
+            url = script['src']
 
-        if url in Null_format:
-            url = 'http://' + hostname + '/' + url
-            SCRIPT['null'].append(url)
-            Link['null'].append(url)
-            continue
+            if url in Null_format:
+                url = 'http://' + hostname + '/' + url
+                SCRIPT['null'].append(url)
+                Link['null'].append(url)
+                continue
 
-        url = urljoin(base_url, url)
+            url = urljoin(base_url, url)
 
-        if domain in urlparse(url).netloc:
-            SCRIPT['internals'].append(url)
-            Link['internals'].append(url)
-        else:
-            SCRIPT['externals'].append(url)
-            Link['externals'].append(url)
+            if domain in urlparse(url).netloc:
+                SCRIPT['internals'].append(url)
+                Link['internals'].append(url)
+            else:
+                SCRIPT['externals'].append(url)
+                Link['externals'].append(url)
 
-    # collect all external and internal hrefs from url
-    for href in soup.find_all('a', href=True):
-        url = href['href']
+        p_v += 1
+        progress['value'] = p_v
 
-        if "#" in url or "javascript" in url.lower() or "mailto" in url.lower():
-            Anchor['unsafe'].append('http://' + hostname + '/' + url)
+    def collector2():
+        global p_v
+        for href in soup.find_all('a', href=True):
+            url = href['href']
 
-        if url in Null_format:
-            Href['null'].append('http://' + hostname + '/' + url)
-            continue
+            if "#" in url or "javascript" in url.lower() or "mailto" in url.lower():
+                Anchor['unsafe'].append('http://' + hostname + '/' + url)
 
-        url = urljoin(base_url, url)
+            if url in Null_format:
+                Href['null'].append('http://' + hostname + '/' + url)
+                continue
 
-        if domain in urlparse(url).netloc:
-            Href['internals'].append(url)
-        else:
-            Href['externals'].append(url)
-            Anchor['safe'].append(url)
+            url = urljoin(base_url, url)
 
-    # collect all media src tags
-    for img in soup.find_all('img', src=True):
-        url = img['src']
+            if domain in urlparse(url).netloc:
+                Href['internals'].append(url)
+            else:
+                Href['externals'].append(url)
+                Anchor['safe'].append(url)
 
-        if url in Null_format:
-            url = 'http://' + hostname + '/' + url
-            Media['null'].append(url)
-            Img['null'].append(url)
-            continue
+        p_v += 1
+        progress['value'] = p_v
 
-        url = urljoin(base_url, url)
+    def collector3():
+        global p_v
+        for img in soup.find_all('img', src=True):
+            url = img['src']
 
-        if domain in urlparse(url).netloc:
-            Media['internals'].append(url)
-            Img['internals'].append(url)
-        else:
-            Media['externals'].append(url)
-            Img['externals'].append(url)
+            if url in Null_format:
+                url = 'http://' + hostname + '/' + url
+                Media['null'].append(url)
+                Img['null'].append(url)
+                continue
 
-    for audio in soup.find_all('audio', src=True):
-        url = audio['src']
+            url = urljoin(base_url, url)
 
-        if url in Null_format:
-            Media['null'].append('http://' + hostname + '/' + url)
-            continue
+            if domain in urlparse(url).netloc:
+                Media['internals'].append(url)
+                Img['internals'].append(url)
+            else:
+                Media['externals'].append(url)
+                Img['externals'].append(url)
 
-        url = urljoin(base_url, url)
+        p_v += 1
+        progress['value'] = p_v
 
-        if domain in urlparse(url).netloc:
-            Media['internals'].append(url)
-        else:
-            Media['externals'].append(url)
+    def collector4():
+        global p_v
+        for audio in soup.find_all('audio', src=True):
+            url = audio['src']
 
-    for embed in soup.find_all('embed', src=True):
-        url = embed['src']
+            if url in Null_format:
+                Media['null'].append('http://' + hostname + '/' + url)
+                continue
 
-        if url in Null_format:
-            Media['null'].append('http://' + hostname + '/' + url)
-            continue
+            url = urljoin(base_url, url)
 
-        url = urljoin(base_url, url)
+            if domain in urlparse(url).netloc:
+                Media['internals'].append(url)
+            else:
+                Media['externals'].append(url)
 
-        if domain in urlparse(url).netloc:
-            Media['internals'].append(url)
-        else:
-            Media['externals'].append(url)
+        p_v += 1
+        progress['value'] = p_v
 
-    for i_frame in soup.find_all('iframe', src=True):
-        url = i_frame['src']
+    def collector5():
+        global p_v
+        for embed in soup.find_all('embed', src=True):
+            url = embed['src']
 
-        if url in Null_format:
-            Media['null'].append('http://' + hostname + '/' + url)
-            continue
+            if url in Null_format:
+                Media['null'].append('http://' + hostname + '/' + url)
+                continue
 
-        url = urljoin(base_url, url)
+            url = urljoin(base_url, url)
 
-        if domain in urlparse(url).netloc:
-            Media['internals'].append(url)
-        else:
-            Media['externals'].append(url)
+            if domain in urlparse(url).netloc:
+                Media['internals'].append(url)
+            else:
+                Media['externals'].append(url)
 
-    # collect all link tags
-    for link in soup.findAll('link', href=True):
-        url = link['href']
+        p_v += 1
+        progress['value'] = p_v
 
-        if url in Null_format:
-            Link['null'].append('http://' + hostname + '/' + url)
-            continue
+    def collector6():
+        global p_v
+        for i_frame in soup.find_all('iframe', src=True):
+            url = i_frame['src']
 
-        url = urljoin(base_url, url)
+            if url in Null_format:
+                Media['null'].append('http://' + hostname + '/' + url)
+                continue
 
-        if domain in urlparse(url).netloc:
-            Link['internals'].append(url)
-        else:
-            Link['externals'].append(url)
+            url = urljoin(base_url, url)
 
-    # collect all form actions
-    for form in soup.findAll('form', action=True):
-        url = form['action']
+            if domain in urlparse(url).netloc:
+                Media['internals'].append(url)
+            else:
+                Media['externals'].append(url)
 
-        if url in Null_format or url == 'about:best_nn':
-            Form['null'].append('http://' + hostname + '/' + url)
-            continue
+        p_v += 1
+        progress['value'] = p_v
 
-        url = urljoin(base_url, url)
+    def collector7():
+        global p_v
+        for link in soup.findAll('link', href=True):
+            url = link['href']
 
-        if domain in urlparse(url).netloc:
-            Form['internals'].append(url)
-        else:
-            Form['externals'].append(url)
+            if url in Null_format:
+                Link['null'].append('http://' + hostname + '/' + url)
+                continue
 
-    # get content text
-    Text = soup.get_text().lower()
+            url = urljoin(base_url, url)
+
+            if domain in urlparse(url).netloc:
+                Link['internals'].append(url)
+            else:
+                Link['externals'].append(url)
+
+        p_v += 1
+        progress['value'] = p_v
+
+    def collector8():
+        global p_v
+        for form in soup.findAll('form', action=True):
+            url = form['action']
+
+            if url in Null_format or url == 'about:best_nn':
+                Form['null'].append('http://' + hostname + '/' + url)
+                continue
+
+            url = urljoin(base_url, url)
+
+            if domain in urlparse(url).netloc:
+                Form['internals'].append(url)
+            else:
+                Form['externals'].append(url)
+
+        p_v += 1
+        progress['value'] = p_v
 
     def merge_scripts(script_lnks):
+        global p_v
         docs = []
 
         for url in script_lnks:
@@ -937,10 +990,23 @@ def extract_all_context_data(hostname, content, domain, base_url):
             if state:
                 docs.append(str(request.content))
 
+        p_v += 1
+        progress['value'] = p_v
+
         return "\n".join(docs)
 
-    internals_script_doc = merge_scripts(SCRIPT['internals'])
-    externals_script_doc = merge_scripts(SCRIPT['externals'])
+    with concurrent.futures.ThreadPoolExecutor(11) as e:
+        e.submit(collector1)
+        e.submit(collector2)
+        e.submit(collector3)
+        e.submit(collector4)
+        e.submit(collector5)
+        e.submit(collector6)
+        e.submit(collector7)
+        e.submit(collector8)
+        internals_script_doc = e.submit(merge_scripts, SCRIPT['internals']).result()
+        externals_script_doc = e.submit(merge_scripts, SCRIPT['externals']).result()
+        Text = e.submit(soup.get_text).result().lower()
 
     try:
         internals_script_doc = ' '.join(
@@ -955,7 +1021,7 @@ def extract_all_context_data(hostname, content, domain, base_url):
 
 @indicate
 def extract_text_context_data(content):
-    return BeautifulSoup(content, 'html.parser').get_text().lower()
+    return BeautifulSoup(content, 'lxml').get_text().lower()
 
 
 @indicate
@@ -1001,7 +1067,7 @@ def extract_features(url):
         parsed = urlparse(r_url)
         scheme = parsed.scheme
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as e:
+        with concurrent.futures.ThreadPoolExecutor(2) as e:
             cert = e.submit(get_cert, domain).result()
             (Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc, externals_script_doc) = e.submit(
                 extract_all_context_data, hostname, content, domain, r_url).result()
@@ -1014,7 +1080,7 @@ def extract_features(url):
 
         lang = check_Language(content)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as e:
+        with concurrent.futures.ThreadPoolExecutor(2) as e:
             internals_img_txt = e.submit(image_to_text, Img['internals'], lang).result()
             externals_img_txt = e.submit(image_to_text, Img['externals'], lang).result()
 
@@ -1034,7 +1100,7 @@ def extract_features(url):
 
         result = []
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as e:
+        with concurrent.futures.ThreadPoolExecutor(40) as e:
             result.append(e.submit(word_ratio, Text_words).result())
             result.append(e.submit(good_netloc, netloc).result())
             result.append(e.submit(url_length, r_url).result())
@@ -1077,50 +1143,9 @@ def extract_features(url):
             result.append(e.submit(count_alt_names, cert).result())
 
         return result
-        # return [
-        #     word_ratio(Text_words),
-        #     good_netloc(netloc),
-        #     url_length(r_url),
-        #     count_at(r_url),
-        #     count_semicolumn(r_url),
-        #     count_equal(r_url),
-        #     count_percentage(r_url),
-        #     count_hyphens(r_url),
-        #     count_dots(r_url),
-        #     count_colon(r_url),
-        #     https_token(scheme),
-        #     count_phish_hints(url_words, phish_hints, lang),
-        #     count_redirection(request),
-        #     count_external_redirection(request, domain),
-        #     random_domain(second_level_domain),
-        #     random_words(words_raw, 86),
-        #     random_words(words_raw_host, 8),
-        #     domain_in_brand(second_level_domain),
-        #     count_www(words_raw),
-        #     length_word_raw(words_raw),
-        #     average_word_length(words_raw),
-        #     longest_word_length(words_raw),
-        #     count_links(len(iUrl_s) + len(eUrl_s)),
-        #     urls_ratio(iUrl_s, iUrl_s + eUrl_s + nUrl_s),
-        #     urls_ratio(nUrl_s, iUrl_s + eUrl_s + nUrl_s),
-        #     ratio_List(SCRIPT, 'internals'),
-        #     ratio_List(Img, 'internals'),
-        #     ratio_List(Media, 'externals'),
-        #     ratio_anchor(Anchor, 'unsafe'),
-        #     ratio_anchor(Anchor, 'safe'),
-        #     count_words(len(sContent_words)),
-        #     ratio_Txt(iImgTxt_words + eImgTxt_words, sContent_words),
-        #     ratio_Txt(iImgTxt_words, sContent_words),
-        #     count_io_commands(internals_script_doc, 487490),
-        #     count_io_commands(externals_script_doc, 713513),
-        #     whois_registered_domain(domain),
-        #     web_traffic(r_url),
-        #     page_rank(domain),
-        #     valid_cert_period(cert),
-        #     count_alt_names(cert)
-        # ]
     return request
 
+from tensorflow import keras
 
 m = []
 
@@ -1188,13 +1213,12 @@ if __name__ == "__main__":
         result.configure(state='normal')
         result.delete(1.0, tk.END)
 
-        global p_v, progress, timer
+        global p_v, progress
         p_v = 0
         progress['value'] = p_v
 
         dtime = []
         res = []
-        timer = {}
 
         start = time()
         data = extract_features(url.get().split()[1])
@@ -1233,18 +1257,6 @@ if __name__ == "__main__":
                                                                                    header=['estimator', 'mean', 'max',
                                                                                            'min'], index=False)
 
-            df = pandas.DataFrame(timer.values()).T
-            if os.path.isfile('data/logs/commands_timer.csv'):
-                df.to_csv('data/logs/commands_timer.csv', header=False, mode='a', index=False)
-            else:
-                df.to_csv('data/logs/commands_timer.csv', header=list(timer.keys()), index=False)
-
-            df = pandas.read_csv('data/logs/commands_timer.csv')
-            pandas.DataFrame([list(timer.keys()), df.mean(), df.max(), df.min()]).T.to_csv(
-                'data/logs/commands_timer_stats.csv',
-                header=['estimator', 'mean', 'max',
-                        'min'], index=False)
-
             phish = int(url.get().split()[0])
 
             if phish == 0:
@@ -1279,28 +1291,6 @@ if __name__ == "__main__":
     window = tk.Tk()
     window.title("phishDetect")
     window.resizable(0, 0)
-
-    mb = tk.Menubutton(window, text="settings", relief=tk.RAISED)
-    mb.grid(column=0, row=0, sticky=tk.N+tk.W, pady=(0, 10))
-    mb.menu = tk.Menu(mb, tearoff=0)
-    mb["menu"] = mb.menu
-
-    mayoVar = tk.IntVar()
-    ketchVar = tk.IntVar()
-
-    mb.menu.add_checkbutton(label="mayo",
-                            variable=mayoVar)
-    mb.menu.add_checkbutton(label="ketchup",
-                            variable=ketchVar)
-
-
-    def take_user_input_for_something():
-        user_input = simpledialog.askstring("Pop up for user input!", "What do you want to ask the user to input here?")
-        if user_input != "":
-            print(user_input)
-
-
-    mb.menu.add_command(label="Do something", command=take_user_input_for_something)
 
     url = tk.StringVar()
 
