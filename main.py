@@ -1,4 +1,4 @@
-state = 8
+state = 47
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -41,15 +41,17 @@ state = 8
 # 38 - Stacking (KNN, SVM, ANN)
 # 39 - Stacking (KNN, SVM, ANN, DT, GNB, LR)
 # 40 - Stacking (LR, GNB, BNB, CNB, MNB)
+# 41 - Stacking (KNN, BNB, RF)
 
-# 41 - Bernoulli_NB
-# 42 - Complement_NB
-# 43 - Gaussian_NB
-# 44 - Multinominal_NB
+# 42 - Bernoulli_NB
+# 43 - Complement_NB
+# 44 - Gaussian_NB
+# 45 - Multinominal_NB
 
-# 45 - get all models
+# 46 - get all models
 
-# 46 - get_rating
+# 47 - get_rating
+
 
 import feature_extractor as fe
 import data.collector as dc
@@ -184,18 +186,21 @@ if __name__ == "__main__":
         from ml_algs import Stacking
         Stacking("LR, GNB, BNB, CNB, MNB")
     elif state == 41:
+        from ml_algs import Stacking
+        Stacking("KNN, BNB, RF")
+    elif state == 42:
         from ml_algs import Bernoulli_NB
         Bernoulli_NB()
-    elif state == 42:
+    elif state == 43:
         from ml_algs import Complement_NB
         Complement_NB()
-    elif state == 43:
+    elif state == 44:
         from ml_algs import Gaussian_NB
         Gaussian_NB()
-    elif state == 44:
+    elif state == 45:
         from ml_algs import Multinomial_NB
         Multinomial_NB()
-    elif state == 45:
+    elif state == 46:
         from ml_algs import *
 
         # neural_networks()
@@ -222,6 +227,7 @@ if __name__ == "__main__":
         Stacking("KNN, SVM, ANN")
         Stacking("KNN, SVM, ANN, DT, GNB, LR")
         Stacking("LR, GNB, BNB, CNB, MNB")
-    elif state == 46:
+        Stacking("KNN, BNB, RF")
+    elif state == 47:
         from ml_algs import get_rating
         get_rating()
