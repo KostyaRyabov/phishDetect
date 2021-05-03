@@ -1,6 +1,1 @@
-{
-  'class_weight': 'balanced_subsample',
-  'criterion': 'gini',
-  'max_features': 'sqrt',
-  'n_estimators': 100
-}
+{'bootstrap': {'oob_score': False, 'value': False}, 'class_weight': 'balanced_subsample', 'criterion': 'entropy', 'max_depth': 29, 'max_features': None, 'min_samples_leaf': 3.7844007123095935e-05, 'min_samples_split': 0.038190920144798086, 'n_estimators': 180}

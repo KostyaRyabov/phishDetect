@@ -1,8 +1,1 @@
-{
-  'C': 326.7,
-  'kernel': {
-    'gamma': 'scale',
-    'type': 'rbf'
-  },
-  'random_state': 42
-}
+{'C': 1620.9, 'kernel': {'gamma': 'scale', 'type': 'rbf'}, 'random_state': 42}

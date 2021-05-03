@@ -4,28 +4,14 @@
   'layers': {
     'BatchNormalization': True,
     'activation': 'relu',
-    'dropout': None,
-    'next': {
-      'BatchNormalization': False,
-      'activation': 'relu',
-      'dropout': {
-        'dropout_rate': 0.11666666666666667
-      },
-      'next': {
-        'BatchNormalization': True,
-        'activation': 'exponential',
-        'dropout': {
-          'dropout_rate': 0.15
-        },
-        'next': None,
-        'nodes_count': 5
-      },
-      'nodes_count': 140
+    'dropout': {
+      'dropout_rate': 0.3
     },
-    'nodes_count': 100
+    'next': None,
+    'nodes_count': 65
   },
-  'learning_rate': 0.0006,
+  'learning_rate': 0.0003,
   'shuffle': True,
   'trainable_BatchNormalization': True,
-  'trainable_dropouts': True
+  'trainable_dropouts': False
 }
