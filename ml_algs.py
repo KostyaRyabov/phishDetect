@@ -260,7 +260,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, recall_scor
 from math import ceil
 
 frame = pandas.read_csv('data/datasets/OUTPUT2/dataset.csv')
-cols = [col for col in headers['stats'] if col in list(frame)][:-1]
+cols = list(frame)[:-1]
 X = frame[cols].to_numpy()
 Y = frame['status'].to_numpy()
 
