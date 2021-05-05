@@ -145,46 +145,27 @@ translator = Translator()
 phish_hints = load_phishHints()
 
 headers = [
-    'коэффициент уникальности всех слов',
-    'хороший netloc',
-    'длина url',
-    'кол-во @ в url',
-    'кол-во ; в url',
-    'кол-во = в url',
-    'кол-во % в url',
-    'кол-во - в url',
-    'кол-во . в url',
-    'кол-во : в url',
-    'https',
-    'кол-во фишинговых слов в url',
-    'кол-во перенаправлений на сайт',
-    'кол-во перенаправлений на другие домены',
-    'случайный домен',
-    'кол-во случайных слов в url',
-    'кол-во случайных слов в хосте url',
-    'домен в брендах',
-    'кол-во www в url',
-    'кол-во слов в url',
-    'средняя длина слова в url',
-    'максимальная длина слова в url',
-    'кол-во всех ссылок в основном контексте страницы',
-    'соотношение внутренних ссылок на сайты со всеми в основном контексте страницы',
-    'соотношение пустых ссылок на сайты со всеми в основном контексте страницы',
-    'соотношение внутренних скриптов со всеми в основном контексте страницы',
-    'соотношение внутренних изображений со всеми в основном контексте страницы',
-    'соотношение внешних медиа со всеми в основном контексте страницы',
-    'соотношение небезопасных якорей со всеми в основном контексте страницы',
-    'соотношение безопасных якорей со всеми в основном контексте страницы',
-    'кол-во слов в тексте в основном контексте страницы',
-    'соотношение текста со всех изображений с основным текстом в основном контексте страницы',
-    'соотношение текста внутренних изображений с основным текстом в основном контексте страницы',
-    'кол-во операций ввода/вывода во внутренне добавляемом коде страницы',
-    'кол-во операций ввода/вывода во внешне добавляемом коде страницы',
-    'домен зарегестрирован',
-    'рейтинг по Alexa',
-    'рейтинг по openpagerank',
-    'срок действия сертификата',
-    'кол-во альтернативных имен в сертификате'
+    'длина url',    # 3
+    'кол-во - в url',    # 8
+    'кол-во . в url',    # 9
+    'кол-во фишинговых слов в url',    # 12
+    'кол-во перенаправлений на сайт',    # 13
+    'кол-во перенаправлений на другие домены',    # 14
+    'кол-во случайных слов в хосте url',    # 17
+    'кол-во www в url',    # 19
+    'кол-во слов в url',    # 20
+    'средняя длина слова в url',    # 21
+    'максимальная длина слова в url',    # 22
+    'кол-во всех ссылок в основном контексте страницы',    # 23
+    'соотношение внутренних ссылок на сайты со всеми в основном контексте страницы',    # 24
+    'кол-во слов в тексте в основном контексте страницы',    # 31
+    'соотношение текста со всех изображений с основным текстом в основном контексте страницы',    # 32
+    'соотношение текста внутренних изображений с основным текстом в основном контексте страницы',    # 33
+    'кол-во операций ввода/вывода во внутренне добавляемом коде страницы',    # 34
+    'кол-во операций ввода/вывода во внешне добавляемом коде страницы',    # 35
+    'рейтинг по Alexa',    # 37
+    'рейтинг по openpagerank',    # 38
+    'кол-во альтернативных имен в сертификате'    # 40
 ]
 
 
@@ -1071,19 +1052,11 @@ def extract_features(url):
         tmp = r_url[r_url.find(extracted_domain.suffix):len(r_url)]
         pth = tmp.partition("/")
         words_raw, words_raw_host, words_raw_path = words_raw_extraction(extracted_domain.domain, subdomain, pth[2])
-        parsed = urlparse(r_url)
-        scheme = parsed.scheme
 
         with concurrent.futures.ThreadPoolExecutor(2) as e:
             cert = e.submit(get_cert, domain).result()
             (Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc, externals_script_doc) = e.submit(
                 extract_all_context_data, hostname, content, domain, r_url).result()
-
-        content_di = get_html_from_js(remove_JScomments(internals_script_doc))
-        content_de = get_html_from_js(remove_JScomments(externals_script_doc))
-
-        Text_di = extract_text_context_data(content_di)
-        Text_de = extract_text_context_data(content_de)
 
         lang = check_Language(content)
 
@@ -1096,10 +1069,6 @@ def extract_features(url):
 
         url_words = tokenize_url(words_raw)
         sContent_words = clear_text(tokenize(Text.lower()))
-        diContent_words = clear_text(tokenize(Text_di.lower()))
-        deContent_words = clear_text(tokenize(Text_de.lower()))
-
-        Text_words = iImgTxt_words + eImgTxt_words + sContent_words + diContent_words + deContent_words
 
         iUrl_s = Href['internals'] + Link['internals'] + Media['internals'] + Form['internals']
         eUrl_s = Href['externals'] + Link['externals'] + Media['externals'] + Form['externals']
@@ -1107,46 +1076,27 @@ def extract_features(url):
 
         result = []
 
-        with concurrent.futures.ThreadPoolExecutor(40) as e:
-            result.append(e.submit(word_ratio, Text_words).result())
-            result.append(e.submit(good_netloc, netloc).result())
+        with concurrent.futures.ThreadPoolExecutor(20) as e:
             result.append(e.submit(url_length, r_url).result())
-            result.append(e.submit(count_at, r_url).result())
-            result.append(e.submit(count_semicolumn, r_url).result())
-            result.append(e.submit(count_equal, r_url).result())
-            result.append(e.submit(count_percentage, r_url).result())
             result.append(e.submit(count_hyphens, r_url).result())
             result.append(e.submit(count_dots, r_url).result())
-            result.append(e.submit(count_colon, r_url).result())
-            result.append(e.submit(https_token, scheme).result())
             result.append(e.submit(count_phish_hints, url_words, phish_hints, lang).result())
             result.append(e.submit(count_redirection, request).result())
             result.append(e.submit(count_external_redirection, request, domain).result())
-            result.append(e.submit(random_domain, second_level_domain).result())
-            result.append(e.submit(random_words, words_raw, 86).result())
             result.append(e.submit(random_words, words_raw_host, 8).result())
-            result.append(e.submit(domain_in_brand, second_level_domain).result())
             result.append(e.submit(count_www, words_raw).result())
             result.append(e.submit(length_word_raw, words_raw).result())
             result.append(e.submit(average_word_length, words_raw).result())
             result.append(e.submit(longest_word_length, words_raw).result())
             result.append(e.submit(count_links, len(iUrl_s) + len(eUrl_s)).result())
             result.append(e.submit(urls_ratio, iUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
-            result.append(e.submit(urls_ratio, nUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
-            result.append(e.submit(ratio_List, SCRIPT, 'internals').result())
-            result.append(e.submit(ratio_List, Img, 'internals').result())
-            result.append(e.submit(ratio_List, Media, 'externals').result())
-            result.append(e.submit(ratio_anchor, Anchor, 'unsafe').result())
-            result.append(e.submit(ratio_anchor, Anchor, 'safe').result())
             result.append(e.submit(count_words, len(sContent_words)).result())
             result.append(e.submit(ratio_Txt, iImgTxt_words + eImgTxt_words, sContent_words).result())
             result.append(e.submit(ratio_Txt, iImgTxt_words, sContent_words).result())
             result.append(e.submit(count_io_commands, internals_script_doc, 487490).result())
             result.append(e.submit(count_io_commands, externals_script_doc, 713513).result())
-            result.append(e.submit(whois_registered_domain, domain).result())
             result.append(e.submit(web_traffic, r_url).result())
             result.append(e.submit(page_rank, domain).result())
-            result.append(e.submit(valid_cert_period, cert).result())
             result.append(e.submit(count_alt_names, cert).result())
 
         return result
@@ -1156,8 +1106,8 @@ from tensorflow import keras
 
 m = []
 
-m.append(pickle.load(open('data/models/AdaBoost_DT/AdaBoost_DT.pkl', 'rb')))
-m.append(pickle.load(open('data/models/Bagging_DT/Bagging_DT.pkl', 'rb')))
+# m.append(pickle.load(open('data/models/AdaBoost_DT/AdaBoost_DT.pkl', 'rb')))
+# m.append(pickle.load(open('data/models/Bagging_DT/Bagging_DT.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Bernoulli_NB/Bernoulli_NB.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Complement_NB/Complement_NB.pkl', 'rb')))
 m.append(pickle.load(open('data/models/DT/DT.pkl', 'rb')))
@@ -1170,22 +1120,24 @@ m.append(pickle.load(open('data/models/logistic_regression/logistic_regression.p
 m.append(pickle.load(open('data/models/Multinomial_NB/Multinomial_NB.pkl', 'rb')))
 m.append(keras.models.load_model('data/models/neural_networks/ANN.h5'))
 m.append(pickle.load(open('data/models/RF/RF.pkl', 'rb')))
-m.append(pickle.load(open('data/models/Stacking (AB, RF, ET, B, HGB, GB, DT, XGB)/StackingClassifier.pkl', 'rb')))
-m.append(pickle.load(open('data/models/Stacking (AB, RF, ET, B, XGB)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (AB, GB, XGB, HGB)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (AB, GB, XGB, HGB, RF, B, ET)/StackingClassifier.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Stacking (All)/StackingClassifier.pkl', 'rb')))
-m.append(pickle.load(open('data/models/Stacking (ANN, LR, GB, HGB, XGB, AB)/StackingClassifier.pkl', 'rb')))
-m.append(pickle.load(open('data/models/Stacking (GNB, BNB, CNB, MNB)/StackingClassifier.pkl', 'rb')))
-m.append(pickle.load(open('data/models/Stacking (kNN, SVM, ANN)/StackingClassifier.pkl', 'rb')))
-m.append(pickle.load(open('data/models/Stacking (kNN, SVM, ANN, DT, GNB, LR)/StackingClassifier.pkl', 'rb')))
-m.append(pickle.load(open('data/models/Stacking (LR, GNB, BNB, CNB, MNB)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (B, ET)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (DT, ANN, KNN)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (DT, ANN, KNN, SVM, LR)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (DT, ANN, KNN, SVM, LR, GNB, CNB, MNB, BNB)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (ET, B, LR)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (GNB, CNB, MNB, BNB)/StackingClassifier.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Stacking (SVM, LR)/StackingClassifier.pkl', 'rb')))
 m.append(pickle.load(open('data/models/SVM/SVM.pkl', 'rb')))
 m.append(pickle.load(open('data/models/XGB/XGB.pkl', 'rb')))
 
 
 estimators = [
     'extraction_data',
-    "AdaBoost_DT",
-    "Bagging_DT",
+    # "AdaBoost_DT",
+    # "Bagging_DT",
     "Bernoulli_NB",
     "Complement_NB",
     "DT",
@@ -1198,14 +1150,16 @@ estimators = [
     "Multinomial_NB",
     "neural_networks",
     "RF",
-    "Stacking (AB, RF, ET, B, HGB, GB, DT, XGB)",
-    "Stacking (AB, RF, ET, B, XGB)",
-    "Stacking (All)",
-    "Stacking (ANN, LR, GB, HGB, XGB, AB)",
-    "Stacking (GNB, BNB, CNB, MNB)",
-    "Stacking (kNN, SVM, ANN)",
-    "Stacking (kNN, SVM, ANN, DT, GNB, LR)",
-    "Stacking (LR, GNB, BNB, CNB, MNB)",
+    'Stacking (AB, GB, XGB, HGB)',
+    'Stacking (AB, GB, XGB, HGB, RF, B, ET)',
+    'Stacking (All)',
+    'Stacking (B, ET)',
+    'Stacking (DT, ANN, KNN)',
+    'Stacking (DT, ANN, KNN, SVM, LR)',
+    'Stacking (DT, ANN, KNN, SVM, LR, GNB, CNB, MNB, BNB)',
+    'Stacking (ET, B, LR)',
+    'Stacking (GNB, CNB, MNB, BNB)',
+    'Stacking (SVM, LR)',
     "SVM",
     "XGB"
 ]
@@ -1214,11 +1168,188 @@ estimators = [
 from time import time
 
 
+def download_phishURLS():
+    import pandas
+    import requests
+    import io
+    from datetime import date
+    import os
+
+    try:
+        http_request = requests.get('http://data.phishtank.com/data/online-valid.csv')
+        phish_url_list = pandas.read_csv(io.StringIO(http_request.content.decode('utf-8')), usecols=['url'])
+        filename = "data/urls/phish/{0}.csv".format(date.today().strftime("%d-%m-%Y"))
+        phish_url_list.to_csv(filename, index=False, header=False)
+        phish_url_list = phish_url_list['url'].tolist()
+    except requests.exceptions.RequestException as e:
+        raise SystemExit('Access denied [PHISHTANK]')
+
+    return phish_url_list
+
+
+def load_sites(mylist):
+    with concurrent.futures.ThreadPoolExecutor(10) as executor:
+        executor.map(load_site, mylist)
+
+
+def load_site(url):
+    try:
+        data = extract_features(url)
+
+        if type(data) is list:
+            s = pandas.DataFrame(data + [0]).T
+            s.to_csv('data/datasets/OUTPUT/dataset.csv', mode='a', index=False, header=False)
+    except Exception as ex:
+        print(ex)
+
+
+def filter_double_urls(urls):
+    from urllib.parse import urlparse
+
+    domains = set()
+    newlist = []
+
+    cs = 0
+
+    for url in urls:
+        domains.add(urlparse(url).netloc)
+
+        if cs != len(domains):
+            newlist.append(url)
+
+        cs = len(domains)
+
+    return newlist
+
+
 if __name__ == "__main__":
-    @run_in_thread
-    def check_site():
-        result.configure(state='normal')
-        result.delete(1.0, tk.END)
+    # @run_in_thread
+    # def check_site():
+    #     result.configure(state='normal')
+    #     result.delete(1.0, tk.END)
+    #
+    #     global p_v, progress
+    #     p_v = 0
+    #     progress['value'] = p_v
+    #
+    #     dtime = []
+    #     res = []
+    #
+    #     start = time()
+    #     data = extract_features(url.get().split()[1])
+    #     dtime.append(time() - start)
+    #
+    #     if type(data) is list:
+    #         data = np.array(data).reshape((1, -1))
+    #
+    #         result.configure(state='normal')
+    #         result.insert(tk.END, " -> {} sec".format(dtime[-1]))
+    #
+    #         for i in range(len(m)):
+    #             start = time()
+    #
+    #             r = m[i].predict_proba(data)
+    #             dtime.append(time() - start)
+    #
+    #             res.append(r.tolist()[0][-1])
+    #             result.configure(state='normal')
+    #             result.insert(tk.END, ('\n'+estimators[i+1], res[-1]))
+    #             result.configure(state='disabled')
+    #             p_v += 1
+    #             result.configure(state='normal')
+    #             result.insert(tk.END, " -> {} sec".format(dtime[-1]))
+    #             result.configure(state='disabled')
+    #             progress['value'] = p_v
+    #
+    #
+    #         if os.path.isfile('data/logs/estimator_time.csv'):
+    #             pandas.DataFrame(dtime).T.to_csv('data/logs/estimator_time.csv', header=False, mode='a', index=False)
+    #         else:
+    #             pandas.DataFrame(dtime).T.to_csv('data/logs/estimator_time.csv', header=estimators, index=False)
+    #
+    #         df = pandas.read_csv('data/logs/estimator_time.csv')
+    #         pandas.DataFrame([estimators, df.mean(), df.max(), df.min()]).T.to_csv('data/logs/estimator_avg_time.csv',
+    #                                                                                header=['estimator', 'mean', 'max',
+    #                                                                                        'min'], index=False)
+    #
+    #         phish = int(url.get().split()[0])
+    #
+    #         if phish == 0:
+    #             res = [1-r for r in res]
+    #
+    #         df = pandas.DataFrame(res).T
+    #         df[-1] = int(url.get().split()[0])
+    #
+    #         if os.path.isfile('data/logs/estimator_rate.csv'):
+    #             df.to_csv('data/logs/estimator_rate.csv', header=False, index=False, mode='a')
+    #         else:
+    #             df.to_csv('data/logs/estimator_rate.csv', header=estimators[1:]+['phish'], index=False)
+    #
+    #         df = pandas.read_csv('data/logs/estimator_rate.csv')
+    #         df.sum().to_csv('data/logs/estimator_rate_voite.csv', header=['count'], index_label='estimator')
+    #         df.mean().to_csv('data/logs/estimator_rate_mean.csv', header=['rate'], index_label='estimator')
+    #
+    #         df[df['phish'] == 0].sum().to_csv('data/logs/estimator_rate_legit.csv', header=['count'],
+    #                                           index_label='estimator')
+    #         df[df['phish'] == 1].sum().to_csv('data/logs/estimator_rate_phish.csv', header=['count'],
+    #                                           index_label='estimator')
+    #
+    #         df[df['phish'] == 0].mean().to_csv('data/logs/estimator_rate_mean_legit.csv', header=['rate'],
+    #                                           index_label='estimator')
+    #         df[df['phish'] == 1].mean().to_csv('data/logs/estimator_rate_mean_phish.csv', header=['rate'],
+    #                                           index_label='estimator')
+    #     else:
+    #         result.configure(state='normal')
+    #         result.insert(tk.END, "ERROR: {}".format(data))
+    #         result.configure(state='disabled')
+    #
+    # window = tk.Tk()
+    # window.title("phishDetect")
+    # window.resizable(0, 0)
+    #
+    # url = tk.StringVar()
+    #
+    # textArea = tk.Entry(textvariable=url, width=80, exportselection=0)
+    # textArea.grid(column=0, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
+    #
+    # btn = tk.Button(window, text="check", command=check_site)
+    # btn.grid(column=1, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
+    #
+    # s = Style()
+    # s.theme_use("default")
+    # s.configure("TProgressbar", thickness=2)
+    #
+    # progress = Progressbar(
+    #     window,
+    #     orient=tk.HORIZONTAL,
+    #     maximum=83,
+    #     length=100,
+    #     mode='determinate',
+    #     style="TProgressbar"
+    # )
+    # progress.grid(column=0, row=2, columnspan=2,  sticky=tk.N + tk.S + tk.W + tk.E)
+    #
+    # scroll = tk.Scrollbar(window)
+    # scroll.grid(column=3, row=3, sticky=tk.N + tk.S + tk.W + tk.E)
+    #
+    # result = tk.Text(
+    #     window,
+    #     height=15,
+    #     width=80,
+    #     state='disabled',
+    #     yscrollcommand=scroll.set
+    # )
+    # result.grid(column=0, row=3, columnspan=2)
+    #
+    # scroll.config(command=result.yview)
+    #
+    # window.mainloop()
+
+    # download_phishURLS()
+
+
+    def check_site(url, phish):
+        url_str.set(url)
 
         global p_v, progress
         p_v = 0
@@ -1228,11 +1359,14 @@ if __name__ == "__main__":
         res = []
 
         start = time()
-        data = extract_features(url.get().split()[1])
+        data = extract_features(url)
         dtime.append(time() - start)
 
         if type(data) is list:
-            data = np.array(data).reshape((1, -1))
+            result.configure(state='normal')
+            result.delete(1.0, tk.END)
+
+            data = np.array(data).reshape((1, -1)) * 0.998 + 0.001
 
             result.configure(state='normal')
             result.insert(tk.END, " -> {} sec".format(dtime[-1]))
@@ -1240,19 +1374,20 @@ if __name__ == "__main__":
             for i in range(len(m)):
                 start = time()
 
+                a = m[i]
+
                 r = m[i].predict_proba(data)
                 dtime.append(time() - start)
 
                 res.append(r.tolist()[0][-1])
                 result.configure(state='normal')
-                result.insert(tk.END, ('\n'+estimators[i+1], res[-1]))
+                result.insert(tk.END, ('\n' + estimators[i + 1], res[-1]))
                 result.configure(state='disabled')
                 p_v += 1
                 result.configure(state='normal')
                 result.insert(tk.END, " -> {} sec".format(dtime[-1]))
                 result.configure(state='disabled')
                 progress['value'] = p_v
-
 
             if os.path.isfile('data/logs/estimator_time.csv'):
                 pandas.DataFrame(dtime).T.to_csv('data/logs/estimator_time.csv', header=False, mode='a', index=False)
@@ -1264,10 +1399,8 @@ if __name__ == "__main__":
                                                                                    header=['estimator', 'mean', 'max',
                                                                                            'min'], index=False)
 
-            phish = int(url.get().split()[0])
-
             if phish == 0:
-                res = [1-r for r in res]
+                res = [1 - r for r in res]
 
             df = pandas.DataFrame(res).T
             df[-1] = int(url.get().split()[0])
@@ -1275,7 +1408,7 @@ if __name__ == "__main__":
             if os.path.isfile('data/logs/estimator_rate.csv'):
                 df.to_csv('data/logs/estimator_rate.csv', header=False, index=False, mode='a')
             else:
-                df.to_csv('data/logs/estimator_rate.csv', header=estimators[1:]+['phish'], index=False)
+                df.to_csv('data/logs/estimator_rate.csv', header=estimators[1:] + ['phish'], index=False)
 
             df = pandas.read_csv('data/logs/estimator_rate.csv')
             df.sum().to_csv('data/logs/estimator_rate_voite.csv', header=['count'], index_label='estimator')
@@ -1287,25 +1420,28 @@ if __name__ == "__main__":
                                               index_label='estimator')
 
             df[df['phish'] == 0].mean().to_csv('data/logs/estimator_rate_mean_legit.csv', header=['rate'],
-                                              index_label='estimator')
+                                               index_label='estimator')
             df[df['phish'] == 1].mean().to_csv('data/logs/estimator_rate_mean_phish.csv', header=['rate'],
-                                              index_label='estimator')
+                                               index_label='estimator')
+
+            return 1
         else:
             result.configure(state='normal')
+            result.delete(1.0, tk.END)
             result.insert(tk.END, "ERROR: {}".format(data))
             result.configure(state='disabled')
+
+            return 0
+
 
     window = tk.Tk()
     window.title("phishDetect")
     window.resizable(0, 0)
 
-    url = tk.StringVar()
+    url_str = tk.StringVar()
 
-    textArea = tk.Entry(textvariable=url, width=80, exportselection=0)
-    textArea.grid(column=0, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
-
-    btn = tk.Button(window, text="check", command=check_site)
-    btn.grid(column=1, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
+    textArea = tk.Entry(textvariable=url_str, width=80, exportselection=0)
+    textArea.grid(column=0, row=1, sticky=tk.N + tk.S + tk.W + tk.E)
 
     s = Style()
     s.theme_use("default")
@@ -1319,7 +1455,7 @@ if __name__ == "__main__":
         mode='determinate',
         style="TProgressbar"
     )
-    progress.grid(column=0, row=2, columnspan=2,  sticky=tk.N + tk.S + tk.W + tk.E)
+    progress.grid(column=0, row=2, columnspan=2, sticky=tk.N + tk.S + tk.W + tk.E)
 
     scroll = tk.Scrollbar(window)
     scroll.grid(column=3, row=3, sticky=tk.N + tk.S + tk.W + tk.E)
@@ -1335,4 +1471,27 @@ if __name__ == "__main__":
 
     scroll.config(command=result.yview)
 
+
+
+    def loop_sites():
+        url_list = filter_double_urls(pandas.read_csv('data/urls/phish/05-05-2021.csv', header=None)[0].tolist())[:300]
+
+        count = 0
+
+        for url in url_list:
+            count += check_site(url, 1)
+
+        url_list = filter_double_urls(pandas.read_csv('data/urls/legitimate/30-01-2021.csv.csv', header=None)[0].tolist())[17000:]
+
+        for url in url_list:
+            if count <= 0:
+                break
+            count -= check_site(url, 0)
+
+
+    t = threading.Thread(target=loop_sites)
+    t.start()
+
     window.mainloop()
+
+    t.join()
