@@ -1,14 +1,1 @@
-{
-  'bootstrap': {
-    'oob_score': False,
-    'value': False
-  },
-  'bootstrap_features': True,
-  'criterion': 'entropy',
-  'max_depth': 21,
-  'max_features': None,
-  'min_samples_leaf': 0.022254451784089635,
-  'min_samples_split': 0.014941271823025681,
-  'n_estimators': 40,
-  'splitter': 'best'
-}
+{'bootstrap': {'oob_score': False, 'value': False}, 'bootstrap_features': True, 'criterion': 'gini', 'max_depth': 56, 'max_features': None, 'min_samples_leaf': 0.013916457201831088, 'min_samples_split': 0.055833606763676685, 'n_estimators': 130, 'splitter': 'best'}

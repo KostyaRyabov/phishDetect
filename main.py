@@ -52,6 +52,8 @@ state = 47
 
 # 47 - get_rating
 
+# 48 - search best data size
+
 
 import feature_extractor as fe
 import data.collector as dc
@@ -88,7 +90,7 @@ if __name__ == "__main__":
     elif state == 7:
         fe.combine_datasets()
     elif state == 8:
-        fe.select_features(40)
+        fe.select_features(20)
     elif state == 9:
         from ml_algs import neural_networks_kfold
         neural_networks_kfold()
@@ -203,31 +205,40 @@ if __name__ == "__main__":
     elif state == 46:
         from ml_algs import *
 
-        # neural_networks()
+        # Bernoulli_NB()
+        # Complement_NB()
+        # Gaussian_NB()
+        # Multinomial_NB()
+        # DT()
         # AdaBoost_DT()
         # Bagging_DT()
-        # DT()
         # ET()
         # GradientBoost()
         # HistGradientBoost()
         # KNN()
         # logistic_regression()
         # RF()
-        # SVM()
         # XGB()
-        # Bernoulli_NB()
-        # Complement_NB()
-        # Gaussian_NB()
-        # Multinomial_NB()
-        Stacking("AB, RF, ET, B, HGB, GB, DT, XGB")
-        Stacking("AB, RF, ET, B, XGB")
+        # neural_networks()
+        SVM()
+
+        Stacking("ET, B, LR")  # worst all with NB
+
+        # Stacking("AB, GB, XGB, HGB, RF, B, ET")    # all ansambles
+        # Stacking("AB, GB, XGB, HGB")  # best ansambles
+        # Stacking("B, ET")  # worst ansambles
+
+        # Stacking("GNB, CNB, MNB, BNB")  # only naive Bayesan
+
+        # Stacking("DT, ANN, KNN")  # best models without NB
+        Stacking("SVM, LR")  # worst models without NB
+        # Stacking("DT, ANN, KNN, SVM, LR, GNB, CNB, MNB, BNB")  # all models with NB
+        # Stacking("DT, ANN, KNN, SVM, LR")  # all models without NB
+
         Stacking("All")
-        Stacking("ANN, LR, GB, HGB, XGB, AB")
-        Stacking("GNB, BNB, CNB, MNB")
-        Stacking("KNN, SVM, ANN")
-        Stacking("KNN, SVM, ANN, DT, GNB, LR")
-        Stacking("LR, GNB, BNB, CNB, MNB")
-        Stacking("KNN, BNB, RF")
     elif state == 47:
         from ml_algs import get_rating
         get_rating()
+    elif state == 48:
+        from ml_algs import search_data_size
+        search_data_size()

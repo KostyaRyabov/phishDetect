@@ -1,11 +1,1 @@
-{
-  'algorithm': 'SAMME',
-  'criterion': 'entropy',
-  'learning_rate': 0.37,
-  'max_depth': 36,
-  'max_features': None,
-  'min_samples_leaf': 0.0211097955593352,
-  'min_samples_split': 0.0037102542840691134,
-  'n_estimators': 160,
-  'splitter': 'best'
-}
+{'algorithm': 'SAMME.R', 'criterion': 'entropy', 'learning_rate': 0.21, 'max_depth': 32, 'max_features': 'log2', 'min_samples_leaf': 0.00010281542161545525, 'min_samples_split': 0.015344398201441956, 'n_estimators': 185, 'splitter': 'best'}

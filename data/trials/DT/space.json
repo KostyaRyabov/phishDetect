@@ -1,8 +1,1 @@
-{
-  'criterion': 'gini',
-  'max_depth': 43,
-  'max_features': None,
-  'min_samples_leaf': 3.497502460601872e-05,
-  'min_samples_split': 0.0003485982674705903,
-  'splitter': 'best'
-}
+{'criterion': 'entropy', 'max_depth': 28, 'max_features': None, 'min_samples_leaf': 7.985495767111211e-05, 'min_samples_split': 0.00039605048087085995, 'splitter': 'best'}

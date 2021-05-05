@@ -259,7 +259,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, recall_score, precision_score, matthews_corrcoef
 from math import ceil
 
-frame = pandas.read_csv('data/datasets/OUTPUT/dataset.csv')
+frame = pandas.read_csv('data/datasets/OUTPUT2/dataset.csv')
 cols = [col for col in headers['stats'] if col in list(frame)][:-1]
 X = frame[cols].to_numpy()
 Y = frame['status'].to_numpy()
@@ -374,6 +374,7 @@ def get_rating():
 
 def neural_networks_kfold():
     global X
+    X = X * 0.9998 + 0.0001
 
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
@@ -409,9 +410,9 @@ def neural_networks_kfold():
                     'softplus',
                     'softsign',
                     'elu',
-                    'tanh',
-                    'sigmoid',
-                    'exponential'
+                    # 'tanh',
+                    # 'sigmoid',
+                    # 'exponential'
                 ]),
                 'nodes_count': hp.randint('nodes_count_0', 30) * 5+5,
                 'dropout': hp.choice('dropout_0', [
@@ -434,9 +435,9 @@ def neural_networks_kfold():
                     'softplus',
                     'softsign',
                     'elu',
-                    'tanh',
-                    'sigmoid',
-                    'exponential'
+                    # 'tanh',
+                    # 'sigmoid',
+                    # 'exponential'
                 ]),
                 'nodes_count': hp.randint('nodes_count_{}'.format(M - N), 30)*5+5,
                 'dropout': hp.choice('dropout_{}'.format(M - N), [
@@ -448,8 +449,6 @@ def neural_networks_kfold():
             },
             None
         ])
-
-    X = X * 0.998 + 0.001
 
     space = {
         'layers': layer(5),
@@ -489,6 +488,7 @@ def neural_networks_kfold():
         def on_train_end(self, logs=None):
             if self.stopped_epoch > 0:
                 print("Epoch %05d: early stopping" % (self.stopped_epoch + 1))
+
 
     def tf_callbacks():
         return [
@@ -589,17 +589,17 @@ def neural_networks_kfold():
             except Exception as ex:
                 print(ex)
 
-        with concurrent.futures.ThreadPoolExecutor(3) as executor:
-            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+        with concurrent.futures.ThreadPoolExecutor(5) as executor:
+            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
         m = {
-            "loss": np.sum(stats['loss']) / 3,
-            "accuracy": np.sum(stats['acc']) / 3,
-            "Precision": np.sum(stats['pre']) / 3,
-            "Recall": np.sum(stats['recall']) / 3,
-            "AUC": np.sum(stats['auc']) / 3,
-            "f_score": np.sum(stats['fscore']) / 3,
-            "mcc": np.sum(stats['mcc']) / 3
+            "loss": np.sum(stats['loss']) / 5,
+            "accuracy": np.sum(stats['acc']) / 5,
+            "Precision": np.sum(stats['pre']) / 5,
+            "Recall": np.sum(stats['recall']) / 5,
+            "AUC": np.sum(stats['auc']) / 5,
+            "f_score": np.sum(stats['fscore']) / 5,
+            "mcc": np.sum(stats['mcc']) / 5
         }
 
         try:
@@ -656,6 +656,7 @@ def neural_networks_kfold():
 
 def neural_networks():
     global X
+    X = X * 0.9998 + 0.0001
 
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
@@ -663,8 +664,7 @@ def neural_networks():
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
 
-    X = X * 0.998 + 0.001
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
 
     metrics = [
         'accuracy',
@@ -717,7 +717,7 @@ def neural_networks():
             ),
             tf.keras.callbacks.EarlyStopping(
                 monitor='val_loss',
-                patience=5,
+                patience=10,
                 mode='min',
                 verbose=2
             ),
@@ -755,7 +755,7 @@ def neural_networks():
     history = model.fit(
         x_train, y_train,
         validation_data=(x_test, y_test),
-        epochs=150,
+        epochs=1000,
         batch_size=space['batch_size'],
         callbacks=tf_callbacks(),
         shuffle=space['shuffle'],
@@ -786,6 +786,9 @@ def neural_networks():
 
 
 def XGB_cv():
+    global X
+    X = X * 0.9998 + 0.0001
+
     import xgboost as xgb
     from sklearn.model_selection import KFold
 
@@ -838,8 +841,8 @@ def XGB_cv():
             stats['fscore'].append(f1_score(y_test, y_pred))
             stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
 
-        with concurrent.futures.ThreadPoolExecutor(3) as executor:
-            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+        with concurrent.futures.ThreadPoolExecutor(5) as executor:
+            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
         m = {
             "accuracy": np.average(stats['acc']),
@@ -887,6 +890,9 @@ def XGB_cv():
 
 
 def DT_cv():
+    global X
+    X = X * 0.9998 + 0.0001
+
     from sklearn.tree import DecisionTreeClassifier
     from sklearn.model_selection import KFold
 
@@ -932,8 +938,8 @@ def DT_cv():
             stats['fscore'].append(f1_score(y_test, y_pred))
             stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
 
-        with concurrent.futures.ThreadPoolExecutor(3) as executor:
-            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+        with concurrent.futures.ThreadPoolExecutor(5) as executor:
+            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
         m = {
             "accuracy": np.average(stats['acc']),
@@ -964,7 +970,7 @@ def DT_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=1000,
+        max_evals=500,
         trials=trials,
         timeout=60 * 30
     )
@@ -981,6 +987,9 @@ def DT_cv():
 
 
 def SVM_cv():
+    global X
+    X = X * 0.9998 + 0.0001
+
     from sklearn.svm import SVC
     from sklearn.model_selection import KFold
 
@@ -1026,8 +1035,9 @@ def SVM_cv():
                 C=space['C'],
                 random_state=space['random_state'],
                 kernel=space['kernel']['type'],
-                max_iter=100000,
-                tol=1e-5
+                max_iter=1000000,
+                # tol=1e-3,
+                verbose=True
             )
 
             if 'coef0' in space['kernel']:
@@ -1049,7 +1059,7 @@ def SVM_cv():
             stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
 
         with concurrent.futures.ThreadPoolExecutor(3) as executor:
-            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
         m = {
             "accuracy": np.average(stats['acc']),
@@ -1074,15 +1084,18 @@ def SVM_cv():
             with open("data/trials/SVM/metrics.json", "w") as f:
                 json.dump(m, f)
 
+        with open("data/trials/SVM/results.pkl", 'wb') as output:
+            pickle.dump(trials, output)
+
         return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
 
     best = fmin(
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=300,
+        max_evals=500,
         trials=trials,
-        timeout=60 * 30
+        timeout=60 * 60 * 10
     )
 
     def typer(o):
@@ -1097,6 +1110,9 @@ def SVM_cv():
 
 
 def KNN_cv():
+    global X
+    X = X * 0.9998 + 0.0001
+
     from sklearn.neighbors import KNeighborsClassifier
     from sklearn.model_selection import KFold
 
@@ -1137,8 +1153,8 @@ def KNN_cv():
             stats['fscore'].append(f1_score(y_test, y_pred))
             stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
 
-        with concurrent.futures.ThreadPoolExecutor(3) as executor:
-            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+        with concurrent.futures.ThreadPoolExecutor(2) as executor:
+            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
         m = {
             "accuracy": np.average(stats['acc']),
@@ -1189,6 +1205,9 @@ def KNN_cv():
 
 
 def ET_cv():
+    global X
+    X = X * 0.9998 + 0.0001
+
     from sklearn.ensemble import ExtraTreesClassifier
     from sklearn.model_selection import KFold
 
@@ -1243,8 +1262,8 @@ def ET_cv():
             stats['fscore'].append(f1_score(y_test, y_pred))
             stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
 
-        with concurrent.futures.ThreadPoolExecutor(3) as executor:
-            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+        with concurrent.futures.ThreadPoolExecutor(5) as executor:
+            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
         m = {
             "accuracy": np.average(stats['acc']),
@@ -1292,6 +1311,9 @@ def ET_cv():
 
 
 def RF_cv():
+    global X
+    X = X * 0.9998 + 0.0001
+
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.model_selection import KFold
 
@@ -1346,8 +1368,8 @@ def RF_cv():
             stats['fscore'].append(f1_score(y_test, y_pred))
             stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
 
-        with concurrent.futures.ThreadPoolExecutor(3) as executor:
-            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+        with concurrent.futures.ThreadPoolExecutor(5) as executor:
+            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
         m = {
             "accuracy": np.average(stats['acc']),
@@ -1395,6 +1417,9 @@ def RF_cv():
 
 
 def AdaBoost_DT_cv():
+    global X
+    X = X * 0.9998 + 0.0001
+
     from sklearn.ensemble import AdaBoostClassifier
     from sklearn.tree import DecisionTreeClassifier
     from sklearn.model_selection import KFold
@@ -1449,8 +1474,8 @@ def AdaBoost_DT_cv():
             stats['fscore'].append(f1_score(y_test, y_pred))
             stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
 
-        with concurrent.futures.ThreadPoolExecutor(3) as executor:
-            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+        with concurrent.futures.ThreadPoolExecutor(5) as executor:
+            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
         m = {
             "accuracy": np.average(stats['acc']),
@@ -1481,7 +1506,7 @@ def AdaBoost_DT_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=200,
+        max_evals=250,
         trials=trials,
         timeout=60 * 30
     )
@@ -1498,6 +1523,9 @@ def AdaBoost_DT_cv():
 
 
 def Bagging_DT_cv():
+    global X
+    X = X * 0.9998 + 0.0001
+
     from sklearn.ensemble import BaggingClassifier
     from sklearn.tree import DecisionTreeClassifier
     from sklearn.model_selection import KFold
@@ -1556,8 +1584,8 @@ def Bagging_DT_cv():
             stats['fscore'].append(f1_score(y_test, y_pred))
             stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
 
-        with concurrent.futures.ThreadPoolExecutor(3) as executor:
-            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+        with concurrent.futures.ThreadPoolExecutor(5) as executor:
+            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
         m = {
             "accuracy": np.average(stats['acc']),
@@ -1605,6 +1633,9 @@ def Bagging_DT_cv():
 
 
 def GradientBoost_cv():
+    global X
+    X = X * 0.9998 + 0.0001
+
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn.model_selection import KFold
 
@@ -1656,8 +1687,8 @@ def GradientBoost_cv():
             stats['fscore'].append(f1_score(y_test, y_pred))
             stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
 
-        with concurrent.futures.ThreadPoolExecutor(3) as executor:
-            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+        with concurrent.futures.ThreadPoolExecutor(5) as executor:
+            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
         m = {
             "accuracy": np.average(stats['acc']),
@@ -1705,6 +1736,9 @@ def GradientBoost_cv():
 
 
 def HistGradientBoost_cv():
+    global X
+    X = X * 0.9998 + 0.0001
+
     from sklearn.experimental import enable_hist_gradient_boosting
     from sklearn.ensemble import HistGradientBoostingClassifier
     from sklearn.model_selection import KFold
@@ -1748,8 +1782,8 @@ def HistGradientBoost_cv():
             stats['fscore'].append(f1_score(y_test, y_pred))
             stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
 
-        with concurrent.futures.ThreadPoolExecutor(3) as executor:
-            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+        with concurrent.futures.ThreadPoolExecutor(5) as executor:
+            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
         m = {
             "accuracy": np.average(stats['acc']),
@@ -1780,7 +1814,7 @@ def HistGradientBoost_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=50,
+        max_evals=150,
         trials=trials,
         timeout=60 * 30
     )
@@ -1797,6 +1831,9 @@ def HistGradientBoost_cv():
 
 
 def logistic_regression_cv():
+    global X
+    X = X * 0.9998 + 0.0001
+
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import KFold
 
@@ -1807,7 +1844,7 @@ def logistic_regression_cv():
         trials = Trials()
 
     space = {
-        'C': hp.randint('C', 0, 100000)/10,
+        'C': hp.randint('C', 0, 1000000)/10,
         'l1_ratio': hp.uniform('l1_ratio', 0, 1),
         'fit_intercept': hp.choice('fit_intercept', [False, True]),
         'class_weight': hp.choice('class_weight', ['balanced', None])
@@ -1831,8 +1868,8 @@ def logistic_regression_cv():
                 class_weight=space['class_weight'],
                 solver='saga',
                 penalty='elasticnet',
-                max_iter=500,
-                tol=0.0001
+                max_iter=10000000,
+                tol=1e-5
             )
 
             clf.fit(x_train, y_train)
@@ -1846,8 +1883,8 @@ def logistic_regression_cv():
             stats['fscore'].append(f1_score(y_test, y_pred))
             stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
 
-        with concurrent.futures.ThreadPoolExecutor(3) as executor:
-            executor.map(task, KFold(3, shuffle=True, random_state=10).split(X, Y))
+        with concurrent.futures.ThreadPoolExecutor(5) as executor:
+            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
         m = {
             "accuracy": np.average(stats['acc']),
@@ -1878,7 +1915,7 @@ def logistic_regression_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=150,
+        max_evals=200,
         trials=trials,
         timeout=60 * 20
     )
@@ -1898,14 +1935,17 @@ def logistic_regression_cv():
 
 
 def XGB():
+    global X
+    X = X * 0.9998 + 0.0001
+
     import xgboost as xgb
 
     with open("data/trials/XGB/space.json", 'r') as f:
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=5)
-    x_test, x_val, y_test, y_val = train_test_split(x_test, y_test, test_size=0.5, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
+    # x_test, x_val, y_test, y_val = train_test_split(x_test, y_test, test_size=0.5, random_state=5)
 
     clf = xgb.XGBClassifier(
         use_label_encoder=False,
@@ -1919,10 +1959,11 @@ def XGB():
     )
 
     clf.fit(x_train, y_train,
-            eval_set=[(x_train, y_train), (x_val, y_val)],
+            eval_set=[(x_train, y_train), (x_test, y_test)],
             eval_metric='logloss',
             early_stopping_rounds=3,
-            verbose=True)
+            verbose=True
+            )
 
     y_pred = clf.predict(x_test)
 
@@ -1944,13 +1985,16 @@ def XGB():
 
 
 def DT():
+    global X
+    X = X * 0.9998 + 0.0001
+
     from sklearn.tree import DecisionTreeClassifier
 
     with open("data/trials/DT/space.json", 'r') as f:
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
 
     clf = DecisionTreeClassifier(
         criterion=space['criterion'],
@@ -1982,18 +2026,21 @@ def DT():
 
 
 def SVM():
+    global X
+    X = X * 0.9998 + 0.0001
+
     from sklearn.svm import SVC
     with open("data/trials/SVM/space.json", 'r') as f:
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
 
     clf = SVC(
         C=space['C'],
         random_state=space['random_state'],
         kernel=space['kernel']['type'],
-        max_iter=1000000,
+        max_iter=100000,
         probability=True,
         verbose=True
     )
@@ -2020,13 +2067,16 @@ def SVM():
 
 
 def KNN():
+    global X
+    X = X * 0.9998 + 0.0001
+
     from sklearn.neighbors import KNeighborsClassifier
 
     with open("data/trials/KNN/space.json", 'r') as f:
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
 
     clf = KNeighborsClassifier(
         n_neighbors=space['k'],
@@ -2058,7 +2108,7 @@ def KNN():
 def Gaussian_NB():
     from sklearn.naive_bayes import GaussianNB
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     clf = GaussianNB()
     clf.fit(x_train, y_train)
@@ -2081,7 +2131,7 @@ def Gaussian_NB():
 
 def Bernoulli_NB():
     from sklearn.naive_bayes import BernoulliNB
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     clf = BernoulliNB()
     clf.fit(x_train, y_train)
@@ -2104,7 +2154,7 @@ def Bernoulli_NB():
 
 def Complement_NB():
     from sklearn.naive_bayes import ComplementNB
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     clf = ComplementNB()
     clf.fit(x_train, y_train)
@@ -2127,7 +2177,7 @@ def Complement_NB():
 
 def Multinomial_NB():
     from sklearn.naive_bayes import MultinomialNB
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     clf = MultinomialNB()
     clf.fit(x_train, y_train)
@@ -2158,7 +2208,7 @@ def ET():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     clf = ExtraTreesClassifier(
         n_estimators=space['n_estimators'],
@@ -2169,7 +2219,8 @@ def ET():
         min_samples_split=space['min_samples_split'],
         min_samples_leaf=space['min_samples_leaf'],
         bootstrap=space['bootstrap']['value'],
-        oob_score=space['bootstrap']['oob_score']
+        oob_score=space['bootstrap']['oob_score'],
+        verbose=True
     )
 
     clf.fit(x_train, y_train)
@@ -2200,7 +2251,7 @@ def RF():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     clf = RandomForestClassifier(
         n_estimators=space['n_estimators'],
@@ -2211,7 +2262,8 @@ def RF():
         min_samples_split=space['min_samples_split'],
         min_samples_leaf=space['min_samples_leaf'],
         bootstrap=space['bootstrap']['value'],
-        oob_score=space['bootstrap']['oob_score']
+        oob_score=space['bootstrap']['oob_score'],
+        verbose=True
     )
 
     clf.fit(x_train, y_train)
@@ -2243,7 +2295,7 @@ def AdaBoost_DT():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     clf = AdaBoostClassifier(
         DecisionTreeClassifier(
@@ -2287,7 +2339,7 @@ def Bagging_DT():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     clf = BaggingClassifier(
         DecisionTreeClassifier(
@@ -2300,7 +2352,8 @@ def Bagging_DT():
         n_estimators=space['n_estimators'],
         bootstrap_features=space['bootstrap_features'],
         bootstrap=space['bootstrap']['value'],
-        oob_score=space['bootstrap']['oob_score']
+        oob_score=space['bootstrap']['oob_score'],
+        verbose=True
     )
 
     clf.fit(x_train, y_train)
@@ -2331,7 +2384,7 @@ def GradientBoost():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
 
     clf = GradientBoostingClassifier(
         n_estimators=space['n_estimators'],
@@ -2341,7 +2394,8 @@ def GradientBoost():
         min_samples_leaf=space['min_samples_leaf'],
         min_samples_split=space['min_samples_split'],
         max_depth=space['max_depth'],
-        loss=space['loss']
+        loss=space['loss'],
+        verbose=True
     )
 
     clf.fit(x_train, y_train)
@@ -2373,13 +2427,14 @@ def HistGradientBoost():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
 
     clf = HistGradientBoostingClassifier(
         learning_rate=space['learning_rate'],
         loss=space['loss'],
         min_samples_leaf=space['min_samples_leaf'],
-        max_depth=space['max_depth']
+        max_depth=space['max_depth'],
+        verbose=True
     )
 
     clf.fit(x_train, y_train)
@@ -2410,7 +2465,7 @@ def logistic_regression():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     clf = LogisticRegression(
         random_state=41,
@@ -2422,7 +2477,8 @@ def logistic_regression():
         class_weight=space['class_weight'],
         solver='saga',
         penalty='elasticnet',
-        max_iter=100
+        # max_iter=100,
+        verbose=True
     )
 
     clf.fit(x_train, y_train)
@@ -2517,80 +2573,163 @@ def create_model():
 
     return model
 
-ann = KerasClassifier(build_fn=create_model, epochs=len(pickle.load(open('data/trials/neural_networks/history.pkl','rb'))['loss'])-3, batch_size=64, verbose=2)
-ann._estimator_type = "classifier"
+try:
+    ann = KerasClassifier(build_fn=create_model, epochs=len(pickle.load(open('data/trials/neural_networks/history.pkl','rb'))['loss'])-3, batch_size=64, verbose=2)
+    ann._estimator_type = "classifier"
 
-def Stacking(estimators = 'All'):
-    global X
 
-    X = X * 0.998 + 0.001
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.35, random_state=42)
+    def Stacking(estimators='All'):
+        global X
 
-    import xgboost as xgb
-    from sklearn.experimental import enable_hist_gradient_boosting
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.ensemble import HistGradientBoostingClassifier
-    from sklearn.ensemble import AdaBoostClassifier
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.ensemble import ExtraTreesClassifier
-    from sklearn.ensemble import GradientBoostingClassifier
-    from sklearn.ensemble import BaggingClassifier
+        X = X * 0.998 + 0.001
+        x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
-    from sklearn.svm import SVC
+        import xgboost as xgb
+        from sklearn.experimental import enable_hist_gradient_boosting
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.ensemble import HistGradientBoostingClassifier
+        from sklearn.ensemble import AdaBoostClassifier
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.ensemble import ExtraTreesClassifier
+        from sklearn.ensemble import GradientBoostingClassifier
+        from sklearn.ensemble import BaggingClassifier
+
+        from sklearn.svm import SVC
+        from sklearn.tree import DecisionTreeClassifier
+        from sklearn.naive_bayes import BernoulliNB
+        from sklearn.naive_bayes import ComplementNB
+        from sklearn.naive_bayes import GaussianNB
+        from sklearn.naive_bayes import MultinomialNB
+        from sklearn.neighbors import KNeighborsClassifier
+
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.ensemble import StackingClassifier
+
+        clfs = {
+            "XGB": xgb.XGBClassifier(**pickle.load(open('data/trials/XGB/params.pkl', 'rb'))),
+            'LR': LogisticRegression(**pickle.load(open('data/trials/logistic_regression/params.pkl', 'rb'))),
+            'ANN': ann,
+            'SVM': SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+            'GNB': GaussianNB(),
+            'BNB': BernoulliNB(),
+            'CNB': ComplementNB(),
+            'MNB': MultinomialNB(),
+            'RF': RandomForestClassifier().set_params(**pickle.load(open('data/trials/RF/params.pkl', 'rb'))),
+            'HGB': HistGradientBoostingClassifier().set_params(
+                **pickle.load(open('data/trials/HistGradientBoost/params.pkl', 'rb'))),
+            'GB': GradientBoostingClassifier().set_params(
+                **pickle.load(open('data/trials/GradientBoost/params.pkl', 'rb'))),
+            'AB': AdaBoostClassifier().set_params(**pickle.load(open('data/trials/AdaBoost_DT/params.pkl', 'rb'))),
+            'KNN': KNeighborsClassifier().set_params(**pickle.load(open('data/trials/KNN/params.pkl', 'rb'))),
+            'ET': ExtraTreesClassifier().set_params(**pickle.load(open('data/trials/ET/params.pkl', 'rb'))),
+            'DT': DecisionTreeClassifier().set_params(**pickle.load(open('data/trials/DT/params.pkl', 'rb'))),
+            'B': BaggingClassifier().set_params(**pickle.load(open('data/trials/Bagging_DT/params.pkl', 'rb')))
+        }
+
+        if estimators == 'All':
+            models = [(k, v) for k, v in clfs.items()]
+        else:
+            models = [(t.upper(), clfs[t.upper()]) for t in estimators.replace(' ', '').split(',')]
+
+        clf = StackingClassifier(
+            estimators=models,
+            final_estimator=LogisticRegression(),
+            verbose=0,
+            n_jobs=3
+        )
+
+        clf.fit(x_train, y_train)
+        y_pred = clf.predict(x_test)
+
+        stats = {
+            "accuracy": accuracy_score(y_test, y_pred),
+            "precision": precision_score(y_test, y_pred),
+            "recall": recall_score(y_test, y_pred),
+            "auc": roc_auc_score(y_test, y_pred),
+            "f_score": f1_score(y_test, y_pred),
+            "mcc": matthews_corrcoef(y_test, y_pred)
+        }
+
+        pickle.dump(clf, open('data/models/Stacking ({})/StackingClassifier.pkl'.format(estimators), 'wb'))
+        with open("data/trials/Stacking ({})/stats.json".format(estimators), "w") as f:
+            json.dump(stats, f)
+except:
+    pass
+
+
+def search_data_size():
+    import feature_extractor as fe
     from sklearn.tree import DecisionTreeClassifier
-    from sklearn.naive_bayes import BernoulliNB
-    from sklearn.naive_bayes import ComplementNB
-    from sklearn.naive_bayes import GaussianNB
-    from sklearn.naive_bayes import MultinomialNB
-    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.model_selection import KFold
 
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.ensemble import StackingClassifier
+    sizes = list(range(5, 41, 1))
+    values = []
 
+    for size in sizes:
+        print(size)
 
-    clfs = {
-        "XGB": xgb.XGBClassifier(**pickle.load(open('data/trials/XGB/params.pkl', 'rb'))),
-        'LR': LogisticRegression(**pickle.load(open('data/trials/logistic_regression/params.pkl', 'rb'))),
-        'ANN': ann,
-        'SVM': SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
-        'GNB': GaussianNB(),
-        'BNB': BernoulliNB(),
-        'CNB': ComplementNB(),
-        'MNB': MultinomialNB(),
-        'RF': RandomForestClassifier().set_params(**pickle.load(open('data/trials/RF/params.pkl', 'rb'))),
-        'HGB': HistGradientBoostingClassifier().set_params(**pickle.load(open('data/trials/HistGradientBoost/params.pkl', 'rb'))),
-        'GB': GradientBoostingClassifier().set_params(**pickle.load(open('data/trials/GradientBoost/params.pkl', 'rb'))),
-        'AB': AdaBoostClassifier().set_params(**pickle.load(open('data/trials/AdaBoost_DT/params.pkl', 'rb'))),
-        'KNN': KNeighborsClassifier().set_params(**pickle.load(open('data/trials/KNN/params.pkl', 'rb'))),
-        'ET': ExtraTreesClassifier().set_params(**pickle.load(open('data/trials/ET/params.pkl', 'rb'))),
-        'DT': DecisionTreeClassifier().set_params(**pickle.load(open('data/trials/DT/params.pkl', 'rb'))),
-        'B': BaggingClassifier().set_params(**pickle.load(open('data/trials/Bagging_DT/params.pkl', 'rb')))
-    }
+        frame = pandas.read_csv('data/datasets/OUTPUT2/dataset.csv')
+        cols = [col for col in headers['stats'] if col in list(frame)][:-1]
+        X = frame[cols]
+        Y = frame['status'].to_numpy()
 
-    if estimators == 'All':
-        models = [(k, v) for k, v in clfs.items()]
-    else:
-        models = [(t.upper(), clfs[t.upper()]) for t in estimators.replace(' ', '').split(',')]
+        X = fe.RFE(X, Y, size, 5)
 
-    clf = StackingClassifier(
-        estimators=models,
-        final_estimator=LogisticRegression(),
-        verbose=0,
-        n_jobs=5
-    )
+        X = X.to_numpy() * 0.9998 + 0.0001
 
-    clf.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
+        trials = Trials()
 
-    stats = {
-        "accuracy": accuracy_score(y_test, y_pred),
-        "precision": precision_score(y_test, y_pred),
-        "recall": recall_score(y_test, y_pred),
-        "auc": roc_auc_score(y_test, y_pred),
-        "f_score": f1_score(y_test, y_pred),
-        "mcc": matthews_corrcoef(y_test, y_pred)
-    }
+        space = {
+            'criterion': hp.choice('criterion', ['gini', 'entropy']),
+            'splitter': hp.choice('splitter', ['best', 'random']),
+            'max_features': hp.choice('max_features', ['sqrt', 'log2', None]),
+            'max_depth': hp.randint('max_depth', 1, 100),
+            'min_samples_split': hp.uniform('min_samples_split', 0, 0.5),
+            'min_samples_leaf': hp.uniform('min_samples_leaf', 0, 0.5)
+        }
 
-    pickle.dump(clf, open('data/models/Stacking ({})/StackingClassifier.pkl'.format(estimators), 'wb'))
-    with open("data/trials/Stacking ({})/stats.json".format(estimators), "w") as f:
-        json.dump(stats, f)
+        def objective(space):
+            stats = []
+
+            def task(obj):
+                train_index, test_index = obj
+                x_train, x_test = X[train_index], X[test_index]
+                y_train, y_test = Y[train_index], Y[test_index]
+
+                clf = DecisionTreeClassifier(
+                    criterion=space['criterion'],
+                    splitter=space['splitter'],
+                    max_features=space['max_features'],
+                    min_samples_leaf=space['min_samples_leaf'],
+                    min_samples_split=space['min_samples_split']
+                )
+
+                clf.fit(x_train, y_train)
+
+                y_pred = clf.predict(x_test)
+
+                stats.append(accuracy_score(y_test, y_pred))
+
+            with concurrent.futures.ThreadPoolExecutor(5) as executor:
+                executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
+
+            return {'loss': -np.average(stats), 'status': STATUS_OK, 'space': space}
+
+        fmin(
+            objective,
+            space,
+            algo=tpe.suggest,
+            max_evals=500,
+            trials=trials,
+            timeout=60 * 2
+        )
+
+        values.append(-trials.best_trial['result']['loss'])
+
+    plt.plot(sizes, values)
+    plt.title("поиск размерности")
+    plt.xlabel = 'кол-во признаков'
+    plt.ylabel = 'точность'
+    plt.show()
+    plt.clf()
+    plt.close()

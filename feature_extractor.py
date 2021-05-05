@@ -1,6 +1,6 @@
 from main import state
 
-if state in range(2, 10):
+if state in range(2, 10) or state == 48:
     import os
     import pandas
 
@@ -1445,7 +1445,7 @@ if state == 7:
                                                         header=['feature', 'max', 'min', 'mean'])
 
 
-if state == 8:
+if state == 8 or state == 48:
     import numpy as np
     from sklearn import svm
 
@@ -1473,7 +1473,7 @@ if state == 8:
 
 
     def select_features(N):
-        frame = pandas.read_csv('data/datasets/PROCESS/dataset.csv')
+        frame = pandas.read_csv('data/datasets/OUTPUT/dataset.csv')
 
         # нормализация
 
@@ -1507,9 +1507,8 @@ if state == 8:
         max = X.max().to_list()
         min = X.min().to_list()
         mean = X.mean().to_list()
-        pandas.DataFrame([list(X), max, min, mean]).T.to_csv("data/datasets/OUTPUT/dataset_stats.csv", index=False,
+        pandas.DataFrame([list(X), max, min, mean]).T.to_csv("data/datasets/OUTPUT2/dataset_stats.csv", index=False,
                                                              header=['feature', 'max', 'min', 'mean'])
 
         X['status'] = Y
-        X.to_csv("data/datasets/OUTPUT/dataset.csv",
-                     index=False)
+        X.to_csv("data/datasets/OUTPUT2/dataset.csv", index=False)
