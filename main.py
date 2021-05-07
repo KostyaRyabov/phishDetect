@@ -205,10 +205,17 @@ if __name__ == "__main__":
     elif state == 46:
         from ml_algs import *
 
+        # logistic_regression_cv()
+        # ET_cv()
+        # KNN_cv()
+        # RF_cv()
+        # XGB_cv()
+
         # Bernoulli_NB()
         # Complement_NB()
         # Gaussian_NB()
         # Multinomial_NB()
+
         # DT()
         # AdaBoost_DT()
         # Bagging_DT()
@@ -222,7 +229,7 @@ if __name__ == "__main__":
         # neural_networks()
         SVM()
 
-        Stacking("ET, B, LR")  # worst all with NB
+        # Stacking("ET, B, LR")  # worst all with NB
 
         # Stacking("AB, GB, XGB, HGB, RF, B, ET")    # all ansambles
         # Stacking("AB, GB, XGB, HGB")  # best ansambles
@@ -232,8 +239,8 @@ if __name__ == "__main__":
 
         # Stacking("DT, ANN, KNN")  # best models without NB
         Stacking("SVM, LR")  # worst models without NB
-        # Stacking("DT, ANN, KNN, SVM, LR, GNB, CNB, MNB, BNB")  # all models with NB
-        # Stacking("DT, ANN, KNN, SVM, LR")  # all models without NB
+        Stacking("DT, ANN, KNN, SVM, LR, GNB, CNB, MNB, BNB")  # all models with NB
+        Stacking("DT, ANN, KNN, SVM, LR")  # all models without NB
 
         Stacking("All")
     elif state == 47:

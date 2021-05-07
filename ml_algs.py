@@ -265,7 +265,7 @@ X = frame[cols].to_numpy()
 Y = frame['status'].to_numpy()
 
 
-def plot_hyperop_score(dir, max=True, metric=None):
+def plot_hyperop_score(dir, max=True, metric=None, lim=None):
     with open("data/trials/{}/results.pkl".format(dir), 'rb') as f:
         data = pickle.load(f)
         data = data.results
@@ -282,8 +282,8 @@ def plot_hyperop_score(dir, max=True, metric=None):
                     path.append(max_v)
         else:
             for idx, raw in enumerate(data):
-                if metric in raw:
-                    path.append(-raw[metric])
+                if 'loss' in raw:
+                    path.append(-raw['loss'])
     else:
         if max:
             for idx, raw in enumerate(data):
@@ -296,6 +296,8 @@ def plot_hyperop_score(dir, max=True, metric=None):
                 if 'metrics' in raw:
                     path.append(raw['metrics'][metric])
 
+    if lim:
+        plt.ylim(lim[0], lim[1])
 
     plt.plot(path)
     plt.title("подбор гиперпараметров")
@@ -457,8 +459,10 @@ def neural_networks_kfold():
         ),
         'batch_size': 64,
         'init': 'glorot_normal',
-        'trainable_BatchNormalization': hp.choice('trainable_BatchNormalization', [False, True]),
-        'trainable_dropouts': hp.choice('trainable_dropouts', [False, True]),
+        # 'trainable_BatchNormalization': hp.choice('trainable_BatchNormalization', [False, True]),
+        # 'trainable_dropouts': hp.choice('trainable_dropouts', [False, True]),
+        'trainable_BatchNormalization': True,
+        'trainable_dropouts': True,
         'shuffle': True
     }
 
@@ -564,7 +568,7 @@ def neural_networks_kfold():
 
                 p = result[-2]
                 r = result[-1]
-                s = 2 * ((p * r) / (p + r + 0.00001))
+                s = 2 * ((p * r) / (p + r + 1e-5))
 
                 y_pred = (model.predict(xVal) > 0.5).astype("int32")
 
@@ -589,17 +593,19 @@ def neural_networks_kfold():
             except Exception as ex:
                 print(ex)
 
-        with concurrent.futures.ThreadPoolExecutor(5) as executor:
-            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
+        n=5
+
+        with concurrent.futures.ThreadPoolExecutor(n) as executor:
+            executor.map(task, KFold(n, shuffle=True, random_state=5).split(X, Y))
 
         m = {
-            "loss": np.sum(stats['loss']) / 5,
-            "accuracy": np.sum(stats['acc']) / 5,
-            "Precision": np.sum(stats['pre']) / 5,
-            "Recall": np.sum(stats['recall']) / 5,
-            "AUC": np.sum(stats['auc']) / 5,
-            "f_score": np.sum(stats['fscore']) / 5,
-            "mcc": np.sum(stats['mcc']) / 5
+            "loss": np.sum(stats['loss']) / n,
+            "accuracy": np.sum(stats['acc']) / n,
+            "Precision": np.sum(stats['pre']) / n,
+            "Recall": np.sum(stats['recall']) / n,
+            "AUC": np.sum(stats['auc']) / n,
+            "f_score": np.sum(stats['fscore']) / n,
+            "mcc": np.sum(stats['mcc']) / n
         }
 
         try:
@@ -632,6 +638,7 @@ def neural_networks_kfold():
             pickle.dump(trials, output)
 
         return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space, "history": history, "metrics": m}
+
 
     best = fmin(
         objective,
@@ -873,9 +880,9 @@ def XGB_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=100,
+        max_evals=250,
         trials=trials,
-        timeout=60 * 30
+        timeout=60 * 60
     )
 
     def typer(o):
@@ -970,7 +977,7 @@ def DT_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=500,
+        max_evals=1500,
         trials=trials,
         timeout=60 * 30
     )
@@ -1000,27 +1007,12 @@ def SVM_cv():
         trials = Trials()
 
     space = {
-        'C': hp.randint('C', 100000)/10,
+        'C': hp.randint('C', 1000000)/10,
         'random_state': 42,
-        'kernel': hp.choice('kernel', [
-            {
-                'type': 'linear',
-            },
-            {
-                'type': 'poly',
-                'degree': hp.randint('degree_poly', 360),
-                'coef0': hp.uniform('coef0_poly', -1, 1)
-            },
-            {
-                'type': 'rbf',
-                'gamma': hp.choice('gamma_rbf', ['scale', 'auto'])
-            },
-            {
-                'type': 'sigmoid',
-                'gamma': hp.choice('gamma_sigmoid', ['scale', 'auto']),
-                'coef0': hp.uniform('coef0_sigmoid', -1, 1)
-            }
-        ]),
+        'kernel': {
+            'type': 'rbf',
+            'gamma': hp.choice('gamma_rbf', ['scale', 'auto'])
+        },
     }
 
     def objective(space):
@@ -1035,9 +1027,9 @@ def SVM_cv():
                 C=space['C'],
                 random_state=space['random_state'],
                 kernel=space['kernel']['type'],
-                max_iter=1000000,
-                # tol=1e-3,
-                verbose=True
+                max_iter=1e+5,
+                # tol=1e-1,
+                # verbose=True
             )
 
             if 'coef0' in space['kernel']:
@@ -1058,7 +1050,7 @@ def SVM_cv():
             stats['fscore'].append(f1_score(y_test, y_pred))
             stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
 
-        with concurrent.futures.ThreadPoolExecutor(3) as executor:
+        with concurrent.futures.ThreadPoolExecutor(5) as executor:
             executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
         m = {
@@ -1093,9 +1085,9 @@ def SVM_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=500,
+        max_evals=100000,
         trials=trials,
-        timeout=60 * 60 * 10
+        timeout=60 * 60 * 8
     )
 
     def typer(o):
@@ -1294,9 +1286,9 @@ def ET_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=200,
+        max_evals=400,
         trials=trials,
-        timeout=60 * 30
+        timeout=60 * 60
     )
 
     def typer(o):
@@ -1402,7 +1394,7 @@ def RF_cv():
         algo=tpe.suggest,
         max_evals=250,
         trials=trials,
-        timeout=60 * 30
+        timeout=60 * 60
     )
 
     def typer(o):
@@ -1500,7 +1492,11 @@ def AdaBoost_DT_cv():
             with open("data/trials/AdaBoost_DT/metrics.json", "w") as f:
                 json.dump(m, f)
 
+        with open("data/trials/AdaBoost_DT/results.pkl", 'wb') as output:
+            pickle.dump(trials, output)
+
         return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
+
 
     best = fmin(
         objective,
@@ -1808,6 +1804,9 @@ def HistGradientBoost_cv():
             with open("data/trials/HistGradientBoost/metrics.json", "w") as f:
                 json.dump(m, f)
 
+        with open("data/trials/HistGradientBoost/results.pkl", 'wb') as output:
+            pickle.dump(trials, output)
+
         return {'loss': -m['mcc'], 'status': STATUS_OK, 'space': space}
 
     best = fmin(
@@ -1915,9 +1914,9 @@ def logistic_regression_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=200,
+        max_evals=250,
         trials=trials,
-        timeout=60 * 20
+        timeout=60 * 60
     )
 
     def typer(o):
@@ -2040,7 +2039,7 @@ def SVM():
         C=space['C'],
         random_state=space['random_state'],
         kernel=space['kernel']['type'],
-        max_iter=100000,
+        max_iter=10000000,
         probability=True,
         verbose=True
     )
@@ -2208,6 +2207,10 @@ def ET():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
+    with open("data/trials/DT/space.json", 'r') as f:
+        space_DT = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     clf = ExtraTreesClassifier(
@@ -2298,13 +2301,7 @@ def AdaBoost_DT():
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     clf = AdaBoostClassifier(
-        DecisionTreeClassifier(
-            criterion=space['criterion'],
-            splitter=space['splitter'],
-            max_features=space['max_features'],
-            min_samples_leaf=space['min_samples_leaf'],
-            min_samples_split=space['min_samples_split']
-        ),
+        DecisionTreeClassifier().set_params(**pickle.load(open('data/trials/DT/params.pkl', 'rb'))),
         n_estimators=space['n_estimators'],
         learning_rate=space['learning_rate'],
         algorithm=space['algorithm']
@@ -2342,13 +2339,7 @@ def Bagging_DT():
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
     clf = BaggingClassifier(
-        DecisionTreeClassifier(
-            criterion=space['criterion'],
-            splitter=space['splitter'],
-            max_features=space['max_features'],
-            min_samples_leaf=space['min_samples_leaf'],
-            min_samples_split=space['min_samples_split']
-        ),
+        DecisionTreeClassifier().set_params(**pickle.load(open('data/trials/DT/params.pkl', 'rb'))),
         n_estimators=space['n_estimators'],
         bootstrap_features=space['bootstrap_features'],
         bootstrap=space['bootstrap']['value'],
@@ -2573,88 +2564,85 @@ def create_model():
 
     return model
 
-try:
-    ann = KerasClassifier(build_fn=create_model, epochs=len(pickle.load(open('data/trials/neural_networks/history.pkl','rb'))['loss'])-3, batch_size=64, verbose=2)
-    ann._estimator_type = "classifier"
+ann = KerasClassifier(build_fn=create_model, epochs=len(pickle.load(open('data/trials/neural_networks/history.pkl','rb'))['loss'])-3, batch_size=64, verbose=2)
+ann._estimator_type = "classifier"
 
 
-    def Stacking(estimators='All'):
-        global X
+def Stacking(estimators='All'):
+    global X
 
-        X = X * 0.998 + 0.001
-        x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    X = X * 0.998 + 0.001
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
 
-        import xgboost as xgb
-        from sklearn.experimental import enable_hist_gradient_boosting
-        from sklearn.linear_model import LogisticRegression
-        from sklearn.ensemble import HistGradientBoostingClassifier
-        from sklearn.ensemble import AdaBoostClassifier
-        from sklearn.ensemble import RandomForestClassifier
-        from sklearn.ensemble import ExtraTreesClassifier
-        from sklearn.ensemble import GradientBoostingClassifier
-        from sklearn.ensemble import BaggingClassifier
+    import xgboost as xgb
+    from sklearn.experimental import enable_hist_gradient_boosting
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    from sklearn.ensemble import AdaBoostClassifier
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.ensemble import ExtraTreesClassifier
+    from sklearn.ensemble import GradientBoostingClassifier
+    from sklearn.ensemble import BaggingClassifier
 
-        from sklearn.svm import SVC
-        from sklearn.tree import DecisionTreeClassifier
-        from sklearn.naive_bayes import BernoulliNB
-        from sklearn.naive_bayes import ComplementNB
-        from sklearn.naive_bayes import GaussianNB
-        from sklearn.naive_bayes import MultinomialNB
-        from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.svm import SVC
+    from sklearn.tree import DecisionTreeClassifier
+    from sklearn.naive_bayes import BernoulliNB
+    from sklearn.naive_bayes import ComplementNB
+    from sklearn.naive_bayes import GaussianNB
+    from sklearn.naive_bayes import MultinomialNB
+    from sklearn.neighbors import KNeighborsClassifier
 
-        from sklearn.linear_model import LogisticRegression
-        from sklearn.ensemble import StackingClassifier
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.ensemble import StackingClassifier
 
-        clfs = {
-            "XGB": xgb.XGBClassifier(**pickle.load(open('data/trials/XGB/params.pkl', 'rb'))),
-            'LR': LogisticRegression(**pickle.load(open('data/trials/logistic_regression/params.pkl', 'rb'))),
-            'ANN': ann,
-            'SVM': SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
-            'GNB': GaussianNB(),
-            'BNB': BernoulliNB(),
-            'CNB': ComplementNB(),
-            'MNB': MultinomialNB(),
-            'RF': RandomForestClassifier().set_params(**pickle.load(open('data/trials/RF/params.pkl', 'rb'))),
-            'HGB': HistGradientBoostingClassifier().set_params(
-                **pickle.load(open('data/trials/HistGradientBoost/params.pkl', 'rb'))),
-            'GB': GradientBoostingClassifier().set_params(
-                **pickle.load(open('data/trials/GradientBoost/params.pkl', 'rb'))),
-            'AB': AdaBoostClassifier().set_params(**pickle.load(open('data/trials/AdaBoost_DT/params.pkl', 'rb'))),
-            'KNN': KNeighborsClassifier().set_params(**pickle.load(open('data/trials/KNN/params.pkl', 'rb'))),
-            'ET': ExtraTreesClassifier().set_params(**pickle.load(open('data/trials/ET/params.pkl', 'rb'))),
-            'DT': DecisionTreeClassifier().set_params(**pickle.load(open('data/trials/DT/params.pkl', 'rb'))),
-            'B': BaggingClassifier().set_params(**pickle.load(open('data/trials/Bagging_DT/params.pkl', 'rb')))
-        }
+    clfs = {
+        "XGB": xgb.XGBClassifier(**pickle.load(open('data/trials/XGB/params.pkl', 'rb'))),
+        'LR': LogisticRegression(**pickle.load(open('data/trials/logistic_regression/params.pkl', 'rb'))),
+        'ANN': ann,
+        'SVM': SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+        'GNB': GaussianNB(),
+        'BNB': BernoulliNB(),
+        'CNB': ComplementNB(),
+        'MNB': MultinomialNB(),
+        'RF': RandomForestClassifier().set_params(**pickle.load(open('data/trials/RF/params.pkl', 'rb'))),
+        'HGB': HistGradientBoostingClassifier().set_params(
+            **pickle.load(open('data/trials/HistGradientBoost/params.pkl', 'rb'))),
+        'GB': GradientBoostingClassifier().set_params(
+            **pickle.load(open('data/trials/GradientBoost/params.pkl', 'rb'))),
+        'AB': AdaBoostClassifier().set_params(**pickle.load(open('data/trials/AdaBoost_DT/params.pkl', 'rb'))),
+        'KNN': KNeighborsClassifier().set_params(**pickle.load(open('data/trials/KNN/params.pkl', 'rb'))),
+        'ET': ExtraTreesClassifier().set_params(**pickle.load(open('data/trials/ET/params.pkl', 'rb'))),
+        'DT': DecisionTreeClassifier().set_params(**pickle.load(open('data/trials/DT/params.pkl', 'rb'))),
+        'B': BaggingClassifier().set_params(**pickle.load(open('data/trials/Bagging_DT/params.pkl', 'rb')))
+    }
 
-        if estimators == 'All':
-            models = [(k, v) for k, v in clfs.items()]
-        else:
-            models = [(t.upper(), clfs[t.upper()]) for t in estimators.replace(' ', '').split(',')]
+    if estimators == 'All':
+        models = [(k, v) for k, v in clfs.items()]
+    else:
+        models = [(t.upper(), clfs[t.upper()]) for t in estimators.replace(' ', '').split(',')]
 
-        clf = StackingClassifier(
-            estimators=models,
-            final_estimator=LogisticRegression(),
-            verbose=0,
-            n_jobs=3
-        )
+    clf = StackingClassifier(
+        estimators=models,
+        final_estimator=LogisticRegression(),
+        verbose=0,
+        n_jobs=3
+    )
 
-        clf.fit(x_train, y_train)
-        y_pred = clf.predict(x_test)
+    clf.fit(x_train, y_train)
+    y_pred = clf.predict(x_test)
 
-        stats = {
-            "accuracy": accuracy_score(y_test, y_pred),
-            "precision": precision_score(y_test, y_pred),
-            "recall": recall_score(y_test, y_pred),
-            "auc": roc_auc_score(y_test, y_pred),
-            "f_score": f1_score(y_test, y_pred),
-            "mcc": matthews_corrcoef(y_test, y_pred)
-        }
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
+    }
 
-        pickle.dump(clf, open('data/models/Stacking ({})/StackingClassifier.pkl'.format(estimators), 'wb'))
-        with open("data/trials/Stacking ({})/stats.json".format(estimators), "w") as f:
-            json.dump(stats, f)
-except:
-    pass
+    pickle.dump(clf, open('data/models/Stacking ({})/StackingClassifier.pkl'.format(estimators), 'wb'))
+    with open("data/trials/Stacking ({})/stats.json".format(estimators), "w") as f:
+        json.dump(stats, f)
 
 
 def search_data_size():
