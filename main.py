@@ -1474,7 +1474,7 @@ if __name__ == "__main__":
 
 
     def loop_sites():
-        url_list = filter_double_urls(pandas.read_csv('data/urls/phish/05-05-2021.csv', header=None)[0].tolist())[:300]
+        url_list = filter_double_urls(pandas.read_csv('data/urls/phish/07-05-2021.csv', header=None)[0].tolist())[:300]
 
         count = 0
 
