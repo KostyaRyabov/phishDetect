@@ -34,8 +34,7 @@ progress = {'value': 0}
 def indicate(func):
     def wrapper(*args, **kwargs):
         global progress, p_v
-        p_v += 1
-        progress['value'] = p_v
+        print("{} -> [{}]".format(p_v, func.__name__))
         res = func(*args, **kwargs)
         p_v += 1
         progress['value'] = p_v
@@ -160,7 +159,6 @@ headers = [
     'соотношение внутренних ссылок на сайты со всеми в основном контексте страницы',    # 24
     'кол-во слов в тексте в основном контексте страницы',    # 31
     'соотношение текста со всех изображений с основным текстом в основном контексте страницы',    # 32
-    'соотношение текста внутренних изображений с основным текстом в основном контексте страницы',    # 33
     'кол-во операций ввода/вывода во внутренне добавляемом коде страницы',    # 34
     'кол-во операций ввода/вывода во внешне добавляемом коде страницы',    # 35
     'рейтинг по Alexa',    # 37
@@ -195,7 +193,7 @@ def clear_text(word_raw):
 #                                          Text segmentation
 ########################################################################################################################
 
-
+@indicate
 def segment(obj):
     return [word for str in [wordsegment.segment(word) for word in obj] for word in str]
 
@@ -296,13 +294,13 @@ def https_token(scheme):
 #               Check if TLD in bad position
 ########################################################################################################################
 
-
+@indicate
 def tld_in_path(tld, path):
     if path.lower().count(tld) > 0:
         return 1
     return 0
 
-
+@indicate
 def tld_in_subdomain(tld, subdomain):
     if subdomain.count(tld) > 0:
         return 1
@@ -485,7 +483,7 @@ def page_rank(domain):
 #               Certificate information
 ########################################################################################################################
 
-
+@indicate
 def get_certificate(host, port=443, timeout=10):
     context = ssl.create_default_context()
     conn = socket.create_connection((host, port))
@@ -671,7 +669,7 @@ def translate_image(obj):
         resp = requests.get(obj[0], stream=True).raw
         image = np.asarray(bytearray(resp.read()), dtype="uint8")
         img = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        img = cv2.resize(img, None, fx=0.35, fy=0.35, interpolation=cv2.INTER_AREA)
+        img = cv2.resize(img, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
         img = cv2.GaussianBlur(img, (5, 5), 0)
         return pytesseract.image_to_string(img, lang=obj[1])
     except:
@@ -687,13 +685,20 @@ def image_to_text(img, lang):
             lang = 'eng+' + lang
 
         if type(img) == list:
-            with concurrent.futures.ThreadPoolExecutor(100) as executor:
-                docs = [req for req in executor.map(translate_image, [(url, lang) for url in img], timeout=15)]
+            print('{} images to text'.format(len(img)))
 
-                if docs:
-                    return ' '.join(docs)
-                else:
-                    return ""
+            with concurrent.futures.ThreadPoolExecutor(16) as executor:
+                res = executor.map(translate_image, [(url, lang) for url in img], timeout=15)       # todo: add config ratio parameter
+                docs = []
+
+                try:
+                    for r in res:
+                        if r:
+                            docs.append(r)
+                except concurrent.futures._base.TimeoutError:
+                    print("TIMEOUT")
+
+                return "\n".join(docs)
         else:
             txt = pytesseract.image_to_string(img, lang=lang)
             return txt
@@ -804,8 +809,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
 
     soup = BeautifulSoup(content, 'lxml')
 
+    @indicate
     def collector1():
-        global p_v
         for script in soup.find_all('script', src=True):
             url = script['src']
 
@@ -824,11 +829,9 @@ def extract_all_context_data(hostname, content, domain, base_url):
                 SCRIPT['externals'].append(url)
                 Link['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
 
+    @indicate
     def collector2():
-        global p_v
         for href in soup.find_all('a', href=True):
             url = href['href']
 
@@ -847,11 +850,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
                 Href['externals'].append(url)
                 Anchor['safe'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def collector3():
-        global p_v
         for img in soup.find_all('img', src=True):
             url = img['src']
 
@@ -870,11 +870,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
                 Media['externals'].append(url)
                 Img['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def collector4():
-        global p_v
         for audio in soup.find_all('audio', src=True):
             url = audio['src']
 
@@ -889,11 +886,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
             else:
                 Media['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def collector5():
-        global p_v
         for embed in soup.find_all('embed', src=True):
             url = embed['src']
 
@@ -908,11 +902,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
             else:
                 Media['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def collector6():
-        global p_v
         for i_frame in soup.find_all('iframe', src=True):
             url = i_frame['src']
 
@@ -927,11 +918,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
             else:
                 Media['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def collector7():
-        global p_v
         for link in soup.findAll('link', href=True):
             url = link['href']
 
@@ -946,11 +934,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
             else:
                 Link['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def collector8():
-        global p_v
         for form in soup.findAll('form', action=True):
             url = form['action']
 
@@ -965,21 +950,25 @@ def extract_all_context_data(hostname, content, domain, base_url):
             else:
                 Form['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def merge_scripts(script_lnks):
-        global p_v
         docs = []
 
-        for url in script_lnks:
+        def load_script(url):
             state, request = is_URL_accessible(url)
 
             if state:
                 docs.append(str(request.content))
 
-        p_v += 1
-        progress['value'] = p_v
+        with concurrent.futures.ThreadPoolExecutor(16) as executor:
+            res = executor.map(load_script, script_lnks, timeout=15)  # todo: add config ratio parameter
+
+            try:
+                for r in res:
+                    if r:
+                        docs.append(r)
+            except concurrent.futures._base.TimeoutError:
+                print("TIMEOUT")
 
         return "\n".join(docs)
 
@@ -1000,6 +989,7 @@ def extract_all_context_data(hostname, content, domain, base_url):
         internals_script_doc = ' '.join(
             [internals_script_doc] + [script.contents[0] for script in soup.find_all('script', src=False) if
                                       len(script.contents) > 0])
+
         SCRIPT['embedded'] = len(
             [script.contents[0] for script in soup.find_all('script', src=False) if len(script.contents) > 0])
     except:
@@ -1027,87 +1017,90 @@ def count_links(len):
 def count_words(len):
     return min(len / 990735, 1)
 
-
+@indicate
 def extract_features(url):
-    @indicate
-    def words_raw_extraction(domain, subdomain, path):
-        w_domain = re.split("[-./?=@&%:_]", domain.lower())
-        w_subdomain = re.split("[-./?=@&%:_]", subdomain.lower())
-        w_path = re.split("[-./?=@&%:_]", path.lower())
-        raw_words = w_domain + w_path + w_subdomain
-        w_host = w_domain + w_subdomain
-        return segment(list(filter(None, raw_words))), \
-               segment(list(filter(None, w_host))), \
-               segment(list(filter(None, w_path)))
+    try:
+        @indicate
+        def words_raw_extraction(domain, subdomain, path):
+            w_domain = re.split("[-./?=@&%:_]", domain.lower())
+            w_subdomain = re.split("[-./?=@&%:_]", subdomain.lower())
+            w_path = re.split("[-./?=@&%:_]", path.lower())
+            raw_words = w_domain + w_path + w_subdomain
+            w_host = w_domain + w_subdomain
+            return segment(list(filter(None, raw_words))), \
+                   segment(list(filter(None, w_host))), \
+                   segment(list(filter(None, w_path)))
 
-    (state, request) = is_URL_accessible(url)
+        (state, request) = is_URL_accessible(url)
 
-    if state:
-        r_url = request.url
-        content = str(request.content)
-        hostname, second_level_domain, path, netloc = get_domain(r_url)
-        extracted_domain = tldextract.extract(r_url)
-        domain = extracted_domain.domain + '.' + extracted_domain.suffix
-        subdomain = extracted_domain.subdomain
-        tmp = r_url[r_url.find(extracted_domain.suffix):len(r_url)]
-        pth = tmp.partition("/")
-        words_raw, words_raw_host, words_raw_path = words_raw_extraction(extracted_domain.domain, subdomain, pth[2])
+        if state:
+            r_url = request.url
+            content = str(request.content)
+            hostname, second_level_domain, path, netloc = get_domain(r_url)
+            extracted_domain = tldextract.extract(r_url)
+            domain = extracted_domain.domain + '.' + extracted_domain.suffix
+            subdomain = extracted_domain.subdomain
+            tmp = r_url[r_url.find(extracted_domain.suffix):len(r_url)]
+            pth = tmp.partition("/")
+            words_raw, words_raw_host, words_raw_path = words_raw_extraction(extracted_domain.domain, subdomain, pth[2])
 
-        with concurrent.futures.ThreadPoolExecutor(2) as e:
-            cert = e.submit(get_cert, domain).result()
-            (Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc, externals_script_doc) = e.submit(
-                extract_all_context_data, hostname, content, domain, r_url).result()
+            with concurrent.futures.ThreadPoolExecutor(2) as e:
+                cert = e.submit(get_cert, domain).result()
+                (Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc, externals_script_doc) = e.submit(
+                    extract_all_context_data, hostname, content, domain, r_url).result()
 
-        lang = check_Language(content)
+            lang = check_Language(content)
 
-        with concurrent.futures.ThreadPoolExecutor(2) as e:
-            internals_img_txt = e.submit(image_to_text, Img['internals'], lang).result()
-            externals_img_txt = e.submit(image_to_text, Img['externals'], lang).result()
+            with concurrent.futures.ThreadPoolExecutor(2) as e:
+                internals_img_txt = e.submit(image_to_text, Img['internals'], lang).result()
+                externals_img_txt = e.submit(image_to_text, Img['externals'], lang).result()
 
-        iImgTxt_words = clear_text(tokenize(internals_img_txt.lower()))
-        eImgTxt_words = clear_text(tokenize(externals_img_txt.lower()))
+            iImgTxt_words = clear_text(tokenize(internals_img_txt.lower()))
+            eImgTxt_words = clear_text(tokenize(externals_img_txt.lower()))
 
-        url_words = tokenize_url(words_raw)
-        sContent_words = clear_text(tokenize(Text.lower()))
+            url_words = tokenize_url(words_raw)
+            sContent_words = clear_text(tokenize(Text.lower()))
 
-        iUrl_s = Href['internals'] + Link['internals'] + Media['internals'] + Form['internals']
-        eUrl_s = Href['externals'] + Link['externals'] + Media['externals'] + Form['externals']
-        nUrl_s = Href['null'] + Link['null'] + Media['null'] + Form['null']
+            iUrl_s = Href['internals'] + Link['internals'] + Media['internals'] + Form['internals']
+            eUrl_s = Href['externals'] + Link['externals'] + Media['externals'] + Form['externals']
+            nUrl_s = Href['null'] + Link['null'] + Media['null'] + Form['null']
 
-        result = []
+            result = []
 
-        with concurrent.futures.ThreadPoolExecutor(20) as e:
-            result.append(e.submit(url_length, r_url).result())
-            result.append(e.submit(count_hyphens, r_url).result())
-            result.append(e.submit(count_dots, r_url).result())
-            result.append(e.submit(count_phish_hints, url_words, phish_hints, lang).result())
-            result.append(e.submit(count_redirection, request).result())
-            result.append(e.submit(count_external_redirection, request, domain).result())
-            result.append(e.submit(random_words, words_raw_host, 8).result())
-            result.append(e.submit(count_www, words_raw).result())
-            result.append(e.submit(length_word_raw, words_raw).result())
-            result.append(e.submit(average_word_length, words_raw).result())
-            result.append(e.submit(longest_word_length, words_raw).result())
-            result.append(e.submit(count_links, len(iUrl_s) + len(eUrl_s)).result())
-            result.append(e.submit(urls_ratio, iUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
-            result.append(e.submit(count_words, len(sContent_words)).result())
-            result.append(e.submit(ratio_Txt, iImgTxt_words + eImgTxt_words, sContent_words).result())
-            result.append(e.submit(ratio_Txt, iImgTxt_words, sContent_words).result())
-            result.append(e.submit(count_io_commands, internals_script_doc, 487490).result())
-            result.append(e.submit(count_io_commands, externals_script_doc, 713513).result())
-            result.append(e.submit(web_traffic, r_url).result())
-            result.append(e.submit(page_rank, domain).result())
-            result.append(e.submit(count_alt_names, cert).result())
+            with concurrent.futures.ThreadPoolExecutor(20) as e:
+                result.append(e.submit(url_length, r_url).result())
+                result.append(e.submit(count_hyphens, r_url).result())
+                result.append(e.submit(count_dots, r_url).result())
+                result.append(e.submit(count_phish_hints, url_words, phish_hints, lang).result())
+                result.append(e.submit(count_redirection, request).result())
+                result.append(e.submit(count_external_redirection, request, domain).result())
+                result.append(e.submit(random_words, words_raw_host, 8).result())
+                result.append(e.submit(count_www, words_raw).result())
+                result.append(e.submit(length_word_raw, words_raw).result())
+                result.append(e.submit(average_word_length, words_raw).result())
+                result.append(e.submit(longest_word_length, words_raw).result())
+                result.append(e.submit(count_links, len(iUrl_s) + len(eUrl_s)).result())
+                result.append(e.submit(urls_ratio, iUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
+                result.append(e.submit(count_words, len(sContent_words)).result())
+                result.append(e.submit(ratio_Txt, iImgTxt_words + eImgTxt_words, sContent_words).result())
+                result.append(e.submit(count_io_commands, internals_script_doc, 487490).result())
+                result.append(e.submit(count_io_commands, externals_script_doc, 713513).result())
+                result.append(e.submit(web_traffic, r_url).result())
+                result.append(e.submit(page_rank, domain).result())
+                result.append(e.submit(count_alt_names, cert).result())
 
-        return result
-    return request
+            return result
+        return request
+    except Exception as ex:
+        print(ex)
+        return -2
 
 from tensorflow import keras
 
 m = []
 
-# m.append(pickle.load(open('data/models/AdaBoost_DT/AdaBoost_DT.pkl', 'rb')))
-# m.append(pickle.load(open('data/models/Bagging_DT/Bagging_DT.pkl', 'rb')))
+m.append(pickle.load(open('data/models/AdaBoost_DT/AdaBoost_DT.pkl', 'rb')))
+m.append(pickle.load(open('data/models/Bagging_DT/Bagging_DT.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Bernoulli_NB/Bernoulli_NB.pkl', 'rb')))
 m.append(pickle.load(open('data/models/Complement_NB/Complement_NB.pkl', 'rb')))
 m.append(pickle.load(open('data/models/DT/DT.pkl', 'rb')))
@@ -1136,8 +1129,8 @@ m.append(pickle.load(open('data/models/XGB/XGB.pkl', 'rb')))
 
 estimators = [
     'extraction_data',
-    # "AdaBoost_DT",
-    # "Bagging_DT",
+    "AdaBoost_DT",
+    "Bagging_DT",
     "Bernoulli_NB",
     "Complement_NB",
     "DT",
@@ -1349,7 +1342,7 @@ if __name__ == "__main__":
 
 
     def check_site(url, phish):
-        url_str.set(url)
+        url_str.set('{} {}'.format(phish,url))
 
         global p_v, progress
         p_v = 0
@@ -1373,8 +1366,6 @@ if __name__ == "__main__":
 
             for i in range(len(m)):
                 start = time()
-
-                a = m[i]
 
                 r = m[i].predict_proba(data)
                 dtime.append(time() - start)
@@ -1403,7 +1394,7 @@ if __name__ == "__main__":
                 res = [1 - r for r in res]
 
             df = pandas.DataFrame(res).T
-            df[-1] = int(url.get().split()[0])
+            df[-1] = phish
 
             if os.path.isfile('data/logs/estimator_rate.csv'):
                 df.to_csv('data/logs/estimator_rate.csv', header=False, index=False, mode='a')
@@ -1472,16 +1463,17 @@ if __name__ == "__main__":
     scroll.config(command=result.yview)
 
 
-
     def loop_sites():
-        url_list = filter_double_urls(pandas.read_csv('data/urls/phish/07-05-2021.csv', header=None)[0].tolist())[:300]
+        # url_list = filter_double_urls(pandas.read_csv('data/urls/phish/07-05-2021.csv', header=None)[0].tolist())[:300]
+        #
+        # count = 0
+        #
+        # for url in url_list:
+        #     count += check_site(url, 1)
 
-        count = 0
+        count = 36
 
-        for url in url_list:
-            count += check_site(url, 1)
-
-        url_list = filter_double_urls(pandas.read_csv('data/urls/legitimate/30-01-2021.csv.csv', header=None)[0].tolist())[17000:]
+        url_list = filter_double_urls(pandas.read_csv('data/urls/legitimate/18-01-2021.csv', header=None)[0].tolist())[1010:]
 
         for url in url_list:
             if count <= 0:

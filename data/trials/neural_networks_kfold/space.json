@@ -2,24 +2,16 @@
   'batch_size': 64,
   'init': 'glorot_normal',
   'layers': {
-    'BatchNormalization': False,
-    'activation': 'relu',
+    'BatchNormalization': True,
+    'activation': 'softmax',
     'dropout': {
-      'dropout_rate': 0.38333333333333336
+      'dropout_rate': 0.4
     },
-    'next': {
-      'BatchNormalization': True,
-      'activation': 'selu',
-      'dropout': {
-        'dropout_rate': 0.31666666666666665
-      },
-      'next': None,
-      'nodes_count': 125
-    },
+    'next': None,
     'nodes_count': 150
   },
-  'learning_rate': 0.0006,
+  'learning_rate': 0.03,
   'shuffle': True,
   'trainable_BatchNormalization': True,
-  'trainable_dropouts': False
+  'trainable_dropouts': True
 }

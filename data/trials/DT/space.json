@@ -1,1 +1,1 @@
-{'criterion': 'entropy', 'max_depth': 28, 'max_features': None, 'min_samples_leaf': 7.985495767111211e-05, 'min_samples_split': 0.00039605048087085995, 'splitter': 'best'}
+{'criterion': 'gini', 'max_depth': 23, 'max_features': None, 'min_samples_leaf': 2.3159963802829727e-05, 'min_samples_split': 0.0002739713434272116, 'splitter': 'best'}
