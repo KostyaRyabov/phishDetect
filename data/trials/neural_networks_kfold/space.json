@@ -3,15 +3,15 @@
   'init': 'glorot_normal',
   'layers': {
     'BatchNormalization': True,
-    'activation': 'relu',
+    'activation': 'softmax',
     'dropout': {
-      'dropout_rate': 0.3
+      'dropout_rate': 0.4
     },
     'next': None,
-    'nodes_count': 65
+    'nodes_count': 150
   },
-  'learning_rate': 0.0003,
+  'learning_rate': 0.03,
   'shuffle': True,
   'trainable_BatchNormalization': True,
-  'trainable_dropouts': False
+  'trainable_dropouts': True
 }

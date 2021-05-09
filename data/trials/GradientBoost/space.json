@@ -1,1 +1,1 @@
-{'criterion': 'mse', 'learning_rate': 0.17, 'loss': 'deviance', 'max_depth': 36, 'max_features': None, 'min_samples_leaf': 0.0018777840444361132, 'min_samples_split': 0.015916108620771058, 'n_estimators': 90}
+{'criterion': 'mse', 'learning_rate': 0.47000000000000003, 'loss': 'exponential', 'max_depth': 72, 'max_features': 'sqrt', 'min_samples_leaf': 0.0007236797034923161, 'min_samples_split': 0.004340010739053463, 'n_estimators': 185}

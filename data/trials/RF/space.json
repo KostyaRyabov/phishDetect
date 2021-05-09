@@ -1,1 +1,1 @@
-{'bootstrap': {'oob_score': False, 'value': True}, 'class_weight': None, 'criterion': 'entropy', 'max_depth': 36, 'max_features': 'sqrt', 'min_samples_leaf': 0.00030540362005654353, 'min_samples_split': 0.003320527893307057, 'n_estimators': 35}
+{'bootstrap': {'oob_score': False, 'value': False}, 'class_weight': 'balanced', 'criterion': 'entropy', 'max_depth': 12, 'max_features': 'log2', 'min_samples_leaf': 0.0007163681222524242, 'min_samples_split': 0.011488407477894362, 'n_estimators': 160}

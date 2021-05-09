@@ -1,3 +1,4 @@
+import sys
 import os
 
 import pandas
@@ -28,14 +29,14 @@ import pickle
 import tkinter as tk
 from tkinter.ttk import Progressbar, Style
 
+
 p_v = 0
-progress = {'value': 0}
+
 
 def indicate(func):
     def wrapper(*args, **kwargs):
         global progress, p_v
-        p_v += 1
-        progress['value'] = p_v
+        print("{} -> [{}]".format(p_v, func.__name__))      # todo: remove
         res = func(*args, **kwargs)
         p_v += 1
         progress['value'] = p_v
@@ -43,8 +44,6 @@ def indicate(func):
 
     return wrapper
 
-
-import sys
 
 progress_task = None
 
@@ -145,46 +144,26 @@ translator = Translator()
 phish_hints = load_phishHints()
 
 headers = [
-    'коэффициент уникальности всех слов',
-    'хороший netloc',
-    'длина url',
-    'кол-во @ в url',
-    'кол-во ; в url',
-    'кол-во = в url',
-    'кол-во % в url',
-    'кол-во - в url',
-    'кол-во . в url',
-    'кол-во : в url',
-    'https',
-    'кол-во фишинговых слов в url',
-    'кол-во перенаправлений на сайт',
-    'кол-во перенаправлений на другие домены',
-    'случайный домен',
-    'кол-во случайных слов в url',
-    'кол-во случайных слов в хосте url',
-    'домен в брендах',
-    'кол-во www в url',
-    'кол-во слов в url',
-    'средняя длина слова в url',
-    'максимальная длина слова в url',
-    'кол-во всех ссылок в основном контексте страницы',
-    'соотношение внутренних ссылок на сайты со всеми в основном контексте страницы',
-    'соотношение пустых ссылок на сайты со всеми в основном контексте страницы',
-    'соотношение внутренних скриптов со всеми в основном контексте страницы',
-    'соотношение внутренних изображений со всеми в основном контексте страницы',
-    'соотношение внешних медиа со всеми в основном контексте страницы',
-    'соотношение небезопасных якорей со всеми в основном контексте страницы',
-    'соотношение безопасных якорей со всеми в основном контексте страницы',
-    'кол-во слов в тексте в основном контексте страницы',
-    'соотношение текста со всех изображений с основным текстом в основном контексте страницы',
-    'соотношение текста внутренних изображений с основным текстом в основном контексте страницы',
-    'кол-во операций ввода/вывода во внутренне добавляемом коде страницы',
-    'кол-во операций ввода/вывода во внешне добавляемом коде страницы',
-    'домен зарегестрирован',
-    'рейтинг по Alexa',
-    'рейтинг по openpagerank',
-    'срок действия сертификата',
-    'кол-во альтернативных имен в сертификате'
+    'длина url',    # 3
+    'кол-во - в url',    # 8
+    'кол-во . в url',    # 9
+    'кол-во фишинговых слов в url',    # 12
+    'кол-во перенаправлений на сайт',    # 13
+    'кол-во перенаправлений на другие домены',    # 14
+    'кол-во случайных слов в хосте url',    # 17
+    'кол-во www в url',    # 19
+    'кол-во слов в url',    # 20
+    'средняя длина слова в url',    # 21
+    'максимальная длина слова в url',    # 22
+    'кол-во всех ссылок в основном контексте страницы',    # 23
+    'соотношение внутренних ссылок на сайты со всеми в основном контексте страницы',    # 24
+    'кол-во слов в тексте в основном контексте страницы',    # 31
+    'соотношение текста со всех изображений с основным текстом в основном контексте страницы',    # 32
+    'кол-во операций ввода/вывода во внутренне добавляемом коде страницы',    # 34
+    'кол-во операций ввода/вывода во внешне добавляемом коде страницы',    # 35
+    'рейтинг по Alexa',    # 37
+    'рейтинг по openpagerank',    # 38
+    'кол-во альтернативных имен в сертификате'    # 40
 ]
 
 
@@ -214,18 +193,9 @@ def clear_text(word_raw):
 #                                          Text segmentation
 ########################################################################################################################
 
-
+@indicate
 def segment(obj):
     return [word for str in [wordsegment.segment(word) for word in obj] for word in str]
-
-
-########################################################################################################################
-#                                          TF-IDF
-########################################################################################################################
-
-@indicate
-def tokenize_url(word_raw):
-    return segment(word_raw)
 
 
 ########################################################################################################################
@@ -235,42 +205,6 @@ def tokenize_url(word_raw):
 @indicate
 def url_length(url):
     return min(len(url) / 1169, 1)
-
-
-########################################################################################################################
-#               Count at ('@') symbol at base url
-########################################################################################################################
-
-@indicate
-def count_at(base_url):
-    return min(base_url.count('@') / 5, 1)
-
-
-########################################################################################################################
-#               Having semicolumn (;) symbol at base url
-########################################################################################################################
-
-@indicate
-def count_semicolumn(url):
-    return min(url.count(';') / 15, 1)
-
-
-########################################################################################################################
-#               Count equal (=) symbol at base url
-########################################################################################################################
-
-@indicate
-def count_equal(base_url):
-    return min(base_url.count('=') / 17, 1)
-
-
-########################################################################################################################
-#               Count percentage (%) symbol at base url
-########################################################################################################################
-
-@indicate
-def count_percentage(base_url):
-    return min(base_url.count('%') / 202, 1)
 
 
 ########################################################################################################################
@@ -289,49 +223,6 @@ def count_hyphens(base_url):
 @indicate
 def count_dots(base_url):
     return min(base_url.count('.') / 35, 1)
-
-
-########################################################################################################################
-#              Count number of colon (:) symbol
-########################################################################################################################
-
-@indicate
-def count_colon(url):
-    return min(url.count(':') / 8, 1)
-
-
-########################################################################################################################
-#               Uses https protocol
-########################################################################################################################
-
-@indicate
-def https_token(scheme):
-    if scheme == 'https':
-        return 0
-    return 1
-
-
-########################################################################################################################
-#               Check if TLD in bad position
-########################################################################################################################
-
-
-def tld_in_path(tld, path):
-    if path.lower().count(tld) > 0:
-        return 1
-    return 0
-
-
-def tld_in_subdomain(tld, subdomain):
-    if subdomain.count(tld) > 0:
-        return 1
-    return 0
-
-@indicate
-def tld_in_bad_position(tld, subdomain, path):
-    if tld_in_path(tld, path) == 1 or tld_in_subdomain(tld, subdomain) == 1:
-        return 1
-    return 0
 
 
 ########################################################################################################################
@@ -359,19 +250,6 @@ def count_external_redirection(page, domain):
         return min(count / 4, 1)
 
 
-########################################################################################################################
-#               Is the registered domain created with random characters
-########################################################################################################################
-
-@indicate
-def random_domain(second_level_domain):
-    for word in segment([second_level_domain]):
-        if word not in WORDS + brand_list:
-            return 1
-
-    return 0
-
-
 ###############################tld_in_path#########################################################################################
 #               Presence of words with random characters
 ########################################################################################################################
@@ -380,23 +258,6 @@ def random_domain(second_level_domain):
 def random_words(words_raw, limit):
     return min(len([word for str in [segment([word]) for word in words_raw] for word in str if
                 word not in WORDS + brand_list]) / limit, 1)
-
-
-########################################################################################################################
-#               domain in brand list
-########################################################################################################################
-
-@indicate
-def domain_in_brand(second_level_domain):
-    word = second_level_domain.lower()
-
-    for idx, b in enumerate(brand_list):
-        dst = len(Levenshtein.editops(word, b.lower()))
-        if dst == 0:
-            return 1 - idx / len(brand_list)
-        elif dst <= (len(word) - 2) / 3 + 1:
-            return 1 - idx / (len(brand_list) * 2)
-    return 0
 
 
 ########################################################################################################################
@@ -444,28 +305,6 @@ def longest_word_length(words_raw):
 
 
 ########################################################################################################################
-#               Domain recognized by WHOIS
-########################################################################################################################
-
-@indicate
-def whois_registered_domain(domain):
-    try:
-        hostname = whois.whois(domain).domain_name
-        if type(hostname) == list:
-            for host in hostname:
-                if re.search(host.lower(), domain):
-                    return 1
-            return 0.5
-        else:
-            if re.search(hostname.lower(), domain):
-                return 1
-            else:
-                return 0.5
-    except:
-        return 0
-
-
-########################################################################################################################
 #               Unable to get web traffic and page rank
 ########################################################################################################################
 
@@ -504,7 +343,7 @@ def page_rank(domain):
 #               Certificate information
 ########################################################################################################################
 
-
+@indicate
 def get_certificate(host, port=443, timeout=10):
     context = ssl.create_default_context()
     conn = socket.create_connection((host, port))
@@ -547,26 +386,6 @@ def count_alt_names(cert):
     except:
         return 0
 
-@indicate
-def valid_cert_period(cert):
-    try:
-        return min(((cert['notAfter'] - cert['notBefore']).days + 1)/1186, 1)
-    except:
-        return 0
-
-
-########################################################################################################################
-#               DNS record
-########################################################################################################################
-
-@indicate
-def good_netloc(netloc):
-    try:
-        socket.gethostbyname(netloc)
-        return 1
-    except:
-        return 0
-
 
 ########################################################################################################################
 ########################################################################################################################
@@ -580,85 +399,6 @@ def urls_ratio(urls, total_urls):
         return 0
     else:
         return len(urls) / len(total_urls)
-
-
-########################################################################################################################
-#               ratio url-list
-########################################################################################################################
-
-@indicate
-def ratio_List(Arr, key):
-    total = len(Arr['internals']) + len(Arr['externals'])
-
-    if 'embedded' in Arr:
-        total += Arr['embedded']
-
-    if total == 0:
-        return 0
-    elif key == 'embedded':
-        return min(Arr[key] / total, 1)
-    else:
-        return min(len(Arr[key]) / total, 1)
-
-
-########################################################################################################################
-#               ratio of anchor
-########################################################################################################################
-
-@indicate
-def ratio_anchor(Anchor, key):
-    total = len(Anchor['safe']) + len(Anchor['unsafe'])
-
-    if total == 0:
-        return 0
-    else:
-        return len(Anchor[key]) / total
-
-
-########################################################################################################################
-########################################################################################################################
-#                                               JAVASCRIPT
-########################################################################################################################
-########################################################################################################################
-
-@indicate
-def get_html_from_js(context):
-    pattern = r"([\"'`])[\s\w]*(<\s*(\w+)[^>]*>.*(<\s*\/\s*\3\s*>)?)[\s\w]*\1"
-    return " ".join([res.group(2) for res in re.finditer(pattern, context, re.MULTILINE) if res.group(2) is not None])
-
-@indicate
-def remove_JScomments(string):
-    pattern = r"(\".*?\"|\'.*?\'|\`.*?\`)|(/\*.*?\*/|//[^\r\n]*$)"
-    regex = re.compile(pattern, re.MULTILINE | re.DOTALL)
-
-    def _replacer(match):
-        if match.group(2) is not None:
-            return ""
-        else:
-            return match.group(2)
-
-    return regex.sub(_replacer, string)
-
-
-########################################################################################################################
-#              Ratio static/dynamic html content
-########################################################################################################################
-
-@indicate
-def ratio_dynamic_html(s_html, d_html):
-    return max(0, min(1, len(d_html) / len(s_html)))
-
-
-########################################################################################################################
-#              Ratio html content on js-code
-########################################################################################################################
-
-@indicate
-def ratio_js_on_html(html_context):
-    if len(html_context):
-        return len(get_html_from_js(remove_JScomments(html_context))) / len(html_context)
-    else:
-        return 0
 
 
 ########################################################################################################################
@@ -690,7 +430,7 @@ def translate_image(obj):
         resp = requests.get(obj[0], stream=True).raw
         image = np.asarray(bytearray(resp.read()), dtype="uint8")
         img = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        img = cv2.resize(img, None, fx=0.35, fy=0.35, interpolation=cv2.INTER_AREA)
+        img = cv2.resize(img, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
         img = cv2.GaussianBlur(img, (5, 5), 0)
         return pytesseract.image_to_string(img, lang=obj[1])
     except:
@@ -706,13 +446,20 @@ def image_to_text(img, lang):
             lang = 'eng+' + lang
 
         if type(img) == list:
-            with concurrent.futures.ThreadPoolExecutor(100) as executor:
-                docs = [req for req in executor.map(translate_image, [(url, lang) for url in img], timeout=15)]
+            print('{} images to text'.format(len(img)))
 
-                if docs:
-                    return ' '.join(docs)
-                else:
-                    return ""
+            with concurrent.futures.ThreadPoolExecutor(16) as executor:
+                res = executor.map(translate_image, [(url, lang) for url in img], timeout=15)       # todo: add config ratio parameter
+                docs = []
+
+                try:
+                    for r in res:
+                        if r:
+                            docs.append(r)
+                except concurrent.futures._base.TimeoutError:
+                    print("TIMEOUT")
+
+                return "\n".join(docs)
         else:
             txt = pytesseract.image_to_string(img, lang=lang)
             return txt
@@ -781,7 +528,14 @@ def is_URL_accessible(url, time_out=3):
 def check_Language(text):
     global phish_hints
 
-    language = translator.detect(str(text)[0:100]).lang
+    size = len(text)
+    if size > 10000:
+        size = 10000
+
+    language = translator.detect(str(text)[:size]).lang
+
+    if type(language) is list:
+        language = language[-1]
 
     if language not in phish_hints.keys():
         words = translator.translate(" ".join(phish_hints['en'][:25]), src='en', dest=language).text.split(" ")
@@ -816,8 +570,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
 
     soup = BeautifulSoup(content, 'lxml')
 
+    @indicate
     def collector1():
-        global p_v
         for script in soup.find_all('script', src=True):
             url = script['src']
 
@@ -836,11 +590,9 @@ def extract_all_context_data(hostname, content, domain, base_url):
                 SCRIPT['externals'].append(url)
                 Link['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
 
+    @indicate
     def collector2():
-        global p_v
         for href in soup.find_all('a', href=True):
             url = href['href']
 
@@ -859,11 +611,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
                 Href['externals'].append(url)
                 Anchor['safe'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def collector3():
-        global p_v
         for img in soup.find_all('img', src=True):
             url = img['src']
 
@@ -882,11 +631,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
                 Media['externals'].append(url)
                 Img['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def collector4():
-        global p_v
         for audio in soup.find_all('audio', src=True):
             url = audio['src']
 
@@ -901,11 +647,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
             else:
                 Media['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def collector5():
-        global p_v
         for embed in soup.find_all('embed', src=True):
             url = embed['src']
 
@@ -920,11 +663,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
             else:
                 Media['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def collector6():
-        global p_v
         for i_frame in soup.find_all('iframe', src=True):
             url = i_frame['src']
 
@@ -939,11 +679,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
             else:
                 Media['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def collector7():
-        global p_v
         for link in soup.findAll('link', href=True):
             url = link['href']
 
@@ -958,11 +695,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
             else:
                 Link['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def collector8():
-        global p_v
         for form in soup.findAll('form', action=True):
             url = form['action']
 
@@ -977,21 +711,25 @@ def extract_all_context_data(hostname, content, domain, base_url):
             else:
                 Form['externals'].append(url)
 
-        p_v += 1
-        progress['value'] = p_v
-
+    @indicate
     def merge_scripts(script_lnks):
-        global p_v
         docs = []
 
-        for url in script_lnks:
+        def load_script(url):
             state, request = is_URL_accessible(url)
 
             if state:
                 docs.append(str(request.content))
 
-        p_v += 1
-        progress['value'] = p_v
+        with concurrent.futures.ThreadPoolExecutor(16) as executor:
+            res = executor.map(load_script, script_lnks, timeout=15)  # todo: add config ratio parameter
+
+            try:
+                for r in res:
+                    if r:
+                        docs.append(r)
+            except concurrent.futures._base.TimeoutError:
+                print("TIMEOUT")
 
         return "\n".join(docs)
 
@@ -1012,24 +750,13 @@ def extract_all_context_data(hostname, content, domain, base_url):
         internals_script_doc = ' '.join(
             [internals_script_doc] + [script.contents[0] for script in soup.find_all('script', src=False) if
                                       len(script.contents) > 0])
+
         SCRIPT['embedded'] = len(
             [script.contents[0] for script in soup.find_all('script', src=False) if len(script.contents) > 0])
     except:
         pass
 
     return Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc, externals_script_doc
-
-@indicate
-def extract_text_context_data(content):
-    return BeautifulSoup(content, 'lxml').get_text().lower()
-
-
-@indicate
-def word_ratio(Text_words):
-    if Text_words:
-        return len(Counter(Text_words)) / len(Text_words)
-    else:
-        return 0
 
 @indicate
 def count_links(len):
@@ -1039,187 +766,96 @@ def count_links(len):
 def count_words(len):
     return min(len / 990735, 1)
 
-
+@indicate
 def extract_features(url):
-    @indicate
-    def words_raw_extraction(domain, subdomain, path):
-        w_domain = re.split("[-./?=@&%:_]", domain.lower())
-        w_subdomain = re.split("[-./?=@&%:_]", subdomain.lower())
-        w_path = re.split("[-./?=@&%:_]", path.lower())
-        raw_words = w_domain + w_path + w_subdomain
-        w_host = w_domain + w_subdomain
-        return segment(list(filter(None, raw_words))), \
-               segment(list(filter(None, w_host))), \
-               segment(list(filter(None, w_path)))
+    try:
+        @indicate
+        def words_raw_extraction(domain, subdomain, path):
+            w_domain = re.split("[-./?=@&%:_]", domain.lower())
+            w_subdomain = re.split("[-./?=@&%:_]", subdomain.lower())
+            w_path = re.split("[-./?=@&%:_]", path.lower())
+            raw_words = w_domain + w_path + w_subdomain
+            w_host = w_domain + w_subdomain
+            return segment(list(filter(None, raw_words))), \
+                   segment(list(filter(None, w_host))), \
+                   segment(list(filter(None, w_path)))
 
-    (state, request) = is_URL_accessible(url)
+        (state, request) = is_URL_accessible(url)
 
-    if state:
-        r_url = request.url
-        content = str(request.content)
-        hostname, second_level_domain, path, netloc = get_domain(r_url)
-        extracted_domain = tldextract.extract(r_url)
-        domain = extracted_domain.domain + '.' + extracted_domain.suffix
-        subdomain = extracted_domain.subdomain
-        tmp = r_url[r_url.find(extracted_domain.suffix):len(r_url)]
-        pth = tmp.partition("/")
-        words_raw, words_raw_host, words_raw_path = words_raw_extraction(extracted_domain.domain, subdomain, pth[2])
-        parsed = urlparse(r_url)
-        scheme = parsed.scheme
+        if state:
+            r_url = request.url
+            content = str(request.content)
+            hostname, second_level_domain, path, netloc = get_domain(r_url)
+            extracted_domain = tldextract.extract(r_url)
+            domain = extracted_domain.domain + '.' + extracted_domain.suffix
+            subdomain = extracted_domain.subdomain
+            tmp = r_url[r_url.find(extracted_domain.suffix):len(r_url)]
+            pth = tmp.partition("/")
+            words_raw, words_raw_host, words_raw_path = words_raw_extraction(extracted_domain.domain, subdomain, pth[2])
 
-        with concurrent.futures.ThreadPoolExecutor(2) as e:
-            cert = e.submit(get_cert, domain).result()
-            (Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc, externals_script_doc) = e.submit(
-                extract_all_context_data, hostname, content, domain, r_url).result()
+            with concurrent.futures.ThreadPoolExecutor(2) as e:
+                cert = e.submit(get_cert, domain).result()
+                (Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc, externals_script_doc) = e.submit(
+                    extract_all_context_data, hostname, content, domain, r_url).result()
 
-        content_di = get_html_from_js(remove_JScomments(internals_script_doc))
-        content_de = get_html_from_js(remove_JScomments(externals_script_doc))
+            lang = check_Language(content)
 
-        Text_di = extract_text_context_data(content_di)
-        Text_de = extract_text_context_data(content_de)
+            with concurrent.futures.ThreadPoolExecutor(2) as e:
+                internals_img_txt = e.submit(image_to_text, Img['internals'], lang).result()
+                externals_img_txt = e.submit(image_to_text, Img['externals'], lang).result()
 
-        lang = check_Language(content)
+            iImgTxt_words = clear_text(tokenize(internals_img_txt.lower()))
+            eImgTxt_words = clear_text(tokenize(externals_img_txt.lower()))
 
-        with concurrent.futures.ThreadPoolExecutor(2) as e:
-            internals_img_txt = e.submit(image_to_text, Img['internals'], lang).result()
-            externals_img_txt = e.submit(image_to_text, Img['externals'], lang).result()
+            url_words = segment(words_raw)
+            sContent_words = clear_text(tokenize(Text.lower()))
 
-        iImgTxt_words = clear_text(tokenize(internals_img_txt.lower()))
-        eImgTxt_words = clear_text(tokenize(externals_img_txt.lower()))
+            iUrl_s = Href['internals'] + Link['internals'] + Media['internals'] + Form['internals']
+            eUrl_s = Href['externals'] + Link['externals'] + Media['externals'] + Form['externals']
+            nUrl_s = Href['null'] + Link['null'] + Media['null'] + Form['null']
 
-        url_words = tokenize_url(words_raw)
-        sContent_words = clear_text(tokenize(Text.lower()))
-        diContent_words = clear_text(tokenize(Text_di.lower()))
-        deContent_words = clear_text(tokenize(Text_de.lower()))
+            result = []
 
-        Text_words = iImgTxt_words + eImgTxt_words + sContent_words + diContent_words + deContent_words
+            with concurrent.futures.ThreadPoolExecutor(20) as e:
+                result.append(e.submit(url_length, r_url).result())
+                result.append(e.submit(count_hyphens, r_url).result())
+                result.append(e.submit(count_dots, r_url).result())
+                result.append(e.submit(count_phish_hints, url_words, phish_hints, lang).result())
+                result.append(e.submit(count_redirection, request).result())
+                result.append(e.submit(count_external_redirection, request, domain).result())
+                result.append(e.submit(random_words, words_raw_host, 8).result())
+                result.append(e.submit(count_www, words_raw).result())
+                result.append(e.submit(length_word_raw, words_raw).result())
+                result.append(e.submit(average_word_length, words_raw).result())
+                result.append(e.submit(longest_word_length, words_raw).result())
+                result.append(e.submit(count_links, len(iUrl_s) + len(eUrl_s)).result())
+                result.append(e.submit(urls_ratio, iUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
+                result.append(e.submit(count_words, len(sContent_words)).result())
+                result.append(e.submit(ratio_Txt, iImgTxt_words + eImgTxt_words, sContent_words).result())
+                result.append(e.submit(count_io_commands, internals_script_doc, 487490).result())
+                result.append(e.submit(count_io_commands, externals_script_doc, 713513).result())
+                result.append(e.submit(web_traffic, r_url).result())
+                result.append(e.submit(page_rank, domain).result())
+                result.append(e.submit(count_alt_names, cert).result())
 
-        iUrl_s = Href['internals'] + Link['internals'] + Media['internals'] + Form['internals']
-        eUrl_s = Href['externals'] + Link['externals'] + Media['externals'] + Form['externals']
-        nUrl_s = Href['null'] + Link['null'] + Media['null'] + Form['null']
+            return result
+        return request
+    except Exception as ex:
+        print(ex)
+        return -2
 
-        result = []
 
-        with concurrent.futures.ThreadPoolExecutor(40) as e:
-            result.append(e.submit(word_ratio, Text_words).result())
-            result.append(e.submit(good_netloc, netloc).result())
-            result.append(e.submit(url_length, r_url).result())
-            result.append(e.submit(count_at, r_url).result())
-            result.append(e.submit(count_semicolumn, r_url).result())
-            result.append(e.submit(count_equal, r_url).result())
-            result.append(e.submit(count_percentage, r_url).result())
-            result.append(e.submit(count_hyphens, r_url).result())
-            result.append(e.submit(count_dots, r_url).result())
-            result.append(e.submit(count_colon, r_url).result())
-            result.append(e.submit(https_token, scheme).result())
-            result.append(e.submit(count_phish_hints, url_words, phish_hints, lang).result())
-            result.append(e.submit(count_redirection, request).result())
-            result.append(e.submit(count_external_redirection, request, domain).result())
-            result.append(e.submit(random_domain, second_level_domain).result())
-            result.append(e.submit(random_words, words_raw, 86).result())
-            result.append(e.submit(random_words, words_raw_host, 8).result())
-            result.append(e.submit(domain_in_brand, second_level_domain).result())
-            result.append(e.submit(count_www, words_raw).result())
-            result.append(e.submit(length_word_raw, words_raw).result())
-            result.append(e.submit(average_word_length, words_raw).result())
-            result.append(e.submit(longest_word_length, words_raw).result())
-            result.append(e.submit(count_links, len(iUrl_s) + len(eUrl_s)).result())
-            result.append(e.submit(urls_ratio, iUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
-            result.append(e.submit(urls_ratio, nUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
-            result.append(e.submit(ratio_List, SCRIPT, 'internals').result())
-            result.append(e.submit(ratio_List, Img, 'internals').result())
-            result.append(e.submit(ratio_List, Media, 'externals').result())
-            result.append(e.submit(ratio_anchor, Anchor, 'unsafe').result())
-            result.append(e.submit(ratio_anchor, Anchor, 'safe').result())
-            result.append(e.submit(count_words, len(sContent_words)).result())
-            result.append(e.submit(ratio_Txt, iImgTxt_words + eImgTxt_words, sContent_words).result())
-            result.append(e.submit(ratio_Txt, iImgTxt_words, sContent_words).result())
-            result.append(e.submit(count_io_commands, internals_script_doc, 487490).result())
-            result.append(e.submit(count_io_commands, externals_script_doc, 713513).result())
-            result.append(e.submit(whois_registered_domain, domain).result())
-            result.append(e.submit(web_traffic, r_url).result())
-            result.append(e.submit(page_rank, domain).result())
-            result.append(e.submit(valid_cert_period, cert).result())
-            result.append(e.submit(count_alt_names, cert).result())
+# from tensorflow import keras
 
-        return result
-    return request
-
-from tensorflow import keras
 
 m = pickle.load(open('data/models/Stacking (All)/StackingClassifier.pkl', 'rb'))
-# m = keras.models.load_model('data/models/neural_networks/nn2.h5')
+# m = keras.models.load_model('data/models/neural_networks/ANN.h5')
+
 
 from colour import Color
 
 
-# def download_phishURLS():
-#     import pandas
-#     import requests
-#     import io
-#     from datetime import date
-#     import os
-#
-#     try:
-#         http_request = requests.get('http://data.phishtank.com/data/online-valid.csv')
-#         phish_url_list = pandas.read_csv(io.StringIO(http_request.content.decode('utf-8')), usecols=['url'])
-#         filename = "data/urls/phish/{0}.csv".format(date.today().strftime("%d-%m-%Y"))
-#         phish_url_list.to_csv(filename, index=False, header=False)
-#         phish_url_list = phish_url_list['url'].tolist()
-#     except requests.exceptions.RequestException as e:
-#         raise SystemExit('Access denied [PHISHTANK]')
-#
-#     return phish_url_list
-#
-#
-# def load_sites(mylist):
-#     with concurrent.futures.ThreadPoolExecutor(10) as executor:
-#         executor.map(load_site, mylist)
-#
-#
-# def load_site(url):
-#     try:
-#         data = extract_features(url)
-#
-#         if type(data) is list:
-#             s = pandas.DataFrame(data + [0]).T
-#             s.to_csv('data/datasets/OUTPUT/dataset.csv', mode='a', index=False, header=False)
-#     except Exception as ex:
-#         print(ex)
-#
-#
-# def filter_double_urls(urls):
-#     from urllib.parse import urlparse
-#
-#     domains = set()
-#     newlist = []
-#
-#     cs = 0
-#
-#     for url in urls:
-#         domains.add(urlparse(url).netloc)
-#
-#         if cs != len(domains):
-#             newlist.append(url)
-#
-#         cs = len(domains)
-#
-#     return newlist
-
-
 if __name__ == "__main__":
-    # mylist = """
-    # """.split('\n')
-    #
-    # load_sites(mylist)
-    #
-    # mylist = pandas.read_csv("data/urls/legitimate/30-01-2021.csv", header=None)[0].tolist()
-    #
-    # load_sites([mylist[17105]])
-
-    # mylist = filter_double_urls(pandas.read_csv('data/urls/phish/02-05-2021.csv', header=None)[0].tolist())
-    # load_sites(mylist[-500:])
-
     @run_in_thread
     def check_site():
         result.configure(background='white')

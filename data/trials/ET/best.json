@@ -1,1 +1,1 @@
-{"bootstrap": 1, "class_weight": 1, "criterion": 1, "max_depth": 29, "max_features": 2, "min_samples_leaf": 3.7844007123095935e-05, "min_samples_split": 0.038190920144798086, "n_estimators": 32}
+{"bootstrap": 0, "class_weight": 2, "criterion": 1, "max_depth": 32, "max_features": 0, "min_samples_leaf": 9.181263567361513e-05, "min_samples_split": 0.0002538327167817822, "n_estimators": 25, "oob_score": 1}
