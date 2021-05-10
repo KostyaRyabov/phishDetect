@@ -1468,6 +1468,8 @@ if state == 8 or state == 48:
             included[actualFeatures[elim]] = False
             curCount -= curStep
 
+            print('\t[{} > {}]'.format(curCount, N))
+
         included = [idx for idx in featureList if included[idx]]
         return X.iloc[:, included]
 

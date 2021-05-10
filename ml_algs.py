@@ -412,9 +412,9 @@ def neural_networks_kfold():
                     'softplus',
                     'softsign',
                     'elu',
-                    # 'tanh',
-                    # 'sigmoid',
-                    # 'exponential'
+                    'tanh',
+                    'sigmoid',
+                    'exponential'
                 ]),
                 'nodes_count': hp.randint('nodes_count_0', 30) * 5+5,
                 'dropout': hp.choice('dropout_0', [
@@ -437,9 +437,9 @@ def neural_networks_kfold():
                     'softplus',
                     'softsign',
                     'elu',
-                    # 'tanh',
-                    # 'sigmoid',
-                    # 'exponential'
+                    'tanh',
+                    'sigmoid',
+                    'exponential'
                 ]),
                 'nodes_count': hp.randint('nodes_count_{}'.format(M - N), 30)*5+5,
                 'dropout': hp.choice('dropout_{}'.format(M - N), [
@@ -882,7 +882,7 @@ def XGB_cv():
         algo=tpe.suggest,
         max_evals=250,
         trials=trials,
-        timeout=60 * 60
+        timeout=60 * 60 * 2
     )
 
     def typer(o):
@@ -979,7 +979,7 @@ def DT_cv():
         algo=tpe.suggest,
         max_evals=1500,
         trials=trials,
-        timeout=60 * 30
+        timeout=60 * 60
     )
 
     def typer(o):
@@ -1179,7 +1179,7 @@ def KNN_cv():
         algo=tpe.suggest,
         max_evals=25,
         trials=trials,
-        timeout=60 * 20
+        timeout=60 * 60
     )
 
     def typer(o):
@@ -1288,7 +1288,7 @@ def ET_cv():
         algo=tpe.suggest,
         max_evals=400,
         trials=trials,
-        timeout=60 * 60
+        timeout=60 * 60 * 2
     )
 
     def typer(o):
@@ -1394,7 +1394,7 @@ def RF_cv():
         algo=tpe.suggest,
         max_evals=250,
         trials=trials,
-        timeout=60 * 60
+        timeout=60 * 60 * 2
     )
 
     def typer(o):
@@ -1504,7 +1504,7 @@ def AdaBoost_DT_cv():
         algo=tpe.suggest,
         max_evals=250,
         trials=trials,
-        timeout=60 * 30
+        timeout=60 * 60
     )
 
     def typer(o):
@@ -1614,7 +1614,7 @@ def Bagging_DT_cv():
         algo=tpe.suggest,
         max_evals=250,
         trials=trials,
-        timeout=60 * 30
+        timeout=60 * 60
     )
 
     def typer(o):
@@ -1717,7 +1717,7 @@ def GradientBoost_cv():
         algo=tpe.suggest,
         max_evals=250,
         trials=trials,
-        timeout=60 * 30
+        timeout=60 * 60
     )
 
     def typer(o):
@@ -1815,7 +1815,7 @@ def HistGradientBoost_cv():
         algo=tpe.suggest,
         max_evals=150,
         trials=trials,
-        timeout=60 * 30
+        timeout=60 * 60
     )
 
     def typer(o):
@@ -1843,7 +1843,7 @@ def logistic_regression_cv():
         trials = Trials()
 
     space = {
-        'C': hp.randint('C', 0, 1000000)/10,
+        'C': 100,
         'l1_ratio': hp.uniform('l1_ratio', 0, 1),
         'fit_intercept': hp.choice('fit_intercept', [False, True]),
         'class_weight': hp.choice('class_weight', ['balanced', None])
@@ -2029,9 +2029,18 @@ def SVM():
     X = X * 0.9998 + 0.0001
 
     from sklearn.svm import SVC
-    with open("data/trials/SVM/space.json", 'r') as f:
-        space = json.loads(
-            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+    # with open("data/trials/SVM/space.json", 'r') as f:
+    #     space = json.loads(
+    #         f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    space = {
+        'C': 100,
+        'random_state': 42,
+        'kernel': {
+            'type': 'rbf',
+            'gamma': 'auto'
+        },
+    }
 
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
 
@@ -2647,17 +2656,25 @@ def Stacking(estimators='All'):
 
 def search_data_size():
     import feature_extractor as fe
-    from sklearn.tree import DecisionTreeClassifier
+    # from sklearn.tree import DecisionTreeClassifier
+    # from sklearn.naive_bayes import GaussianNB
     from sklearn.model_selection import KFold
 
-    sizes = list(range(5, 41, 1))
+    import xgboost as xgb
+
+    with open("data/trials/XGB/space.json", 'r') as f:
+        space = json.loads(
+            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
+
+    sizes = list(range(2, 41, 1))
     values = []
+
+    frame = pandas.read_csv('data/datasets/OUTPUT/dataset.csv')
+    cols = list(frame)[:-1]
 
     for size in sizes:
         print(size)
 
-        frame = pandas.read_csv('data/datasets/OUTPUT2/dataset.csv')
-        cols = [col for col in headers['stats'] if col in list(frame)][:-1]
         X = frame[cols]
         Y = frame['status'].to_numpy()
 
@@ -2665,16 +2682,16 @@ def search_data_size():
 
         X = X.to_numpy() * 0.9998 + 0.0001
 
-        trials = Trials()
+        # trials = Trials()
 
-        space = {
-            'criterion': hp.choice('criterion', ['gini', 'entropy']),
-            'splitter': hp.choice('splitter', ['best', 'random']),
-            'max_features': hp.choice('max_features', ['sqrt', 'log2', None]),
-            'max_depth': hp.randint('max_depth', 1, 100),
-            'min_samples_split': hp.uniform('min_samples_split', 0, 0.5),
-            'min_samples_leaf': hp.uniform('min_samples_leaf', 0, 0.5)
-        }
+        # space = {
+        #     'criterion': hp.choice('criterion', ['gini', 'entropy']),
+        #     'splitter': hp.choice('splitter', ['best', 'random']),
+        #     'max_features': hp.choice('max_features', ['sqrt', 'log2', None]),
+        #     'max_depth': hp.randint('max_depth', 1, 100),
+        #     'min_samples_split': hp.uniform('min_samples_split', 0, 0.5),
+        #     'min_samples_leaf': hp.uniform('min_samples_leaf', 0, 0.5)
+        # }
 
         def objective(space):
             stats = []
@@ -2684,35 +2701,50 @@ def search_data_size():
                 x_train, x_test = X[train_index], X[test_index]
                 y_train, y_test = Y[train_index], Y[test_index]
 
-                clf = DecisionTreeClassifier(
-                    criterion=space['criterion'],
-                    splitter=space['splitter'],
-                    max_features=space['max_features'],
-                    min_samples_leaf=space['min_samples_leaf'],
-                    min_samples_split=space['min_samples_split']
+                # clf = DecisionTreeClassifier(
+                #     criterion=space['criterion'],
+                #     splitter=space['splitter'],
+                #     max_features=space['max_features'],
+                #     min_samples_leaf=space['min_samples_leaf'],
+                #     min_samples_split=space['min_samples_split']
+                # )
+
+                clf = xgb.XGBClassifier(
+                    use_label_encoder=False,
+                    n_estimators=space['n_estimators'],
+                    max_depth=int(space['max_depth']),
+                    learning_rate=space['learning_rate'],
+                    gamma=space['gamma'],
+                    min_child_weight=space['min_child_weight'],
+                    subsample=space['subsample'],
+                    colsample_bytree=space['colsample_bytree']
                 )
+
+                # clf = GaussianNB()
 
                 clf.fit(x_train, y_train)
 
                 y_pred = clf.predict(x_test)
 
-                stats.append(accuracy_score(y_test, y_pred))
+                stats.append(roc_auc_score(y_test, y_pred))
 
             with concurrent.futures.ThreadPoolExecutor(5) as executor:
                 executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
 
             return {'loss': -np.average(stats), 'status': STATUS_OK, 'space': space}
 
-        fmin(
-            objective,
-            space,
-            algo=tpe.suggest,
-            max_evals=500,
-            trials=trials,
-            timeout=60 * 2
-        )
+        values.append(-objective(space)['loss'])
 
-        values.append(-trials.best_trial['result']['loss'])
+        # fmin(
+        #     objective,
+        #     space,
+        #     algo=tpe.suggest,
+        #     max_evals=1000,
+        #     trials=trials,
+        #     timeout=60 * 2
+        # )
+
+        # values.append(-trials.best_trial['result']['loss'])
 
     plt.plot(sizes, values)
     plt.title("поиск размерности")
@@ -2721,3 +2753,5 @@ def search_data_size():
     plt.show()
     plt.clf()
     plt.close()
+
+    print(values)

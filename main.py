@@ -90,7 +90,7 @@ if __name__ == "__main__":
     elif state == 7:
         fe.combine_datasets()
     elif state == 8:
-        fe.select_features(20)
+        fe.select_features(35)
     elif state == 9:
         from ml_algs import neural_networks_kfold
         neural_networks_kfold()
@@ -205,39 +205,45 @@ if __name__ == "__main__":
     elif state == 46:
         from ml_algs import *
 
-        # logistic_regression_cv()
-        # ET_cv()
-        # KNN_cv()
-        # RF_cv()
-        # XGB_cv()
+        DT_cv()
+        AdaBoost_DT_cv()
+        Bagging_DT_cv()
+        GradientBoost_cv()
+        HistGradientBoost_cv()
+        KNN_cv()
+        logistic_regression_cv()
+        ET_cv()
+        KNN_cv()
+        RF_cv()
+        XGB_cv()
 
-        # Bernoulli_NB()
-        # Complement_NB()
-        # Gaussian_NB()
-        # Multinomial_NB()
+        Bernoulli_NB()
+        Complement_NB()
+        Gaussian_NB()
+        Multinomial_NB()
 
-        # DT()
-        # AdaBoost_DT()
-        # Bagging_DT()
-        # ET()
-        # GradientBoost()
-        # HistGradientBoost()
-        # KNN()
-        # logistic_regression()
-        # RF()
-        # XGB()
-        # neural_networks()
+        DT()
+        AdaBoost_DT()
+        Bagging_DT()
+        ET()
+        GradientBoost()
+        HistGradientBoost()
+        KNN()
+        logistic_regression()
+        RF()
+        XGB()
+        neural_networks()
         SVM()
 
-        # Stacking("ET, B, LR")  # worst all with NB
+        Stacking("ET, B, LR")  # worst all with NB
 
-        # Stacking("AB, GB, XGB, HGB, RF, B, ET")    # all ansambles
-        # Stacking("AB, GB, XGB, HGB")  # best ansambles
-        # Stacking("B, ET")  # worst ansambles
+        Stacking("AB, GB, XGB, HGB, RF, B, ET")    # all ansambles
+        Stacking("AB, GB, XGB, HGB")  # best ansambles
+        Stacking("B, ET")  # worst ansambles
 
-        # Stacking("GNB, CNB, MNB, BNB")  # only naive Bayesan
+        Stacking("GNB, CNB, MNB, BNB")  # only naive Bayesan
 
-        # Stacking("DT, ANN, KNN")  # best models without NB
+        Stacking("DT, ANN, KNN")  # best models without NB
         Stacking("SVM, LR")  # worst models without NB
         Stacking("DT, ANN, KNN, SVM, LR, GNB, CNB, MNB, BNB")  # all models with NB
         Stacking("DT, ANN, KNN, SVM, LR")  # all models without NB
