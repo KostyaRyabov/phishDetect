@@ -34,7 +34,7 @@ progress = {'value': 0}
 def indicate(func):
     def wrapper(*args, **kwargs):
         global progress, p_v
-        print("{} -> [{}]".format(p_v, func.__name__))
+        print("{} -> [{}]\t---\t{}".format(p_v, func.__name__, datetime.now().time()))
         res = func(*args, **kwargs)
         p_v += 1
         progress['value'] = p_v
@@ -144,26 +144,41 @@ translator = Translator()
 phish_hints = load_phishHints()
 
 headers = [
-    'длина url',    # 3
-    'кол-во - в url',    # 8
-    'кол-во . в url',    # 9
-    'кол-во фишинговых слов в url',    # 12
-    'кол-во перенаправлений на сайт',    # 13
-    'кол-во перенаправлений на другие домены',    # 14
-    'кол-во случайных слов в хосте url',    # 17
-    'кол-во www в url',    # 19
-    'кол-во слов в url',    # 20
-    'средняя длина слова в url',    # 21
-    'максимальная длина слова в url',    # 22
-    'кол-во всех ссылок в основном контексте страницы',    # 23
-    'соотношение внутренних ссылок на сайты со всеми в основном контексте страницы',    # 24
-    'кол-во слов в тексте в основном контексте страницы',    # 31
-    'соотношение текста со всех изображений с основным текстом в основном контексте страницы',    # 32
-    'кол-во операций ввода/вывода во внутренне добавляемом коде страницы',    # 34
-    'кол-во операций ввода/вывода во внешне добавляемом коде страницы',    # 35
-    'рейтинг по Alexa',    # 37
-    'рейтинг по openpagerank',    # 38
-    'кол-во альтернативных имен в сертификате'    # 40
+    'коэффициент уникальности всех слов',
+    'длина url',
+    'кол-во ; в url',
+    'кол-во - в url',
+    'кол-во . в url',
+    'https',
+    'кол-во фишинговых слов в url',
+    'кол-во перенаправлений на сайт',
+    'кол-во перенаправлений на другие домены',
+    'случайный домен',
+    'кол-во случайных слов в url',
+    'кол-во случайных слов в хосте url',
+    'домен в брендах',
+    'кол-во www в url',
+    'кол-во слов в url',
+    'средняя длина слова в url',
+    'максимальная длина слова в url',
+    'кол-во всех ссылок в основном контексте страницы',
+    'соотношение внутренних ссылок на сайты со всеми в основном контексте страницы',
+    'соотношение пустых ссылок на сайты со всеми в основном контексте страницы',
+    'соотношение внутренних скриптов со всеми в основном контексте страницы',
+    'соотношение внутренних изображений со всеми в основном контексте страницы',
+    'соотношение внешних медиа со всеми в основном контексте страницы',
+    'соотношение небезопасных якорей со всеми в основном контексте страницы',
+    'соотношение безопасных якорей со всеми в основном контексте страницы',
+    'кол-во слов в тексте в основном контексте страницы',
+    'соотношение текста со всех изображений с основным текстом в основном контексте страницы',
+    'соотношение текста внутренних изображений с основным текстом в основном контексте страницы',
+    'кол-во операций ввода/вывода во внутренне добавляемом коде страницы',
+    'кол-во операций ввода/вывода во внешне добавляемом коде страницы',
+    'домен зарегестрирован',
+    'рейтинг по Alexa',
+    'рейтинг по openpagerank',
+    'срок действия сертификата',
+    'кол-во альтернативных имен в сертификате'
 ]
 
 
@@ -193,7 +208,7 @@ def clear_text(word_raw):
 #                                          Text segmentation
 ########################################################################################################################
 
-@indicate
+
 def segment(obj):
     return [word for str in [wordsegment.segment(word) for word in obj] for word in str]
 
@@ -294,13 +309,13 @@ def https_token(scheme):
 #               Check if TLD in bad position
 ########################################################################################################################
 
-@indicate
+
 def tld_in_path(tld, path):
     if path.lower().count(tld) > 0:
         return 1
     return 0
 
-@indicate
+
 def tld_in_subdomain(tld, subdomain):
     if subdomain.count(tld) > 0:
         return 1
@@ -459,7 +474,7 @@ def web_traffic(short_url):
 
         return min((int(rank) + 5e-07) / 10000000.0000005, 1)
     except:
-        return 0
+        return 1
 
 
 OPR_key = open("OPR_key.txt").read()
@@ -483,7 +498,7 @@ def page_rank(domain):
 #               Certificate information
 ########################################################################################################################
 
-@indicate
+
 def get_certificate(host, port=443, timeout=10):
     context = ssl.create_default_context()
     conn = socket.create_connection((host, port))
@@ -669,7 +684,7 @@ def translate_image(obj):
         resp = requests.get(obj[0], stream=True).raw
         image = np.asarray(bytearray(resp.read()), dtype="uint8")
         img = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        img = cv2.resize(img, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
+        img = cv2.resize(img, None, fx=0.35, fy=0.35, interpolation=cv2.INTER_AREA)
         img = cv2.GaussianBlur(img, (5, 5), 0)
         return pytesseract.image_to_string(img, lang=obj[1])
     except:
@@ -687,7 +702,7 @@ def image_to_text(img, lang):
         if type(img) == list:
             print('{} images to text'.format(len(img)))
 
-            with concurrent.futures.ThreadPoolExecutor(16) as executor:
+            with concurrent.futures.ThreadPoolExecutor(25) as executor:
                 res = executor.map(translate_image, [(url, lang) for url in img], timeout=15)       # todo: add config ratio parameter
                 docs = []
 
@@ -960,7 +975,7 @@ def extract_all_context_data(hostname, content, domain, base_url):
             if state:
                 docs.append(str(request.content))
 
-        with concurrent.futures.ThreadPoolExecutor(16) as executor:
+        with concurrent.futures.ThreadPoolExecutor(25) as executor:
             res = executor.map(load_script, script_lnks, timeout=15)  # todo: add config ratio parameter
 
             try:
@@ -1017,7 +1032,7 @@ def count_links(len):
 def count_words(len):
     return min(len / 990735, 1)
 
-@indicate
+
 def extract_features(url):
     try:
         @indicate
@@ -1043,11 +1058,19 @@ def extract_features(url):
             tmp = r_url[r_url.find(extracted_domain.suffix):len(r_url)]
             pth = tmp.partition("/")
             words_raw, words_raw_host, words_raw_path = words_raw_extraction(extracted_domain.domain, subdomain, pth[2])
+            parsed = urlparse(r_url)
+            scheme = parsed.scheme
 
             with concurrent.futures.ThreadPoolExecutor(2) as e:
                 cert = e.submit(get_cert, domain).result()
                 (Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc, externals_script_doc) = e.submit(
                     extract_all_context_data, hostname, content, domain, r_url).result()
+
+            content_di = get_html_from_js(remove_JScomments(internals_script_doc))
+            content_de = get_html_from_js(remove_JScomments(externals_script_doc))
+
+            Text_di = extract_text_context_data(content_di)
+            Text_de = extract_text_context_data(content_de)
 
             lang = check_Language(content)
 
@@ -1060,6 +1083,10 @@ def extract_features(url):
 
             url_words = tokenize_url(words_raw)
             sContent_words = clear_text(tokenize(Text.lower()))
+            diContent_words = clear_text(tokenize(Text_di.lower()))
+            deContent_words = clear_text(tokenize(Text_de.lower()))
+
+            Text_words = iImgTxt_words + eImgTxt_words + sContent_words + diContent_words + deContent_words
 
             iUrl_s = Href['internals'] + Link['internals'] + Media['internals'] + Form['internals']
             eUrl_s = Href['externals'] + Link['externals'] + Media['externals'] + Form['externals']
@@ -1067,33 +1094,47 @@ def extract_features(url):
 
             result = []
 
-            with concurrent.futures.ThreadPoolExecutor(20) as e:
+            with concurrent.futures.ThreadPoolExecutor(35) as e:
+                result.append(e.submit(word_ratio, Text_words).result())
                 result.append(e.submit(url_length, r_url).result())
+                result.append(e.submit(count_semicolumn, r_url).result())
                 result.append(e.submit(count_hyphens, r_url).result())
                 result.append(e.submit(count_dots, r_url).result())
+                result.append(e.submit(https_token, scheme).result())
                 result.append(e.submit(count_phish_hints, url_words, phish_hints, lang).result())
                 result.append(e.submit(count_redirection, request).result())
                 result.append(e.submit(count_external_redirection, request, domain).result())
+                result.append(e.submit(random_domain, second_level_domain).result())
+                result.append(e.submit(random_words, words_raw, 86).result())
                 result.append(e.submit(random_words, words_raw_host, 8).result())
+                result.append(e.submit(domain_in_brand, second_level_domain).result())
                 result.append(e.submit(count_www, words_raw).result())
                 result.append(e.submit(length_word_raw, words_raw).result())
                 result.append(e.submit(average_word_length, words_raw).result())
                 result.append(e.submit(longest_word_length, words_raw).result())
                 result.append(e.submit(count_links, len(iUrl_s) + len(eUrl_s)).result())
                 result.append(e.submit(urls_ratio, iUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
+                result.append(e.submit(urls_ratio, nUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
+                result.append(e.submit(ratio_List, SCRIPT, 'internals').result())
+                result.append(e.submit(ratio_List, Img, 'internals').result())
+                result.append(e.submit(ratio_List, Media, 'externals').result())
+                result.append(e.submit(ratio_anchor, Anchor, 'unsafe').result())
+                result.append(e.submit(ratio_anchor, Anchor, 'safe').result())
                 result.append(e.submit(count_words, len(sContent_words)).result())
                 result.append(e.submit(ratio_Txt, iImgTxt_words + eImgTxt_words, sContent_words).result())
+                result.append(e.submit(ratio_Txt, iImgTxt_words, sContent_words).result())
                 result.append(e.submit(count_io_commands, internals_script_doc, 487490).result())
                 result.append(e.submit(count_io_commands, externals_script_doc, 713513).result())
+                result.append(e.submit(whois_registered_domain, domain).result())
                 result.append(e.submit(web_traffic, r_url).result())
                 result.append(e.submit(page_rank, domain).result())
+                result.append(e.submit(valid_cert_period, cert).result())
                 result.append(e.submit(count_alt_names, cert).result())
 
             return result
         return request
     except Exception as ex:
-        print(ex)
-        return -2
+        return ex
 
 from tensorflow import keras
 
@@ -1216,128 +1257,6 @@ def filter_double_urls(urls):
 
 
 if __name__ == "__main__":
-    # @run_in_thread
-    # def check_site():
-    #     result.configure(state='normal')
-    #     result.delete(1.0, tk.END)
-    #
-    #     global p_v, progress
-    #     p_v = 0
-    #     progress['value'] = p_v
-    #
-    #     dtime = []
-    #     res = []
-    #
-    #     start = time()
-    #     data = extract_features(url.get().split()[1])
-    #     dtime.append(time() - start)
-    #
-    #     if type(data) is list:
-    #         data = np.array(data).reshape((1, -1))
-    #
-    #         result.configure(state='normal')
-    #         result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-    #
-    #         for i in range(len(m)):
-    #             start = time()
-    #
-    #             r = m[i].predict_proba(data)
-    #             dtime.append(time() - start)
-    #
-    #             res.append(r.tolist()[0][-1])
-    #             result.configure(state='normal')
-    #             result.insert(tk.END, ('\n'+estimators[i+1], res[-1]))
-    #             result.configure(state='disabled')
-    #             p_v += 1
-    #             result.configure(state='normal')
-    #             result.insert(tk.END, " -> {} sec".format(dtime[-1]))
-    #             result.configure(state='disabled')
-    #             progress['value'] = p_v
-    #
-    #
-    #         if os.path.isfile('data/logs/estimator_time.csv'):
-    #             pandas.DataFrame(dtime).T.to_csv('data/logs/estimator_time.csv', header=False, mode='a', index=False)
-    #         else:
-    #             pandas.DataFrame(dtime).T.to_csv('data/logs/estimator_time.csv', header=estimators, index=False)
-    #
-    #         df = pandas.read_csv('data/logs/estimator_time.csv')
-    #         pandas.DataFrame([estimators, df.mean(), df.max(), df.min()]).T.to_csv('data/logs/estimator_avg_time.csv',
-    #                                                                                header=['estimator', 'mean', 'max',
-    #                                                                                        'min'], index=False)
-    #
-    #         phish = int(url.get().split()[0])
-    #
-    #         if phish == 0:
-    #             res = [1-r for r in res]
-    #
-    #         df = pandas.DataFrame(res).T
-    #         df[-1] = int(url.get().split()[0])
-    #
-    #         if os.path.isfile('data/logs/estimator_rate.csv'):
-    #             df.to_csv('data/logs/estimator_rate.csv', header=False, index=False, mode='a')
-    #         else:
-    #             df.to_csv('data/logs/estimator_rate.csv', header=estimators[1:]+['phish'], index=False)
-    #
-    #         df = pandas.read_csv('data/logs/estimator_rate.csv')
-    #         df.sum().to_csv('data/logs/estimator_rate_voite.csv', header=['count'], index_label='estimator')
-    #         df.mean().to_csv('data/logs/estimator_rate_mean.csv', header=['rate'], index_label='estimator')
-    #
-    #         df[df['phish'] == 0].sum().to_csv('data/logs/estimator_rate_legit.csv', header=['count'],
-    #                                           index_label='estimator')
-    #         df[df['phish'] == 1].sum().to_csv('data/logs/estimator_rate_phish.csv', header=['count'],
-    #                                           index_label='estimator')
-    #
-    #         df[df['phish'] == 0].mean().to_csv('data/logs/estimator_rate_mean_legit.csv', header=['rate'],
-    #                                           index_label='estimator')
-    #         df[df['phish'] == 1].mean().to_csv('data/logs/estimator_rate_mean_phish.csv', header=['rate'],
-    #                                           index_label='estimator')
-    #     else:
-    #         result.configure(state='normal')
-    #         result.insert(tk.END, "ERROR: {}".format(data))
-    #         result.configure(state='disabled')
-    #
-    # window = tk.Tk()
-    # window.title("phishDetect")
-    # window.resizable(0, 0)
-    #
-    # url = tk.StringVar()
-    #
-    # textArea = tk.Entry(textvariable=url, width=80, exportselection=0)
-    # textArea.grid(column=0, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
-    #
-    # btn = tk.Button(window, text="check", command=check_site)
-    # btn.grid(column=1, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
-    #
-    # s = Style()
-    # s.theme_use("default")
-    # s.configure("TProgressbar", thickness=2)
-    #
-    # progress = Progressbar(
-    #     window,
-    #     orient=tk.HORIZONTAL,
-    #     maximum=83,
-    #     length=100,
-    #     mode='determinate',
-    #     style="TProgressbar"
-    # )
-    # progress.grid(column=0, row=2, columnspan=2,  sticky=tk.N + tk.S + tk.W + tk.E)
-    #
-    # scroll = tk.Scrollbar(window)
-    # scroll.grid(column=3, row=3, sticky=tk.N + tk.S + tk.W + tk.E)
-    #
-    # result = tk.Text(
-    #     window,
-    #     height=15,
-    #     width=80,
-    #     state='disabled',
-    #     yscrollcommand=scroll.set
-    # )
-    # result.grid(column=0, row=3, columnspan=2)
-    #
-    # scroll.config(command=result.yview)
-    #
-    # window.mainloop()
-
     # download_phishURLS()
 
 
@@ -1396,24 +1315,38 @@ if __name__ == "__main__":
             df = pandas.DataFrame(res).T
             df[-1] = phish
 
-            if os.path.isfile('data/logs/estimator_rate.csv'):
-                df.to_csv('data/logs/estimator_rate.csv', header=False, index=False, mode='a')
+            if os.path.isfile('data/logs/estimator_rate_records.csv'):
+                df.to_csv('data/logs/estimator_rate_records.csv', header=False, index=False, mode='a')
             else:
-                df.to_csv('data/logs/estimator_rate.csv', header=estimators[1:] + ['phish'], index=False)
+                df.to_csv('data/logs/estimator_rate_records.csv', header=estimators[1:] + ['phish'], index=False)
 
-            df = pandas.read_csv('data/logs/estimator_rate.csv')
-            df.sum().to_csv('data/logs/estimator_rate_voite.csv', header=['count'], index_label='estimator')
-            df.mean().to_csv('data/logs/estimator_rate_mean.csv', header=['rate'], index_label='estimator')
+            df = pandas.read_csv('data/logs/estimator_rate_records.csv')
 
-            df[df['phish'] == 0].sum().to_csv('data/logs/estimator_rate_legit.csv', header=['count'],
-                                              index_label='estimator')
-            df[df['phish'] == 1].sum().to_csv('data/logs/estimator_rate_phish.csv', header=['count'],
-                                              index_label='estimator')
+            df.mean().to_csv('data/logs/estimator_rate.csv', header=['rate'], index_label='estimator')
 
-            df[df['phish'] == 0].mean().to_csv('data/logs/estimator_rate_mean_legit.csv', header=['rate'],
+            df[df['phish'] == 0].mean().to_csv('data/logs/estimator_legit_rate.csv', header=['rate'],
                                                index_label='estimator')
-            df[df['phish'] == 1].mean().to_csv('data/logs/estimator_rate_mean_phish.csv', header=['rate'],
+            df[df['phish'] == 1].mean().to_csv('data/logs/estimator_phish_rate.csv', header=['rate'],
                                                index_label='estimator')
+
+
+            df = pandas.DataFrame(np.array(res).round().tolist())
+            df = (df == phish).astype(int).T
+
+            df[-1] = phish
+
+            if os.path.isfile('data/logs/estimator_vote_records.csv'):
+                df.to_csv('data/logs/estimator_vote_records.csv', header=False, index=False, mode='a')
+            else:
+                df.to_csv('data/logs/estimator_vote_records.csv', header=estimators[1:] + ['phish'], index=False)
+
+            df = pandas.read_csv('data/logs/estimator_vote_records.csv')
+            df.sum().to_csv('data/logs/estimator_vote.csv', header=['count'], index_label='estimator')
+
+            df[df['phish'] == 0].sum().to_csv('data/logs/estimator_legit_vote.csv', header=['count'],
+                                              index_label='estimator')
+            df[df['phish'] == 1].sum().to_csv('data/logs/estimator_phish_vote.csv', header=['count'],
+                                              index_label='estimator')
 
             return 1
         else:
@@ -1464,16 +1397,16 @@ if __name__ == "__main__":
 
 
     def loop_sites():
-        # url_list = filter_double_urls(pandas.read_csv('data/urls/phish/07-05-2021.csv', header=None)[0].tolist())[:300]
-        #
-        # count = 0
-        #
-        # for url in url_list:
-        #     count += check_site(url, 1)
+        url_list = filter_double_urls(pandas.read_csv('data/urls/phish/10-05-2021.csv', header=None)[0].tolist())
 
-        count = 36
+        count = 0
 
-        url_list = filter_double_urls(pandas.read_csv('data/urls/legitimate/18-01-2021.csv', header=None)[0].tolist())[1010:]
+        for url in url_list:
+            if count >= 200:
+                break
+            count += check_site(url, 1)
+
+        url_list = ['http://google.com']+filter_double_urls(pandas.read_csv('data/urls/legitimate/18-01-2021.csv', header=None)[0].tolist())
 
         for url in url_list:
             if count <= 0:
