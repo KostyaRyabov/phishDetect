@@ -2632,7 +2632,7 @@ def Stacking(estimators='All'):
 
     clf = StackingClassifier(
         estimators=models,
-        final_estimator=LogisticRegression(),
+        final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
         verbose=0,
         n_jobs=3
     )
@@ -2652,6 +2652,118 @@ def Stacking(estimators='All'):
     pickle.dump(clf, open('data/models/Stacking ({})/StackingClassifier.pkl'.format(estimators), 'wb'))
     with open("data/trials/Stacking ({})/stats.json".format(estimators), "w") as f:
         json.dump(stats, f)
+
+    print('\t\t[FINISH - Stacking ({})]'.format(estimators))
+
+
+def DoubleStacking():
+    global X
+
+    X = X * 0.998 + 0.001
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+    import xgboost as xgb
+    from sklearn.experimental import enable_hist_gradient_boosting
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    from sklearn.ensemble import AdaBoostClassifier
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.ensemble import ExtraTreesClassifier
+    from sklearn.ensemble import GradientBoostingClassifier
+    from sklearn.ensemble import BaggingClassifier
+
+    from sklearn.svm import SVC
+    from sklearn.tree import DecisionTreeClassifier
+    from sklearn.naive_bayes import BernoulliNB
+    from sklearn.naive_bayes import ComplementNB
+    from sklearn.naive_bayes import GaussianNB
+    from sklearn.naive_bayes import MultinomialNB
+    from sklearn.neighbors import KNeighborsClassifier
+
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.ensemble import StackingClassifier
+
+    clfs = {
+        "XGB": xgb.XGBClassifier(**pickle.load(open('data/trials/XGB/params.pkl', 'rb'))),
+        'LR': LogisticRegression(**pickle.load(open('data/trials/logistic_regression/params.pkl', 'rb'))),
+        'ANN': ann,
+        'SVM': SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+        'GNB': GaussianNB(),
+        'BNB': BernoulliNB(),
+        'CNB': ComplementNB(),
+        'MNB': MultinomialNB(),
+        'RF': RandomForestClassifier().set_params(**pickle.load(open('data/trials/RF/params.pkl', 'rb'))),
+        'HGB': HistGradientBoostingClassifier().set_params(
+            **pickle.load(open('data/trials/HistGradientBoost/params.pkl', 'rb'))),
+        'GB': GradientBoostingClassifier().set_params(
+            **pickle.load(open('data/trials/GradientBoost/params.pkl', 'rb'))),
+        'AB': AdaBoostClassifier().set_params(**pickle.load(open('data/trials/AdaBoost_DT/params.pkl', 'rb'))),
+        'KNN': KNeighborsClassifier().set_params(**pickle.load(open('data/trials/KNN/params.pkl', 'rb'))),
+        'ET': ExtraTreesClassifier().set_params(**pickle.load(open('data/trials/ET/params.pkl', 'rb'))),
+        'DT': DecisionTreeClassifier().set_params(**pickle.load(open('data/trials/DT/params.pkl', 'rb'))),
+        'B': BaggingClassifier().set_params(**pickle.load(open('data/trials/Bagging_DT/params.pkl', 'rb')))
+    }
+
+    l1 = {
+        's1': StackingClassifier(
+            estimators=[(t.upper(), clfs[t.upper()]) for t in
+                        'DT, KNN, SVM, LR, GNB, CNB, MNB, BNB'.replace(' ', '').split(',')],
+            final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+            verbose=0,
+            n_jobs=3
+        ),
+        's2': StackingClassifier(
+            estimators=[(t.upper(), clfs[t.upper()]) for t in 'AB, GB, XGB, HGB'.replace(' ', '').split(',')],
+            final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+            verbose=0,
+            n_jobs=3
+        ),
+        's3': StackingClassifier(
+            estimators=[(t.upper(), clfs[t.upper()]) for t in 'B, ET'.replace(' ', '').split(',')],
+            final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+            verbose=0,
+            n_jobs=3
+        ),
+        's4': StackingClassifier(
+            estimators=[(t.upper(), clfs[t.upper()]) for t in
+                        'GNB, CNB, MNB, BNB'.replace(' ', '').split(',')],
+            final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+            verbose=0,
+            n_jobs=3
+        ),
+        's5': StackingClassifier(
+            estimators=[(t.upper(), clfs[t.upper()]) for t in
+                        'SVM, LR'.replace(' ', '').split(',')],
+            final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+            verbose=0,
+            n_jobs=3
+        )
+    }
+
+    l2 = StackingClassifier(
+        estimators=list(l1.items()),
+        final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+        verbose=0,
+        n_jobs=1
+    )
+
+    l2.fit(x_train, y_train)
+    y_pred = l2.predict(x_test)
+
+    stats = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "auc": roc_auc_score(y_test, y_pred),
+        "f_score": f1_score(y_test, y_pred),
+        "mcc": matthews_corrcoef(y_test, y_pred)
+    }
+
+    pickle.dump(l2, open('data/models/DoubleStacking/StackingClassifier.pkl', 'wb'))
+    with open("data/trials/DoubleStacking/stats.json", "w") as f:
+        json.dump(stats, f)
+
+    print('\t\t[FINISH - DoubleStacking]')
 
 
 def search_data_size():
