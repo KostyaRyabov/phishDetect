@@ -1260,25 +1260,186 @@ if __name__ == "__main__":
     # download_phishURLS()
 
 
-    def check_site(url, phish):
-        url_str.set('{} {}'.format(phish,url))
+    # def check_site(url, phish):
+    #     url_str.set('{} {}'.format(phish,url))
+    #
+    #     global p_v, progress
+    #     p_v = 0
+    #     progress['value'] = p_v
+    #
+    #     dtime = []
+    #     res = []
+    #
+    #     start = time()
+    #     data = extract_features(url)
+    #     dtime.append(time() - start)
+    #
+    #     if type(data) is list:
+    #         result.configure(state='normal')
+    #         result.delete(1.0, tk.END)
+    #
+    #         data = np.array(data).reshape((1, -1)) * 0.998 + 0.001
+    #
+    #         result.configure(state='normal')
+    #         result.insert(tk.END, " -> {} sec".format(dtime[-1]))
+    #
+    #         for i in range(len(m)):
+    #             start = time()
+    #
+    #             r = m[i].predict_proba(data)
+    #             dtime.append(time() - start)
+    #
+    #             res.append(r.tolist()[0][-1])
+    #             result.configure(state='normal')
+    #             result.insert(tk.END, ('\n' + estimators[i + 1], res[-1]))
+    #             result.configure(state='disabled')
+    #             p_v += 1
+    #             result.configure(state='normal')
+    #             result.insert(tk.END, " -> {} sec".format(dtime[-1]))
+    #             result.configure(state='disabled')
+    #             progress['value'] = p_v
+    #
+    #         if os.path.isfile('data/logs/estimator_time.csv'):
+    #             pandas.DataFrame(dtime).T.to_csv('data/logs/estimator_time.csv', header=False, mode='a', index=False)
+    #         else:
+    #             pandas.DataFrame(dtime).T.to_csv('data/logs/estimator_time.csv', header=estimators, index=False)
+    #
+    #         df = pandas.read_csv('data/logs/estimator_time.csv')
+    #         pandas.DataFrame([estimators, df.mean(), df.max(), df.min()]).T.to_csv('data/logs/estimator_avg_time.csv',
+    #                                                                                header=['estimator', 'mean', 'max',
+    #                                                                                        'min'], index=False)
+    #
+    #         if phish == 0:
+    #             res = [1 - r for r in res]
+    #
+    #         df = pandas.DataFrame(res).T
+    #         df[-1] = phish
+    #
+    #         if os.path.isfile('data/logs/estimator_rate_records.csv'):
+    #             df.to_csv('data/logs/estimator_rate_records.csv', header=False, index=False, mode='a')
+    #         else:
+    #             df.to_csv('data/logs/estimator_rate_records.csv', header=estimators[1:] + ['phish'], index=False)
+    #
+    #         df = pandas.read_csv('data/logs/estimator_rate_records.csv')
+    #
+    #         df.mean().to_csv('data/logs/estimator_rate.csv', header=['rate'], index_label='estimator')
+    #
+    #         df[df['phish'] == 0].mean().to_csv('data/logs/estimator_legit_rate.csv', header=['rate'],
+    #                                            index_label='estimator')
+    #         df[df['phish'] == 1].mean().to_csv('data/logs/estimator_phish_rate.csv', header=['rate'],
+    #                                            index_label='estimator')
+    #
+    #
+    #         df = pandas.DataFrame(np.array(res).round().tolist())
+    #         df = (df == phish).astype(int).T
+    #
+    #         df[-1] = phish
+    #
+    #         if os.path.isfile('data/logs/estimator_vote_records.csv'):
+    #             df.to_csv('data/logs/estimator_vote_records.csv', header=False, index=False, mode='a')
+    #         else:
+    #             df.to_csv('data/logs/estimator_vote_records.csv', header=estimators[1:] + ['phish'], index=False)
+    #
+    #         df = pandas.read_csv('data/logs/estimator_vote_records.csv')
+    #         df.sum().to_csv('data/logs/estimator_vote.csv', header=['count'], index_label='estimator')
+    #
+    #         df[df['phish'] == 0].sum().to_csv('data/logs/estimator_legit_vote.csv', header=['count'],
+    #                                           index_label='estimator')
+    #         df[df['phish'] == 1].sum().to_csv('data/logs/estimator_phish_vote.csv', header=['count'],
+    #                                           index_label='estimator')
+    #
+    #         return 1
+    #     else:
+    #         result.configure(state='normal')
+    #         result.delete(1.0, tk.END)
+    #         result.insert(tk.END, "ERROR: {}".format(data))
+    #         result.configure(state='disabled')
+    #
+    #         return 0
+    #
+    #
+    # window = tk.Tk()
+    # window.title("phishDetect")
+    # window.resizable(0, 0)
+    #
+    # url_str = tk.StringVar()
+    #
+    # textArea = tk.Entry(textvariable=url_str, width=80, exportselection=0)
+    # textArea.grid(column=0, row=1, sticky=tk.N + tk.S + tk.W + tk.E)
+    #
+    # s = Style()
+    # s.theme_use("default")
+    # s.configure("TProgressbar", thickness=2)
+    #
+    # progress = Progressbar(
+    #     window,
+    #     orient=tk.HORIZONTAL,
+    #     maximum=83,
+    #     length=100,
+    #     mode='determinate',
+    #     style="TProgressbar"
+    # )
+    # progress.grid(column=0, row=2, columnspan=2, sticky=tk.N + tk.S + tk.W + tk.E)
+    #
+    # scroll = tk.Scrollbar(window)
+    # scroll.grid(column=3, row=3, sticky=tk.N + tk.S + tk.W + tk.E)
+    #
+    # result = tk.Text(
+    #     window,
+    #     height=15,
+    #     width=80,
+    #     state='disabled',
+    #     yscrollcommand=scroll.set
+    # )
+    # result.grid(column=0, row=3, columnspan=2)
+    #
+    # scroll.config(command=result.yview)
+    #
+    #
+    # def loop_sites():
+    #     url_list = filter_double_urls(pandas.read_csv('data/urls/phish/10-05-2021.csv', header=None)[0].tolist())
+    #
+    #     count = 0
+    #
+    #     for url in url_list:
+    #         if count >= 200:
+    #             break
+    #         count += check_site(url, 1)
+    #
+    #     url_list = ['http://google.com']+filter_double_urls(pandas.read_csv('data/urls/legitimate/18-01-2021.csv', header=None)[0].tolist())
+    #
+    #     for url in url_list:
+    #         if count <= 0:
+    #             break
+    #         count -= check_site(url, 0)
+    #
+    #
+    # t = threading.Thread(target=loop_sites)
+    # t.start()
+    #
+    # window.mainloop()
+    #
+    # t.join()
 
-        global p_v, progress
+    @run_in_thread
+    def check_site():
+        result.configure(state='normal')
+        result.delete(1.0, tk.END)
+
+        global p_v, progress, timer
         p_v = 0
         progress['value'] = p_v
 
         dtime = []
         res = []
+        timer = {}
 
         start = time()
-        data = extract_features(url)
+        data = extract_features(url.get().split()[1])
         dtime.append(time() - start)
 
         if type(data) is list:
-            result.configure(state='normal')
-            result.delete(1.0, tk.END)
-
-            data = np.array(data).reshape((1, -1)) * 0.998 + 0.001
+            data = np.array(extract_features(url.get().split()[1])).reshape((1, -1))
 
             result.configure(state='normal')
             result.insert(tk.END, " -> {} sec".format(dtime[-1]))
@@ -1289,7 +1450,10 @@ if __name__ == "__main__":
                 r = m[i].predict_proba(data)
                 dtime.append(time() - start)
 
-                res.append(r.tolist()[0][-1])
+                if 'neural' in estimators[i + 1]:
+                    res.append(r.tolist()[0][0])
+                else:
+                    res.append(r.tolist()[0][1])
                 result.configure(state='normal')
                 result.insert(tk.END, ('\n' + estimators[i + 1], res[-1]))
                 result.configure(state='disabled')
@@ -1298,74 +1462,44 @@ if __name__ == "__main__":
                 result.insert(tk.END, " -> {} sec".format(dtime[-1]))
                 result.configure(state='disabled')
                 progress['value'] = p_v
-
-            if os.path.isfile('data/logs/estimator_time.csv'):
-                pandas.DataFrame(dtime).T.to_csv('data/logs/estimator_time.csv', header=False, mode='a', index=False)
-            else:
-                pandas.DataFrame(dtime).T.to_csv('data/logs/estimator_time.csv', header=estimators, index=False)
-
-            df = pandas.read_csv('data/logs/estimator_time.csv')
-            pandas.DataFrame([estimators, df.mean(), df.max(), df.min()]).T.to_csv('data/logs/estimator_avg_time.csv',
-                                                                                   header=['estimator', 'mean', 'max',
-                                                                                           'min'], index=False)
-
-            if phish == 0:
-                res = [1 - r for r in res]
-
-            df = pandas.DataFrame(res).T
-            df[-1] = phish
-
-            if os.path.isfile('data/logs/estimator_rate_records.csv'):
-                df.to_csv('data/logs/estimator_rate_records.csv', header=False, index=False, mode='a')
-            else:
-                df.to_csv('data/logs/estimator_rate_records.csv', header=estimators[1:] + ['phish'], index=False)
-
-            df = pandas.read_csv('data/logs/estimator_rate_records.csv')
-
-            df.mean().to_csv('data/logs/estimator_rate.csv', header=['rate'], index_label='estimator')
-
-            df[df['phish'] == 0].mean().to_csv('data/logs/estimator_legit_rate.csv', header=['rate'],
-                                               index_label='estimator')
-            df[df['phish'] == 1].mean().to_csv('data/logs/estimator_phish_rate.csv', header=['rate'],
-                                               index_label='estimator')
-
-
-            df = pandas.DataFrame(np.array(res).round().tolist())
-            df = (df == phish).astype(int).T
-
-            df[-1] = phish
-
-            if os.path.isfile('data/logs/estimator_vote_records.csv'):
-                df.to_csv('data/logs/estimator_vote_records.csv', header=False, index=False, mode='a')
-            else:
-                df.to_csv('data/logs/estimator_vote_records.csv', header=estimators[1:] + ['phish'], index=False)
-
-            df = pandas.read_csv('data/logs/estimator_vote_records.csv')
-            df.sum().to_csv('data/logs/estimator_vote.csv', header=['count'], index_label='estimator')
-
-            df[df['phish'] == 0].sum().to_csv('data/logs/estimator_legit_vote.csv', header=['count'],
-                                              index_label='estimator')
-            df[df['phish'] == 1].sum().to_csv('data/logs/estimator_phish_vote.csv', header=['count'],
-                                              index_label='estimator')
-
-            return 1
         else:
             result.configure(state='normal')
-            result.delete(1.0, tk.END)
             result.insert(tk.END, "ERROR: {}".format(data))
             result.configure(state='disabled')
-
-            return 0
-
 
     window = tk.Tk()
     window.title("phishDetect")
     window.resizable(0, 0)
 
-    url_str = tk.StringVar()
+    mb = tk.Menubutton(window, text="settings", relief=tk.RAISED)
+    mb.grid(column=0, row=0, sticky=tk.N + tk.W, pady=(0, 10))
+    mb.menu = tk.Menu(mb, tearoff=0)
+    mb["menu"] = mb.menu
 
-    textArea = tk.Entry(textvariable=url_str, width=80, exportselection=0)
+    mayoVar = tk.IntVar()
+    ketchVar = tk.IntVar()
+
+    mb.menu.add_checkbutton(label="mayo",
+                            variable=mayoVar)
+    mb.menu.add_checkbutton(label="ketchup",
+                            variable=ketchVar)
+
+
+    def take_user_input_for_something():
+        user_input = simpledialog.askstring("Pop up for user input!", "What do you want to ask the user to input here?")
+        if user_input != "":
+            print(user_input)
+
+
+    mb.menu.add_command(label="Do something", command=take_user_input_for_something)
+
+    url = tk.StringVar()
+
+    textArea = tk.Entry(textvariable=url, width=80, exportselection=0)
     textArea.grid(column=0, row=1, sticky=tk.N + tk.S + tk.W + tk.E)
+
+    btn = tk.Button(window, text="check", command=check_site)
+    btn.grid(column=1, row=1, sticky=tk.N + tk.S + tk.W + tk.E)
 
     s = Style()
     s.theme_use("default")
@@ -1395,28 +1529,4 @@ if __name__ == "__main__":
 
     scroll.config(command=result.yview)
 
-
-    def loop_sites():
-        url_list = filter_double_urls(pandas.read_csv('data/urls/phish/10-05-2021.csv', header=None)[0].tolist())
-
-        count = 0
-
-        for url in url_list:
-            if count >= 200:
-                break
-            count += check_site(url, 1)
-
-        url_list = ['http://google.com']+filter_double_urls(pandas.read_csv('data/urls/legitimate/18-01-2021.csv', header=None)[0].tolist())
-
-        for url in url_list:
-            if count <= 0:
-                break
-            count -= check_site(url, 0)
-
-
-    t = threading.Thread(target=loop_sites)
-    t.start()
-
     window.mainloop()
-
-    t.join()

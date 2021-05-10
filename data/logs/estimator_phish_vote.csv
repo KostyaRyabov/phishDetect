@@ -1,0 +1,28 @@
+estimator,count
+AdaBoost_DT,194
+Bagging_DT,192
+Bernoulli_NB,0
+Complement_NB,191
+DT,189
+ET,198
+Gaussian_NB,188
+GradientBoost,200
+HistGradientBoost,200
+kNN,195
+logistic_regression,197
+Multinomial_NB,191
+neural_networks,196
+RF,199
+"Stacking (AB, GB, XGB, HGB)",197
+"Stacking (AB, GB, XGB, HGB, RF, B, ET)",198
+Stacking (All),200
+"Stacking (B, ET)",191
+"Stacking (DT, ANN, KNN)",198
+"Stacking (DT, ANN, KNN, SVM, LR)",196
+"Stacking (DT, ANN, KNN, SVM, LR, GNB, CNB, MNB, BNB)",198
+"Stacking (ET, B, LR)",192
+"Stacking (GNB, CNB, MNB, BNB)",189
+"Stacking (SVM, LR)",199
+SVM,196
+XGB,199
+phish,200
