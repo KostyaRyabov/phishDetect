@@ -1166,6 +1166,7 @@ m.append(pickle.load(open('data/models/Stacking (GNB, CNB, MNB, BNB)/StackingCla
 m.append(pickle.load(open('data/models/Stacking (SVM, LR)/StackingClassifier.pkl', 'rb')))
 m.append(pickle.load(open('data/models/SVM/SVM.pkl', 'rb')))
 m.append(pickle.load(open('data/models/XGB/XGB.pkl', 'rb')))
+m.append(pickle.load(open('data/models/DoubleStacking/StackingClassifier.pkl', 'rb')))
 
 
 estimators = [
@@ -1195,7 +1196,8 @@ estimators = [
     'Stacking (GNB, CNB, MNB, BNB)',
     'Stacking (SVM, LR)',
     "SVM",
-    "XGB"
+    "XGB",
+    'DoubleStacking'
 ]
 
 
@@ -1330,9 +1332,10 @@ if __name__ == "__main__":
     #                                            index_label='estimator')
     #
     #
+
     #         df = pandas.DataFrame(np.array(res).round().tolist())
+    #         df = pandas.read_csv('data/logs/estimator_vote_records.csv')
     #         df = (df == phish).astype(int).T
-    #
     #         df[-1] = phish
     #
     #         if os.path.isfile('data/logs/estimator_vote_records.csv'):
@@ -1341,6 +1344,8 @@ if __name__ == "__main__":
     #             df.to_csv('data/logs/estimator_vote_records.csv', header=estimators[1:] + ['phish'], index=False)
     #
     #         df = pandas.read_csv('data/logs/estimator_vote_records.csv')
+    #
+    #
     #         df.sum().to_csv('data/logs/estimator_vote.csv', header=['count'], index_label='estimator')
     #
     #         df[df['phish'] == 0].sum().to_csv('data/logs/estimator_legit_vote.csv', header=['count'],
@@ -1402,11 +1407,11 @@ if __name__ == "__main__":
     #     count = 0
     #
     #     for url in url_list:
-    #         if count >= 200:
+    #         if count >= 250:
     #             break
     #         count += check_site(url, 1)
     #
-    #     url_list = ['http://google.com']+filter_double_urls(pandas.read_csv('data/urls/legitimate/18-01-2021.csv', header=None)[0].tolist())
+    #     url_list = filter_double_urls(pandas.read_csv('data/urls/legitimate/18-01-2021.csv', header=None)[0].tolist())[3000:]
     #
     #     for url in url_list:
     #         if count <= 0:
@@ -1435,11 +1440,11 @@ if __name__ == "__main__":
         timer = {}
 
         start = time()
-        data = extract_features(url.get().split()[1])
+        data = extract_features(url.get())
         dtime.append(time() - start)
 
         if type(data) is list:
-            data = np.array(extract_features(url.get().split()[1])).reshape((1, -1))
+            data = np.array(data).reshape((1, -1)) * 0.998 + 0.001
 
             result.configure(state='normal')
             result.insert(tk.END, " -> {} sec".format(dtime[-1]))
