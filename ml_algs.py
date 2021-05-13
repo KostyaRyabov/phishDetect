@@ -2704,41 +2704,18 @@ def DoubleStacking():
         'B': BaggingClassifier().set_params(**pickle.load(open('data/trials/Bagging_DT/params.pkl', 'rb')))
     }
 
-    l1 = {
-        's1': StackingClassifier(
+    l2 = StackingClassifier(
             estimators=[(t.upper(), clfs[t.upper()]) for t in
-                        'DT, KNN, SVM, LR, GNB'.replace(' ', '').split(',')],
-            final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
-            verbose=0,
-            n_jobs=3
-        ),
-        's2': StackingClassifier(
-            estimators=[(t.upper(), clfs[t.upper()]) for t in 'AB, GB, XGB, HGB'.replace(' ', '').split(',')],
-            final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
-            verbose=0,
-            n_jobs=3
-        ),
-        's3': StackingClassifier(
-            estimators=[(t.upper(), clfs[t.upper()]) for t in 'SVM, ET, LR'.replace(' ', '').split(',')],
-            final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
-            verbose=0,
-            n_jobs=3
-        ),
-        's4': StackingClassifier(
-            estimators=[(t.upper(), clfs[t.upper()]) for t in
-                        'KNN, XGB, RF'.replace(' ', '').split(',')],
-            final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+                        'ANN, XGB, GB, RF'.replace(' ', '').split(',')],
+            final_estimator=StackingClassifier(
+                estimators=[(t.upper(), clfs[t.upper()]) for t in 'XGB, GB, RF'.replace(' ', '').split(',')],
+                final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+                verbose=0,
+                n_jobs=3
+            ),
             verbose=0,
             n_jobs=3
         )
-    }
-
-    l2 = StackingClassifier(
-        estimators=list(l1.items()),
-        final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
-        verbose=0,
-        n_jobs=1
-    )
 
     l2.fit(x_train, y_train)
     y_pred = l2.predict(x_test)
@@ -2752,8 +2729,8 @@ def DoubleStacking():
         "mcc": matthews_corrcoef(y_test, y_pred)
     }
 
-    pickle.dump(l2, open('data/models/DoubleStacking/StackingClassifier.pkl', 'wb'))
-    with open("data/trials/DoubleStacking/stats.json", "w") as f:
+    pickle.dump(l2, open('data/models/DoubleStacking/StackingClassifier2.pkl', 'wb'))
+    with open("data/trials/DoubleStacking/stats2.json", "w") as f:
         json.dump(stats, f)
 
     print('\t\t[FINISH - DoubleStacking]')
