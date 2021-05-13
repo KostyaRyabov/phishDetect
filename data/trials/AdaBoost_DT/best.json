@@ -1,1 +1,1 @@
-{"algorithm": 1, "criterion": 0, "learning_rate": 0.37, "max_depth": 7, "max_features": 1, "min_samples_leaf": 0.0015551931914470603, "min_samples_split": 0.0740720923248681, "n_estimators": 36, "splitter": 0}
+{"algorithm": 0, "criterion": 0, "learning_rate": 0.47000000000000003, "max_depth": 71, "max_features": 2, "min_samples_leaf": 0.0003495862212684331, "min_samples_split": 0.017415656621085594, "n_estimators": 27, "splitter": 0}

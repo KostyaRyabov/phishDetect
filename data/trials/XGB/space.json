@@ -1,1 +1,9 @@
-{'colsample_bytree': 0.29, 'gamma': 0.05, 'learning_rate': 0.21, 'max_depth': 17, 'min_child_weight': 1.0, 'n_estimators': 155, 'subsample': 1.0}
+{
+  'colsample_bytree': 0.28,
+  'gamma': 0.15,
+  'learning_rate': 0.17,
+  'max_depth': 23,
+  'min_child_weight': 3.0,
+  'n_estimators': 190,
+  'subsample': 0.88
+}
