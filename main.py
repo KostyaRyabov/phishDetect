@@ -681,7 +681,7 @@ def count_io_commands(string, limit):
 
 def translate_image(obj):
     try:
-        resp = requests.get(obj[0], stream=True).raw
+        resp = requests.get(obj[0], stream=True, timeout=3).raw
         image = np.asarray(bytearray(resp.read()), dtype="uint8")
         img = cv2.imdecode(image, cv2.IMREAD_COLOR)
         img = cv2.resize(img, None, fx=0.35, fy=0.35, interpolation=cv2.INTER_AREA)
@@ -702,18 +702,19 @@ def image_to_text(img, lang):
         if type(img) == list:
             print('{} images to text'.format(len(img)))
 
-            with concurrent.futures.ThreadPoolExecutor(25) as executor:
-                res = executor.map(translate_image, [(url, lang) for url in img], timeout=15)       # todo: add config ratio parameter
-                docs = []
+            try:
+                with concurrent.futures.ThreadPoolExecutor(25) as executor:
+                    res = executor.map(translate_image, [(url, lang) for url in img],
+                                       timeout=15)  # todo: add config ratio parameter
+                    docs = []
 
-                try:
                     for r in res:
                         if r:
                             docs.append(r)
-                except concurrent.futures._base.TimeoutError:
-                    print("TIMEOUT")
+            except concurrent.futures._base.TimeoutError:
+                print("TIMEOUT")
 
-                return "\n".join(docs)
+            return "\n".join(docs)
         else:
             txt = pytesseract.image_to_string(img, lang=lang)
             return txt
@@ -975,15 +976,15 @@ def extract_all_context_data(hostname, content, domain, base_url):
             if state:
                 docs.append(str(request.content))
 
-        with concurrent.futures.ThreadPoolExecutor(25) as executor:
-            res = executor.map(load_script, script_lnks, timeout=15)  # todo: add config ratio parameter
+        try:
+            with concurrent.futures.ThreadPoolExecutor(25) as executor:
+                res = executor.map(load_script, script_lnks, timeout=15)  # todo: add config ratio parameter
 
-            try:
                 for r in res:
                     if r:
                         docs.append(r)
-            except concurrent.futures._base.TimeoutError:
-                print("TIMEOUT")
+        except concurrent.futures._base.TimeoutError:
+            print("TIMEOUT")
 
         return "\n".join(docs)
 
@@ -1314,8 +1315,7 @@ if __name__ == "__main__":
     #         if phish == 0:
     #             res = [1 - r for r in res]
     #
-    #         df = pandas.DataFrame(res).T
-    #         df[-1] = phish
+    #         df = pandas.DataFrame(res + [phish]).T
     #
     #         if os.path.isfile('data/logs/estimator_rate_records.csv'):
     #             df.to_csv('data/logs/estimator_rate_records.csv', header=False, index=False, mode='a')
@@ -1332,11 +1332,8 @@ if __name__ == "__main__":
     #                                            index_label='estimator')
     #
     #
-
-    #         df = pandas.DataFrame(np.array(res).round().tolist())
-    #         df = pandas.read_csv('data/logs/estimator_vote_records.csv')
-    #         df = (df == phish).astype(int).T
-    #         df[-1] = phish
+    #
+    #         df = pandas.DataFrame(np.array(res).round().tolist() + [phish]).T
     #
     #         if os.path.isfile('data/logs/estimator_vote_records.csv'):
     #             df.to_csv('data/logs/estimator_vote_records.csv', header=False, index=False, mode='a')
@@ -1345,12 +1342,11 @@ if __name__ == "__main__":
     #
     #         df = pandas.read_csv('data/logs/estimator_vote_records.csv')
     #
+    #         (df.sum() / len(df)).to_csv('data/logs/estimator_vote.csv', header=['count'], index_label='estimator')
     #
-    #         df.sum().to_csv('data/logs/estimator_vote.csv', header=['count'], index_label='estimator')
-    #
-    #         df[df['phish'] == 0].sum().to_csv('data/logs/estimator_legit_vote.csv', header=['count'],
+    #         (df[df['phish'] == 0].sum() / len(df[df['phish'] == 0])).to_csv('data/logs/estimator_legit_vote.csv', header=['count'],
     #                                           index_label='estimator')
-    #         df[df['phish'] == 1].sum().to_csv('data/logs/estimator_phish_vote.csv', header=['count'],
+    #         (df[df['phish'] == 1].sum() / len(df[df['phish'] == 1])).to_csv('data/logs/estimator_phish_vote.csv', header=['count'],
     #                                           index_label='estimator')
     #
     #         return 1
@@ -1402,16 +1398,18 @@ if __name__ == "__main__":
     #
     #
     # def loop_sites():
-    #     url_list = filter_double_urls(pandas.read_csv('data/urls/phish/10-05-2021.csv', header=None)[0].tolist())
+    #     # url_list = filter_double_urls(pandas.read_csv('data/urls/phish/13-05-2021.csv', header=None)[0].tolist())[1500:]
+    #     #
+    #     # count = 0
+    #     #
+    #     # for url in url_list:
+    #     #     if count >= 42:
+    #     #         break
+    #     #     count += check_site(url, 1)
     #
-    #     count = 0
+    #     count = 250
     #
-    #     for url in url_list:
-    #         if count >= 250:
-    #             break
-    #         count += check_site(url, 1)
-    #
-    #     url_list = filter_double_urls(pandas.read_csv('data/urls/legitimate/18-01-2021.csv', header=None)[0].tolist())[3000:]
+    #     url_list = pandas.read_csv('data/urls/legitimate/18-01-2021.csv', header=None)[0][2000:]
     #
     #     for url in url_list:
     #         if count <= 0:
@@ -1441,7 +1439,7 @@ if __name__ == "__main__":
 
         start = time()
         data = extract_features(url.get())
-        dtime.append(time() - start)
+        dtime.append(time() - start
 
         if type(data) is list:
             data = np.array(data).reshape((1, -1)) * 0.998 + 0.001

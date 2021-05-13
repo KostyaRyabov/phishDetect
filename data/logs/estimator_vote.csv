@@ -1,29 +1,29 @@
 estimator,count
-AdaBoost_DT,436
-Bagging_DT,428
-Bernoulli_NB,250
-Complement_NB,433
-DT,433
-ET,450
-Gaussian_NB,421
-GradientBoost,461
-HistGradientBoost,461
-kNN,473
-logistic_regression,443
-Multinomial_NB,433
-neural_networks,439
-RF,444
-"Stacking (AB, GB, XGB, HGB)",416
-"Stacking (AB, GB, XGB, HGB, RF, B, ET)",457
-Stacking (All),461
-"Stacking (B, ET)",446
-"Stacking (DT, ANN, KNN)",470
-"Stacking (DT, ANN, KNN, SVM, LR)",467
-"Stacking (DT, ANN, KNN, SVM, LR, GNB, CNB, MNB, BNB)",470
-"Stacking (ET, B, LR)",450
-"Stacking (GNB, CNB, MNB, BNB)",417
-"Stacking (SVM, LR)",457
-SVM,455
-XGB,470
-DoubleStacking,480
-phish,250
+AdaBoost_DT,0.867
+Bagging_DT,0.862
+Bernoulli_NB,0.5
+Complement_NB,0.895
+DT,0.88
+ET,0.907
+Gaussian_NB,0.857
+GradientBoost,0.92
+HistGradientBoost,0.924
+kNN,0.932
+logistic_regression,0.878
+Multinomial_NB,0.895
+neural_networks,0.908
+RF,0.913
+"Stacking (AB, GB, XGB, HGB)",0.823
+"Stacking (AB, GB, XGB, HGB, RF, B, ET)",0.849
+Stacking (All),0.854
+"Stacking (B, ET)",0.894
+"Stacking (DT, ANN, KNN)",0.918
+"Stacking (DT, ANN, KNN, SVM, LR)",0.907
+"Stacking (DT, ANN, KNN, SVM, LR, GNB, CNB, MNB, BNB)",0.91
+"Stacking (ET, B, LR)",0.872
+"Stacking (GNB, CNB, MNB, BNB)",0.848
+"Stacking (SVM, LR)",0.912
+SVM,0.901
+XGB,0.936
+DoubleStacking,0.952
+phish,0.5
