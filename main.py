@@ -1439,7 +1439,7 @@ if __name__ == "__main__":
 
         start = time()
         data = extract_features(url.get())
-        dtime.append(time() - start
+        dtime.append(time() - start)
 
         if type(data) is list:
             data = np.array(data).reshape((1, -1)) * 0.998 + 0.001
