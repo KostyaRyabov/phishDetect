@@ -1,4 +1,4 @@
-state = 47
+state = 49
 
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
@@ -234,7 +234,7 @@ if __name__ == "__main__":
         # XGB()
         # neural_networks()
         # SVM()
-
+        #
         # Stacking("ET, B, LR")  # worst all with NB
         #
         # Stacking("AB, GB, XGB, HGB, RF, B, ET")    # all ansambles
@@ -242,9 +242,9 @@ if __name__ == "__main__":
         # Stacking("B, ET")  # worst ansambles
         #
         # Stacking("GNB, CNB, MNB, BNB")  # only naive Bayesan
-        #
-        # Stacking("DT, ANN, KNN")  # best models without NB
-        # Stacking("SVM, LR")  # worst models without NB
+
+        Stacking("DT, ANN, KNN")  # best models without NB
+        Stacking("SVM, LR")  # worst models without NB
         Stacking("DT, ANN, KNN, SVM, LR, GNB, CNB, MNB, BNB")  # all models with NB
         Stacking("DT, ANN, KNN, SVM, LR")  # all models without NB
 

@@ -671,7 +671,7 @@ def neural_networks():
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     metrics = [
         'accuracy',
@@ -1943,7 +1943,7 @@ def XGB():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
     # x_test, x_val, y_test, y_val = train_test_split(x_test, y_test, test_size=0.5, random_state=5)
 
     clf = xgb.XGBClassifier(
@@ -1993,7 +1993,7 @@ def DT():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = DecisionTreeClassifier(
         criterion=space['criterion'],
@@ -2042,7 +2042,7 @@ def SVM():
         },
     }
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = SVC(
         C=space['C'],
@@ -2084,7 +2084,7 @@ def KNN():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = KNeighborsClassifier(
         n_neighbors=space['k'],
@@ -2116,7 +2116,7 @@ def KNN():
 def Gaussian_NB():
     from sklearn.naive_bayes import GaussianNB
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = GaussianNB()
     clf.fit(x_train, y_train)
@@ -2139,7 +2139,7 @@ def Gaussian_NB():
 
 def Bernoulli_NB():
     from sklearn.naive_bayes import BernoulliNB
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = BernoulliNB()
     clf.fit(x_train, y_train)
@@ -2162,7 +2162,7 @@ def Bernoulli_NB():
 
 def Complement_NB():
     from sklearn.naive_bayes import ComplementNB
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = ComplementNB()
     clf.fit(x_train, y_train)
@@ -2185,7 +2185,7 @@ def Complement_NB():
 
 def Multinomial_NB():
     from sklearn.naive_bayes import MultinomialNB
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = MultinomialNB()
     clf.fit(x_train, y_train)
@@ -2220,7 +2220,7 @@ def ET():
         space_DT = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = ExtraTreesClassifier(
         n_estimators=space['n_estimators'],
@@ -2263,7 +2263,7 @@ def RF():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = RandomForestClassifier(
         n_estimators=space['n_estimators'],
@@ -2307,7 +2307,7 @@ def AdaBoost_DT():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = AdaBoostClassifier(
         DecisionTreeClassifier().set_params(**pickle.load(open('data/trials/DT/params.pkl', 'rb'))),
@@ -2345,7 +2345,7 @@ def Bagging_DT():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = BaggingClassifier(
         DecisionTreeClassifier().set_params(**pickle.load(open('data/trials/DT/params.pkl', 'rb'))),
@@ -2384,7 +2384,7 @@ def GradientBoost():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = GradientBoostingClassifier(
         n_estimators=space['n_estimators'],
@@ -2427,7 +2427,7 @@ def HistGradientBoost():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=5)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = HistGradientBoostingClassifier(
         learning_rate=space['learning_rate'],
@@ -2465,10 +2465,10 @@ def logistic_regression():
         space = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     clf = LogisticRegression(
-        random_state=41,
+        random_state=5,
         multi_class='ovr',
         n_jobs=2,
         C=space['C'],
@@ -2581,7 +2581,7 @@ def Stacking(estimators='All'):
     global X
 
     X = X * 0.998 + 0.001
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     import xgboost as xgb
     from sklearn.experimental import enable_hist_gradient_boosting
@@ -2660,7 +2660,7 @@ def DoubleStacking():
     global X
 
     X = X * 0.998 + 0.001
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     import xgboost as xgb
     from sklearn.experimental import enable_hist_gradient_boosting
@@ -2707,7 +2707,7 @@ def DoubleStacking():
     l1 = {
         's1': StackingClassifier(
             estimators=[(t.upper(), clfs[t.upper()]) for t in
-                        'DT, KNN, SVM, LR, GNB, CNB, MNB, BNB'.replace(' ', '').split(',')],
+                        'DT, KNN, SVM, LR, GNB'.replace(' ', '').split(',')],
             final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
             verbose=0,
             n_jobs=3
@@ -2719,21 +2719,14 @@ def DoubleStacking():
             n_jobs=3
         ),
         's3': StackingClassifier(
-            estimators=[(t.upper(), clfs[t.upper()]) for t in 'B, ET'.replace(' ', '').split(',')],
+            estimators=[(t.upper(), clfs[t.upper()]) for t in 'SVM, ET, LR'.replace(' ', '').split(',')],
             final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
             verbose=0,
             n_jobs=3
         ),
         's4': StackingClassifier(
             estimators=[(t.upper(), clfs[t.upper()]) for t in
-                        'GNB, CNB, MNB, BNB'.replace(' ', '').split(',')],
-            final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
-            verbose=0,
-            n_jobs=3
-        ),
-        's5': StackingClassifier(
-            estimators=[(t.upper(), clfs[t.upper()]) for t in
-                        'SVM, LR'.replace(' ', '').split(',')],
+                        'KNN, XGB, RF'.replace(' ', '').split(',')],
             final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
             verbose=0,
             n_jobs=3
