@@ -381,8 +381,8 @@ def random_domain(second_level_domain):
 ########################################################################################################################
 
 @indicate
-def random_words(words_raw, limit):
-    return min(len([word for str in [segment([word]) for word in words_raw] for word in str if
+def random_words(url_words, limit):
+    return min(len([word for str in [segment([word]) for word in url_words] for word in str if
                 word not in WORDS + brand_list]) / limit, 1)
 
 
@@ -408,9 +408,9 @@ def domain_in_brand(second_level_domain):
 ########################################################################################################################
 
 @indicate
-def count_www(words_raw):
+def count_www(url_words):
     count = 0
-    for word in words_raw:
+    for word in url_words:
         if not word.find('www') == -1:
             count += 1
     return min(count / 5, 1)
@@ -421,8 +421,8 @@ def count_www(words_raw):
 ########################################################################################################################
 
 @indicate
-def length_word_raw(words_raw):
-    return min(len(words_raw) / 208, 1)
+def length_word_raw(url_words):
+    return min(len(url_words) / 208, 1)
 
 
 ########################################################################################################################
@@ -430,10 +430,10 @@ def length_word_raw(words_raw):
 ########################################################################################################################
 
 @indicate
-def average_word_length(words_raw):
-    if len(words_raw) == 0:
+def average_word_length(url_words):
+    if len(url_words) == 0:
         return 0
-    return min((sum(len(word) for word in words_raw) / len(words_raw) / 23), 1)
+    return min((sum(len(word) for word in url_words) / len(url_words) / 23), 1)
 
 
 ########################################################################################################################
@@ -441,10 +441,10 @@ def average_word_length(words_raw):
 ########################################################################################################################
 
 @indicate
-def longest_word_length(words_raw):
-    if len(words_raw) == 0:
+def longest_word_length(url_words):
+    if len(url_words) == 0:
         return 0
-    return min(max(len(word) for word in words_raw) / 24, 1)
+    return min(max(len(word) for word in url_words) / 24, 1)
 
 
 ########################################################################################################################
@@ -1068,7 +1068,7 @@ def extract_features(url):
             subdomain = extracted_domain.subdomain
             tmp = r_url[r_url.find(extracted_domain.suffix):len(r_url)]
             pth = tmp.partition("/")
-            words_raw, words_raw_host, words_raw_path = words_raw_extraction(extracted_domain.domain, subdomain, pth[2])
+            url_words, words_raw_host, words_raw_path = words_raw_extraction(extracted_domain.domain, subdomain, pth[2])
             parsed = urlparse(r_url)
             scheme = parsed.scheme
 
@@ -1092,7 +1092,6 @@ def extract_features(url):
             iImgTxt_words = clear_text(tokenize(internals_img_txt.lower()))
             eImgTxt_words = clear_text(tokenize(externals_img_txt.lower()))
 
-            url_words = segment(words_raw)
             sContent_words = clear_text(tokenize(Text.lower()))
             diContent_words = clear_text(tokenize(Text_di.lower()))
             deContent_words = clear_text(tokenize(Text_de.lower()))
@@ -1116,13 +1115,13 @@ def extract_features(url):
                 result.append(e.submit(count_redirection, request).result())
                 result.append(e.submit(count_external_redirection, request, domain).result())
                 result.append(e.submit(random_domain, second_level_domain).result())
-                result.append(e.submit(random_words, words_raw, 86).result())
+                result.append(e.submit(random_words, url_words, 86).result())
                 result.append(e.submit(random_words, words_raw_host, 8).result())
                 result.append(e.submit(domain_in_brand, second_level_domain).result())
-                result.append(e.submit(count_www, words_raw).result())
-                result.append(e.submit(length_word_raw, words_raw).result())
-                result.append(e.submit(average_word_length, words_raw).result())
-                result.append(e.submit(longest_word_length, words_raw).result())
+                result.append(e.submit(count_www, url_words).result())
+                result.append(e.submit(length_word_raw, url_words).result())
+                result.append(e.submit(average_word_length, url_words).result())
+                result.append(e.submit(longest_word_length, url_words).result())
                 result.append(e.submit(count_links, len(iUrl_s) + len(eUrl_s)).result())
                 result.append(e.submit(urls_ratio, iUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
                 result.append(e.submit(urls_ratio, nUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
@@ -1185,14 +1184,12 @@ if __name__ == "__main__":
 
             p_v += 1
             progress['value'] = p_v
-
-            print(p_v)
         else:
             result.configure(state='normal')
             result.insert(tk.END, "ERROR: {}".format(data))
             result.configure(state='disabled')
 
-            progress['value'] = 69
+            progress['value'] = 68
 
     window = tk.Tk()
     window.title("phishDetect")
@@ -1213,7 +1210,7 @@ if __name__ == "__main__":
     progress = Progressbar(
         window,
         orient=tk.HORIZONTAL,
-        maximum=69,
+        maximum=68,
         length=100,
         mode='determinate',
         style="TProgressbar"
