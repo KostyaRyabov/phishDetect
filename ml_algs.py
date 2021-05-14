@@ -2707,7 +2707,13 @@ def DoubleStacking():
     l2 = StackingClassifier(
             estimators=[(t.upper(), clfs[t.upper()]) for t in
                         'ANN, XGB, GB, RF'.replace(' ', '').split(',')],
-            final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+            final_estimator=StackingClassifier(
+                estimators=[(t.upper(), clfs[t.upper()]) for t in
+                            'XGB, GB, RF'.replace(' ', '').split(',')],
+                final_estimator=SVC().set_params(**pickle.load(open('data/trials/SVM/params.pkl', 'rb'))),
+                verbose=0,
+                n_jobs=3
+            ),
             verbose=0,
             n_jobs=3
         )
