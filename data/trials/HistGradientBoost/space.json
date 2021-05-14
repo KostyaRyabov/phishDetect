@@ -1,1 +1,6 @@
-{'learning_rate': 0.32, 'loss': 'binary_crossentropy', 'max_depth': 21, 'min_samples_leaf': 43}
+{
+  'learning_rate': 0.32,
+  'loss': 'binary_crossentropy',
+  'max_depth': 21,
+  'min_samples_leaf': 43
+}
