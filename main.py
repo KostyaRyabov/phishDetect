@@ -367,7 +367,7 @@ def count_external_redirection(page, domain):
 #               Is the registered domain created with random characters
 ########################################################################################################################
 
-@indicate
+
 def random_domain(second_level_domain):
     for word in segment([second_level_domain]):
         if word not in WORDS + brand_list:
@@ -1148,7 +1148,7 @@ def extract_features(url):
         return ex
 
 
-m = pickle.load(open('data/models/Stacking (AB, GB, XGB, HGB, RF, B, ET)/StackingClassifier.pkl', 'rb'))
+m = pickle.load(open('data/models/DoubleStacking/StackingClassifier.pkl', 'rb'))
 
 
 from colour import Color
@@ -1163,7 +1163,7 @@ if __name__ == "__main__":
         result.configure(state='disabled')
 
         global p_v, progress
-        p_v = 0
+        p_v = 1
         progress['value'] = p_v
 
         data = extract_features(url.get().strip())
@@ -1177,17 +1177,22 @@ if __name__ == "__main__":
             result.configure(background=Color(hsl=(0.2778*(1-res), 1, 0.5)).get_hex_l())
 
             if res < 0.5:
-                result.insert(tk.END, "\nС {:3.1f}% вероятностью это легитимный сайт!".format((1-res)*100), 'tag-center')
+                result.insert(tk.END, "\nЭто легитимный сайт!".format((1-res)*100), 'tag-center')
             else:
-                result.insert(tk.END, "\nС {:3.1f}% вероятностью это фишинговый сайт!".format(res * 100), 'tag-center')
+                result.insert(tk.END, "\nЭто фишинговый сайт!".format(res * 100), 'tag-center')
 
             result.configure(state='disabled')
+
             p_v += 1
             progress['value'] = p_v
+
+            print(p_v)
         else:
             result.configure(state='normal')
             result.insert(tk.END, "ERROR: {}".format(data))
             result.configure(state='disabled')
+
+            progress['value'] = 69
 
     window = tk.Tk()
     window.title("phishDetect")
@@ -1208,7 +1213,7 @@ if __name__ == "__main__":
     progress = Progressbar(
         window,
         orient=tk.HORIZONTAL,
-        maximum=139,
+        maximum=69,
         length=100,
         mode='determinate',
         style="TProgressbar"
