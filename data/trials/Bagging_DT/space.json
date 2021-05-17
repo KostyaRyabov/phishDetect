@@ -1,1 +1,0 @@
-{'bootstrap': {'oob_score': False, 'value': False}, 'bootstrap_features': False, 'criterion': 'gini', 'max_depth': 82, 'max_features': 'sqrt', 'min_samples_leaf': 0.00802849613027347, 'min_samples_split': 0.02545092161513072, 'n_estimators': 195, 'splitter': 'best'}

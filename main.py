@@ -1,12 +1,10 @@
-import os
-
-import pandas
+import sys
+from colour import Color
 import tldextract
 import concurrent.futures
 from urllib.parse import urlparse, urlsplit, urljoin
 from nltk.tokenize import RegexpTokenizer
 import wordsegment
-from nltk.corpus import stopwords, brown
 import numpy as np
 from googletrans import Translator
 import cv2
@@ -31,10 +29,10 @@ from tkinter.ttk import Progressbar, Style
 p_v = 0
 progress = {'value': 0}
 
+
 def indicate(func):
     def wrapper(*args, **kwargs):
         global progress, p_v
-        print("{} -> [{}]\t---\t{}".format(p_v, func.__name__, datetime.now().time()))
         res = func(*args, **kwargs)
         p_v += 1
         progress['value'] = p_v
@@ -42,8 +40,6 @@ def indicate(func):
 
     return wrapper
 
-
-import sys
 
 progress_task = None
 
@@ -91,104 +87,17 @@ def run_in_thread(fn):
     return run
 
 
+http_header = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
 pytesseract.pytesseract.tesseract_cmd = r'C:/Program Files (x86)/Tesseract-OCR/tesseract.exe'
 
-
-def load_phishHints():
-    hints_dir = "data/phish_hints/"
-    file_list = os.listdir(hints_dir)
-
-    if file_list:
-        return {leng[0:2]: pandas.read_csv(hints_dir + leng, header=None)[0].tolist() for leng in file_list}
-    else:
-        hints = {'en': [
-            'login',
-            'logon',
-            'sign',
-            'account',
-            'authorization',
-            'registration',
-            'user',
-            'password',
-            'pay',
-            'name',
-            'profile',
-            'mail',
-            'pass',
-            'reg',
-            'log',
-            'auth',
-            'psw',
-            'nickname',
-            'enter',
-            'bank',
-            'card',
-            'pincode',
-            'phone',
-            'key',
-            'visa',
-            'cvv',
-            'cvp',
-            'cvc',
-            'ccv'
-        ]
-        }
-
-        data = pandas.DataFrame(hints)
-        filename = "data/phish_hints/en.csv"
-        data.to_csv(filename, index=False, header=False)
-
-        return hints
-
 translator = Translator()
-phish_hints = load_phishHints()
-
-headers = [
-    'коэффициент уникальности всех слов',
-    'длина url',
-    'кол-во ; в url',
-    'кол-во - в url',
-    'кол-во . в url',
-    'https',
-    'кол-во фишинговых слов в url',
-    'кол-во перенаправлений на сайт',
-    'кол-во перенаправлений на другие домены',
-    'случайный домен',
-    'кол-во случайных слов в url',
-    'кол-во случайных слов в хосте url',
-    'домен в брендах',
-    'кол-во www в url',
-    'кол-во слов в url',
-    'средняя длина слова в url',
-    'максимальная длина слова в url',
-    'кол-во всех ссылок в основном контексте страницы',
-    'соотношение внутренних ссылок на сайты со всеми в основном контексте страницы',
-    'соотношение пустых ссылок на сайты со всеми в основном контексте страницы',
-    'соотношение внутренних скриптов со всеми в основном контексте страницы',
-    'соотношение внутренних изображений со всеми в основном контексте страницы',
-    'соотношение внешних медиа со всеми в основном контексте страницы',
-    'соотношение небезопасных якорей со всеми в основном контексте страницы',
-    'соотношение безопасных якорей со всеми в основном контексте страницы',
-    'кол-во слов в тексте в основном контексте страницы',
-    'соотношение текста со всех изображений с основным текстом в основном контексте страницы',
-    'соотношение текста внутренних изображений с основным текстом в основном контексте страницы',
-    'кол-во операций ввода/вывода во внутренне добавляемом коде страницы',
-    'кол-во операций ввода/вывода во внешне добавляемом коде страницы',
-    'домен зарегестрирован',
-    'рейтинг по Alexa',
-    'рейтинг по openpagerank',
-    'срок действия сертификата',
-    'кол-во альтернативных имен в сертификате'
-]
-
-
-brand_list = [brand.split('.')[0] for brand in
-                      pandas.read_csv("data/ranked_domains/14-1-2021.csv", header=None)[1].tolist()][:100000]
-
-
-WORDS = list(Counter(brown.words()).keys())
-STOPWORDS = stopwords.words()
 wordsegment.load()
+
+phish_hints = pickle.load(open('phish_hints.pkl', 'rb'))
+brand_list = pickle.load(open('brand_list.pkl', 'rb'))
+WORDS = pickle.load(open('words.pkl', 'rb'))
+STOPWORDS = pickle.load(open('stopwords.pkl', 'rb'))
+classifier = pickle.load(open('classifier.pkl', 'rb'))
 
 
 ########################################################################################################################
@@ -216,11 +125,10 @@ def clear_text(word_raw):
             for r in res:
                 if r:
                     docs.append(r)
+
+        return docs
     except concurrent.futures._base.TimeoutError:
-        print("TIMEOUT")
-
-
-    return [word for word in word_raw if word not in STOPWORDS and len(word) > 2]
+        return docs
 
 
 ########################################################################################################################
@@ -479,7 +387,7 @@ session = requests.session()
 @indicate
 def web_traffic(short_url):
     try:
-        rank = BeautifulSoup(session.get("http://data.alexa.com/data?cli=10&dat=s&url=" + short_url, timeout=10).text,
+        rank = BeautifulSoup(session.get("http://data.alexa.com/data?cli=10&dat=s&url=" + short_url, timeout=3).text,
                              "xml").find("REACH")['RANK']
 
         return min((int(rank) + 5e-07) / 10000000.0000005, 1)
@@ -493,7 +401,7 @@ OPR_key = open("OPR_key.txt").read()
 def page_rank(domain):
     url = 'https://openpagerank.com/api/v1.0/getPageRank?domains%5B0%5D=' + domain
     try:
-        request = session.get(url, headers={'API-OPR': OPR_key}, timeout=7)
+        request = session.get(url, headers={'API-OPR': OPR_key}, timeout=3)
         result = request.json()
         result = result['response'][0]['page_rank_integer']
         if result:
@@ -509,11 +417,10 @@ def page_rank(domain):
 ########################################################################################################################
 
 
-def get_certificate(host, port=443, timeout=10):
+def get_certificate(host, port=443, timeout=3):
     context = ssl.create_default_context()
-    conn = socket.create_connection((host, port))
+    conn = socket.create_connection((host, port), timeout=timeout)
     sock = context.wrap_socket(conn, server_hostname=host)
-    sock.settimeout(timeout)
     try:
         der_cert = sock.getpeercert(True)
     finally:
@@ -703,31 +610,28 @@ def translate_image(obj):
 
 @indicate
 def image_to_text(img, lang):
+    if not img:
+        return ""
+
     try:
         lang = languages.get(alpha2=lang).bibliographic
 
         if 'eng' not in lang:
             lang = 'eng+' + lang
 
-        if type(img) == list:
-            print('{} images to text'.format(len(img)))
+        docs = []
 
-            try:
-                with concurrent.futures.ThreadPoolExecutor(25) as executor:
-                    res = executor.map(translate_image, [(url, lang) for url in img],
-                                       timeout=15)  # todo: add config ratio parameter
-                    docs = []
+        try:
+            with concurrent.futures.ThreadPoolExecutor(25) as executor:
+                res = executor.map(translate_image, [(url, lang) for url in img], timeout=15)
 
-                    for r in res:
-                        if r:
-                            docs.append(r)
-            except concurrent.futures._base.TimeoutError:
-                print("TIMEOUT")
+                for r in res:
+                    if r:
+                        docs.append(r)
 
             return "\n".join(docs)
-        else:
-            txt = pytesseract.image_to_string(img, lang=lang)
-            return txt
+        except concurrent.futures._base.TimeoutError:
+            return "\n".join(docs)
     except:
         return ""
 
@@ -759,9 +663,6 @@ def count_phish_hints(word_raw, phish_hints, lang):
             return 0
     except:
         return 0
-
-
-http_header = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
 
 
 def is_URL_accessible(url, time_out=3):
@@ -800,16 +701,9 @@ def check_Language(text):
     language = translator.detect(str(text)[:size]).lang
 
     if type(language) is list:
+        if 'en' in language:
+            language.remove('en')
         language = language[-1]
-
-    if language not in phish_hints.keys():
-        words = translator.translate(" ".join(phish_hints['en'][:25]), src='en', dest=language).text.split(" ")
-
-        phish_hints[language] = [str(word.strip()) for word in words]
-
-        data = pandas.DataFrame(phish_hints[language])
-        filename = "data/phish_hints/{0}.csv".format(language)
-        data.to_csv(filename, index=False, header=False)
 
     return language
 
@@ -988,15 +882,14 @@ def extract_all_context_data(hostname, content, domain, base_url):
 
         try:
             with concurrent.futures.ThreadPoolExecutor(25) as executor:
-                res = executor.map(load_script, script_lnks, timeout=15)  # todo: add config ratio parameter
+                res = executor.map(load_script, script_lnks, timeout=15)
 
                 for r in res:
                     if r:
                         docs.append(r)
+            return "\n".join(docs)
         except concurrent.futures._base.TimeoutError:
-            print("TIMEOUT")
-
-        return "\n".join(docs)
+            return "\n".join(docs)
 
     with concurrent.futures.ThreadPoolExecutor(11) as e:
         e.submit(collector1)
@@ -1142,15 +1035,9 @@ def extract_features(url):
                 result.append(e.submit(count_alt_names, cert).result())
 
             return result
-        return request
+        return 'HTTP Status Code: '.format(request)
     except Exception as ex:
         return ex
-
-
-m = pickle.load(open('data/models/DoubleStacking/StackingClassifier.pkl', 'rb'))
-
-
-from colour import Color
 
 
 if __name__ == "__main__":
@@ -1170,7 +1057,7 @@ if __name__ == "__main__":
         if type(data) is list:
             data = np.array(data).reshape((1, -1)) * 0.998 + 0.001
 
-            res = m.predict_proba(data).tolist()[0][-1]
+            res = classifier.predict_proba(data).tolist()[0][-1]
 
             result.configure(state='normal')
             result.configure(background=Color(hsl=(0.2778*(1-res), 1, 0.5)).get_hex_l())
@@ -1181,15 +1068,11 @@ if __name__ == "__main__":
                 result.insert(tk.END, "\nЭто фишинговый сайт!".format(res * 100), 'tag-center')
 
             result.configure(state='disabled')
-
-            p_v += 1
-            progress['value'] = p_v
         else:
             result.configure(state='normal')
             result.insert(tk.END, "ERROR: {}".format(data))
             result.configure(state='disabled')
-
-            progress['value'] = 68
+        progress['value'] = 69
 
     window = tk.Tk()
     window.title("phishDetect")
@@ -1198,10 +1081,10 @@ if __name__ == "__main__":
     url = tk.StringVar()
 
     textArea = tk.Entry(textvariable=url, width=80, exportselection=0)
-    textArea.grid(column=0, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
+    textArea.grid(column=0, row=0, sticky=tk.N+tk.S+tk.W+tk.E)
 
     btn = tk.Button(window, text="check", command=check_site)
-    btn.grid(column=1, row=1, sticky=tk.N+tk.S+tk.W+tk.E)
+    btn.grid(column=1, row=0, sticky=tk.N+tk.S+tk.W+tk.E)
 
     s = Style()
     s.theme_use("default")
@@ -1210,12 +1093,12 @@ if __name__ == "__main__":
     progress = Progressbar(
         window,
         orient=tk.HORIZONTAL,
-        maximum=68,
+        maximum=69,
         length=100,
         mode='determinate',
         style="TProgressbar"
     )
-    progress.grid(column=0, row=2, columnspan=2,  sticky=tk.N + tk.S + tk.W + tk.E)
+    progress.grid(column=0, row=1, columnspan=2,  sticky=tk.N + tk.S + tk.W + tk.E)
 
     result = tk.Text(
         window,
@@ -1225,6 +1108,10 @@ if __name__ == "__main__":
     )
     result.tag_configure('tag-center', justify='center')
 
-    result.grid(column=0, row=3, columnspan=2)
+    result.grid(column=0, row=2, columnspan=2)
 
     window.mainloop()
+
+    if progress_task:
+        if progress_task.is_alive():
+            progress_task.kill()
