@@ -1,33 +1,30 @@
 import sys
 from colour import Color
-import tldextract
-import concurrent.futures
+from tldextract import extract as tld_extract
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures._base import TimeoutError
 from urllib.parse import urlparse, urlsplit, urljoin
-from nltk.tokenize import RegexpTokenizer
-import wordsegment
-import numpy as np
+from wordsegment import load as word_load, segment as word_segment
+from numpy import array, asarray
 from googletrans import Translator
-import cv2
-import pytesseract
+from cv2 import INTER_AREA, GaussianBlur, resize, IMREAD_COLOR, imdecode
+from pytesseract import pytesseract, image_to_string
 from bs4 import BeautifulSoup
-import re
+from re import compile, finditer, MULTILINE, DOTALL, split, search, findall
 import ssl
 import socket
-import OpenSSL
+from OpenSSL.crypto import load_certificate, FILETYPE_PEM
 from datetime import datetime
 import whois
-import Levenshtein
+from Levenshtein import editops as Lev_ops
 from collections import Counter
-import requests
+from requests import session
 from iso639 import languages
-import threading
-import pickle
+from threading import Thread
+from pickle import load
 
-import tkinter as tk
+from tkinter import END, Tk, StringVar, Entry, Button, N, S, W, E, Text, HORIZONTAL
 from tkinter.ttk import Progressbar, Style
-
-p_v = 0
-progress = {'value': 0}
 
 
 def indicate(func):
@@ -44,15 +41,15 @@ def indicate(func):
 progress_task = None
 
 
-class KThread(threading.Thread):
+class KThread(Thread):
     def __init__(self, *args, **keywords):
-        threading.Thread.__init__(self, *args, **keywords)
+        Thread.__init__(self, *args, **keywords)
         self.killed = False
 
     def start(self):
         self.__run_backup = self.run
         self.run = self.__run
-        threading.Thread.start(self)
+        Thread.start(self)
 
     def __run(self):
         sys.settrace(self.globaltrace)
@@ -87,17 +84,18 @@ def run_in_thread(fn):
     return run
 
 
-http_header = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
-pytesseract.pytesseract.tesseract_cmd = r'C:/Program Files (x86)/Tesseract-OCR/tesseract.exe'
+http_header = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36', 'Content-Type': "text/html; charset=utf-8"}
+pytesseract.tesseract_cmd = r'C:/Program Files (x86)/Tesseract-OCR/tesseract.exe'
 
+reg = compile(r'[^\W\d_]+')
 translator = Translator()
-wordsegment.load()
+word_load()
 
-phish_hints = pickle.load(open('phish_hints.pkl', 'rb'))
-brand_list = pickle.load(open('brand_list.pkl', 'rb'))
-WORDS = pickle.load(open('words.pkl', 'rb'))
-STOPWORDS = pickle.load(open('stopwords.pkl', 'rb'))
-classifier = pickle.load(open('classifier.pkl', 'rb'))
+phish_hints = load(open('phish_hints.pkl', 'rb'))
+brand_list = load(open('brand_list.pkl', 'rb'))
+WORDS = load(open('words.pkl', 'rb'))
+STOPWORDS = load(open('stopwords.pkl', 'rb'))
+classifier = load(open('classifier.pkl', 'rb'))
 
 
 ########################################################################################################################
@@ -106,7 +104,7 @@ classifier = pickle.load(open('classifier.pkl', 'rb'))
 
 @indicate
 def tokenize(text):
-    return RegexpTokenizer(r'[^\W\d_]+').tokenize(text)  # without numbers
+    return reg.findall(text)
 
 
 def cf(word):
@@ -119,7 +117,7 @@ def clear_text(word_raw):
     docs = []
 
     try:
-        with concurrent.futures.ThreadPoolExecutor(25) as executor:
+        with ThreadPoolExecutor(25) as executor:
             res = executor.map(translate_image, [(word, cf) for word in word_raw], timeout=3)
 
             for r in res:
@@ -127,7 +125,7 @@ def clear_text(word_raw):
                     docs.append(r)
 
         return docs
-    except concurrent.futures._base.TimeoutError:
+    except TimeoutError:
         return docs
 
 
@@ -137,7 +135,7 @@ def clear_text(word_raw):
 
 
 def segment(obj):
-    return [word for str in [wordsegment.segment(word) for word in obj] for word in str]
+    return [word for str in [word_segment(word) for word in obj] for word in str]
 
 
 ########################################################################################################################
@@ -303,7 +301,7 @@ def domain_in_brand(second_level_domain):
     word = second_level_domain.lower()
 
     for idx, b in enumerate(brand_list):
-        dst = len(Levenshtein.editops(word, b.lower()))
+        dst = len(Lev_ops(word, b.lower()))
         if dst == 0:
             return 1 - idx / len(brand_list)
         elif dst <= (len(word) - 2) / 3 + 1:
@@ -365,11 +363,11 @@ def whois_registered_domain(domain):
         hostname = whois.whois(domain).domain_name
         if type(hostname) == list:
             for host in hostname:
-                if re.search(host.lower(), domain):
+                if search(host.lower(), domain):
                     return 1
             return 0.5
         else:
-            if re.search(hostname.lower(), domain):
+            if search(hostname.lower(), domain):
                 return 1
             else:
                 return 0.5
@@ -382,7 +380,7 @@ def whois_registered_domain(domain):
 ########################################################################################################################
 
 
-session = requests.session()
+session = session()
 
 @indicate
 def web_traffic(short_url):
@@ -432,7 +430,7 @@ def get_cert(hostname):
     result = None
     try:
         certificate = get_certificate(hostname)
-        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, certificate)
+        x509 = load_certificate(FILETYPE_PEM, certificate)
 
         result = {
             'subject': dict(x509.get_subject().get_components()),
@@ -535,12 +533,12 @@ def ratio_anchor(Anchor, key):
 @indicate
 def get_html_from_js(context):
     pattern = r"([\"'`])[\s\w]*(<\s*(\w+)[^>]*>.*(<\s*\/\s*\3\s*>)?)[\s\w]*\1"
-    return " ".join([res.group(2) for res in re.finditer(pattern, context, re.MULTILINE) if res.group(2) is not None])
+    return " ".join([r.group(2) for r in finditer(pattern, context, MULTILINE) if r.group(2) is not None])
 
 @indicate
 def remove_JScomments(string):
     pattern = r"(\".*?\"|\'.*?\'|\`.*?\`)|(/\*.*?\*/|//[^\r\n]*$)"
-    regex = re.compile(pattern, re.MULTILINE | re.DOTALL)
+    regex = compile(pattern, MULTILINE | DOTALL)
 
     def _replacer(match):
         if match.group(2) is not None:
@@ -580,11 +578,11 @@ def ratio_js_on_html(html_context):
 def count_io_commands(string, limit):
     pattern = r"(\".*?\"|\'.*?\'|\`.*?\`)|" \
               r"((.(open|send)|$.(get|post|ajax|getJSON)|fetch|axios(|.(get|post|all))|getData)\s*\()"
-    regex = re.compile(pattern, re.MULTILINE | re.DOTALL)
+    regex = compile(pattern, MULTILINE | DOTALL)
 
     count = 0
 
-    for m in re.finditer(regex, string):
+    for m in finditer(regex, string):
         if not m.group(2) and m.groups():
             count += 1
 
@@ -598,12 +596,12 @@ def count_io_commands(string, limit):
 
 def translate_image(obj):
     try:
-        resp = requests.get(obj[0], stream=True, timeout=3).raw
-        image = np.asarray(bytearray(resp.read()), dtype="uint8")
-        img = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        img = cv2.resize(img, None, fx=0.35, fy=0.35, interpolation=cv2.INTER_AREA)
-        img = cv2.GaussianBlur(img, (5, 5), 0)
-        return pytesseract.image_to_string(img, lang=obj[1])
+        resp = session.get(obj[0], stream=True, timeout=3).raw
+        image = asarray(bytearray(resp.read()), dtype="uint8")
+        img = imdecode(image, IMREAD_COLOR)
+        img = resize(img, None, fx=0.35, fy=0.35, interpolation=INTER_AREA)
+        img = GaussianBlur(img, (5, 5), 0)
+        return image_to_string(img, lang=obj[1])
     except:
         return ""
 
@@ -622,7 +620,7 @@ def image_to_text(img, lang):
         docs = []
 
         try:
-            with concurrent.futures.ThreadPoolExecutor(25) as executor:
+            with ThreadPoolExecutor(25) as executor:
                 res = executor.map(translate_image, [(url, lang) for url in img], timeout=15)
 
                 for r in res:
@@ -630,7 +628,7 @@ def image_to_text(img, lang):
                         docs.append(r)
 
             return "\n".join(docs)
-        except concurrent.futures._base.TimeoutError:
+        except TimeoutError:
             return "\n".join(docs)
     except:
         return ""
@@ -658,7 +656,7 @@ def count_phish_hints(word_raw, phish_hints, lang):
         exp = '|'.join(list(set([item for sublist in [phish_hints[lang], phish_hints['en']] for item in sublist])))
 
         if exp:
-            return min(len(re.findall(exp, word_raw)) / 9, 1)
+            return min(len(findall(exp, word_raw)) / 9, 1)
         else:
             return 0
     except:
@@ -672,13 +670,13 @@ def is_URL_accessible(url, time_out=3):
         url = 'http://' + url
 
     try:
-        page = requests.get(url, timeout=time_out, headers=http_header)
+        page = session.get(url, timeout=time_out, headers=http_header)
     except:
         parsed = urlparse(url)
         if not parsed.netloc.startswith('www'):
             url = parsed.scheme + '://www.' + parsed.netloc
             try:
-                page = requests.get(url, timeout=time_out, headers=http_header)
+                page = session.get(url, timeout=time_out, headers=http_header)
             except:
                 pass
 
@@ -686,9 +684,9 @@ def is_URL_accessible(url, time_out=3):
         return True, page
     else:
         try:
-            return False, page.status_code
+            return False, 'HTTP Status Code: {}'.format(page.status_code)
         except:
-            return False, -1
+            return False, 'Invalid input'
 
 @indicate
 def check_Language(text):
@@ -698,19 +696,22 @@ def check_Language(text):
     if size > 10000:
         size = 10000
 
-    language = translator.detect(str(text)[:size]).lang
+    try:
+        language = translator.detect(str(text)[:size]).lang
 
-    if type(language) is list:
-        if 'en' in language:
-            language.remove('en')
-        language = language[-1]
+        if type(language) is list:
+            if 'en' in language:
+                language.remove('en')
+            language = language[-1]
 
-    return language
+        return language
+    except:
+        return 'en'
 
 @indicate
 def get_domain(url):
     o = urlsplit(url)
-    return o.hostname, tldextract.extract(url).domain, o.path, o.netloc
+    return o.hostname, tld_extract(url).domain, o.path, o.netloc
 
 @indicate
 def extract_all_context_data(hostname, content, domain, base_url):
@@ -881,17 +882,17 @@ def extract_all_context_data(hostname, content, domain, base_url):
                 docs.append(str(request.content))
 
         try:
-            with concurrent.futures.ThreadPoolExecutor(25) as executor:
+            with ThreadPoolExecutor(25) as executor:
                 res = executor.map(load_script, script_lnks, timeout=15)
 
                 for r in res:
                     if r:
                         docs.append(r)
             return "\n".join(docs)
-        except concurrent.futures._base.TimeoutError:
+        except TimeoutError:
             return "\n".join(docs)
 
-    with concurrent.futures.ThreadPoolExecutor(11) as e:
+    with ThreadPoolExecutor(11) as e:
         e.submit(collector1)
         e.submit(collector2)
         e.submit(collector3)
@@ -941,9 +942,9 @@ def extract_features(url):
     try:
         @indicate
         def words_raw_extraction(domain, subdomain, path):
-            w_domain = re.split("[-./?=@&%:_]", domain.lower())
-            w_subdomain = re.split("[-./?=@&%:_]", subdomain.lower())
-            w_path = re.split("[-./?=@&%:_]", path.lower())
+            w_domain = split("[-./?=@&%:_]", domain.lower())
+            w_subdomain = split("[-./?=@&%:_]", subdomain.lower())
+            w_path = split("[-./?=@&%:_]", path.lower())
             raw_words = w_domain + w_path + w_subdomain
             w_host = w_domain + w_subdomain
             return segment(list(filter(None, raw_words))), \
@@ -954,9 +955,9 @@ def extract_features(url):
 
         if state:
             r_url = request.url
-            content = str(request.content)
+            content = str(request.text)
             hostname, second_level_domain, path, netloc = get_domain(r_url)
-            extracted_domain = tldextract.extract(r_url)
+            extracted_domain = tld_extract(r_url)
             domain = extracted_domain.domain + '.' + extracted_domain.suffix
             subdomain = extracted_domain.subdomain
             tmp = r_url[r_url.find(extracted_domain.suffix):len(r_url)]
@@ -965,7 +966,7 @@ def extract_features(url):
             parsed = urlparse(r_url)
             scheme = parsed.scheme
 
-            with concurrent.futures.ThreadPoolExecutor(2) as e:
+            with ThreadPoolExecutor(2) as e:
                 cert = e.submit(get_cert, domain).result()
                 (Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc, externals_script_doc) = e.submit(
                     extract_all_context_data, hostname, content, domain, r_url).result()
@@ -976,9 +977,9 @@ def extract_features(url):
             Text_di = extract_text_context_data(content_di)
             Text_de = extract_text_context_data(content_de)
 
-            lang = check_Language(content)
+            lang = check_Language(Text)
 
-            with concurrent.futures.ThreadPoolExecutor(2) as e:
+            with ThreadPoolExecutor(2) as e:
                 internals_img_txt = e.submit(image_to_text, Img['internals'], lang).result()
                 externals_img_txt = e.submit(image_to_text, Img['externals'], lang).result()
 
@@ -997,7 +998,7 @@ def extract_features(url):
 
             result = []
 
-            with concurrent.futures.ThreadPoolExecutor(35) as e:
+            with ThreadPoolExecutor(35) as e:
                 result.append(e.submit(word_ratio, Text_words).result())
                 result.append(e.submit(url_length, r_url).result())
                 result.append(e.submit(count_semicolumn, r_url).result())
@@ -1035,7 +1036,7 @@ def extract_features(url):
                 result.append(e.submit(count_alt_names, cert).result())
 
             return result
-        return 'HTTP Status Code: '.format(request)
+        return request
     except Exception as ex:
         return ex
 
@@ -1045,7 +1046,7 @@ if __name__ == "__main__":
     def check_site():
         result.configure(background='white')
         result.configure(state='normal')
-        result.delete(1.0, tk.END)
+        result.delete(1.0, END)
         result.configure(state='disabled')
 
         global p_v, progress
@@ -1055,7 +1056,7 @@ if __name__ == "__main__":
         data = extract_features(url.get().strip())
 
         if type(data) is list:
-            data = np.array(data).reshape((1, -1)) * 0.998 + 0.001
+            data = array(data).reshape((1, -1)) * 0.998 + 0.001
 
             res = classifier.predict_proba(data).tolist()[0][-1]
 
@@ -1063,28 +1064,28 @@ if __name__ == "__main__":
             result.configure(background=Color(hsl=(0.2778*(1-res), 1, 0.5)).get_hex_l())
 
             if res < 0.5:
-                result.insert(tk.END, "\nЭто легитимный сайт!".format((1-res)*100), 'tag-center')
+                result.insert(END, "\nЭто легитимный сайт!".format((1-res)*100), 'tag-center')
             else:
-                result.insert(tk.END, "\nЭто фишинговый сайт!".format(res * 100), 'tag-center')
+                result.insert(END, "\nЭто фишинговый сайт!".format(res * 100), 'tag-center')
 
             result.configure(state='disabled')
         else:
             result.configure(state='normal')
-            result.insert(tk.END, "ERROR: {}".format(data))
+            result.insert(END, "ERROR: {}".format(data))
             result.configure(state='disabled')
         progress['value'] = 69
 
-    window = tk.Tk()
+    window = Tk()
     window.title("phishDetect")
     window.resizable(0, 0)
 
-    url = tk.StringVar()
+    url = StringVar()
 
-    textArea = tk.Entry(textvariable=url, width=80, exportselection=0)
-    textArea.grid(column=0, row=0, sticky=tk.N+tk.S+tk.W+tk.E)
+    textArea = Entry(textvariable=url, width=80, exportselection=0)
+    textArea.grid(column=0, row=0, sticky=N+S+W+E)
 
-    btn = tk.Button(window, text="check", command=check_site)
-    btn.grid(column=1, row=0, sticky=tk.N+tk.S+tk.W+tk.E)
+    btn = Button(window, text="check", command=check_site)
+    btn.grid(column=1, row=0, sticky=N+S+W+E)
 
     s = Style()
     s.theme_use("default")
@@ -1092,15 +1093,15 @@ if __name__ == "__main__":
 
     progress = Progressbar(
         window,
-        orient=tk.HORIZONTAL,
+        orient=HORIZONTAL,
         maximum=69,
         length=100,
         mode='determinate',
         style="TProgressbar"
     )
-    progress.grid(column=0, row=1, columnspan=2,  sticky=tk.N + tk.S + tk.W + tk.E)
+    progress.grid(column=0, row=1, columnspan=2,  sticky=N + S + W + E)
 
-    result = tk.Text(
+    result = Text(
         window,
         height=3,
         width=80,
