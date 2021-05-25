@@ -4,28 +4,44 @@ from tldextract import extract as tld_extract
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures._base import TimeoutError
 from urllib.parse import urlparse, urlsplit, urljoin
-from wordsegment import load as word_load, segment as word_segment
 from numpy import array, asarray
 from googletrans import Translator
 from cv2 import INTER_AREA, GaussianBlur, resize, IMREAD_COLOR, imdecode
 from pytesseract import pytesseract, image_to_string
 from bs4 import BeautifulSoup
-from re import compile, finditer, MULTILINE, DOTALL, split, search, findall
+from re import compile, finditer, MULTILINE, DOTALL, search, findall
 import ssl
 import socket
 from OpenSSL.crypto import load_certificate, FILETYPE_PEM
 from datetime import datetime
 import whois
-from Levenshtein import editops as Lev_ops
 from collections import Counter
 from requests import session
 from iso639 import languages
 from threading import Thread
 from pickle import load
-
+import pickle
+from datetime import time
+from wordninja import LanguageModel
+import requests
 from tkinter import END, Tk, StringVar, Entry, Button, N, S, W, E, Text, HORIZONTAL
 from tkinter.ttk import Progressbar, Style
 
+pytesseract.tesseract_cmd = r'C:/Program Files (x86)/Tesseract-OCR/tesseract.exe'
+
+translator = Translator()
+word_splitter = LanguageModel('data/wordlist.txt.gz')
+brand_filter = pickle.load(open('data/brands.pkl', 'rb'))
+words_filter = pickle.load(open('data/words.pkl', 'rb'))
+phish_hints = pickle.load(open('data/phish_hints.pkl', 'rb'))
+classifier = load(open('data/classifier.pkl', 'rb'))
+OPR_key = open("data/OPR_key.txt").read()
+
+reg = compile(r'\w{3,}')
+http_header = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36',
+    'Content-Type': "text/html; charset=utf-8"}
+progress_task = None
 
 def indicate(func):
     def wrapper(*args, **kwargs):
@@ -34,12 +50,7 @@ def indicate(func):
         p_v += 1
         progress['value'] = p_v
         return res
-
     return wrapper
-
-
-progress_task = None
-
 
 class KThread(Thread):
     def __init__(self, *args, **keywords):
@@ -71,7 +82,6 @@ class KThread(Thread):
     def kill(self):
         self.killed = True
 
-
 def run_in_thread(fn):
     def run(*k, **kw):
         global progress_task
@@ -83,302 +93,69 @@ def run_in_thread(fn):
         progress_task.start()
     return run
 
+def is_URL_accessible(url, time_out=3):
+    page = None
 
-http_header = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36', 'Content-Type': "text/html; charset=utf-8"}
-pytesseract.tesseract_cmd = r'C:/Program Files (x86)/Tesseract-OCR/tesseract.exe'
+    if not url.startswith('http'):
+        url = 'http://' + url
 
-reg = compile(r'[^\W\d_]+')
-translator = Translator()
-word_load()
-
-phish_hints = load(open('phish_hints.pkl', 'rb'))
-brand_list = load(open('brand_list.pkl', 'rb'))
-WORDS = load(open('words.pkl', 'rb'))
-STOPWORDS = load(open('stopwords.pkl', 'rb'))
-classifier = load(open('classifier.pkl', 'rb'))
-
-
-########################################################################################################################
-#                                          Preparation of text
-########################################################################################################################
-
-@indicate
-def tokenize(text):
-    return reg.findall(text)
-
-
-def cf(word):
-    if word not in STOPWORDS and len(word) > 2:
-        return word
-    return None
-
-@indicate
-def clear_text(word_raw):
-    docs = []
+    if urlparse(url).netloc.startswith('www.'):
+        url = url.replace("www.", "", 1)
 
     try:
-        with ThreadPoolExecutor(25) as executor:
-            res = executor.map(translate_image, [(word, cf) for word in word_raw], timeout=3)
+        page = requests.get(url, timeout=time_out, headers=http_header)
+    except:
+        pass
 
-            for r in res:
-                if r:
-                    docs.append(r)
-
-        return docs
-    except TimeoutError:
-        return docs
-
-
-########################################################################################################################
-#                                          Text segmentation
-########################################################################################################################
-
-
-def segment(obj):
-    return [word for str in [word_segment(word) for word in obj] for word in str]
-
-
-########################################################################################################################
-#               URL hostname length
-########################################################################################################################
+    if page:
+        if page.status_code == 200 and page.content not in ["b''", "b' '"]:
+            return True, page
+        else:
+            return 'HTTP Status Code: {}'.format(page.status_code)
+    else:
+        return False, 'Invalid Input!'
 
 @indicate
-def url_length(url):
-    return min(len(url) / 1169, 1)
-
-
-########################################################################################################################
-#               Count at ('@') symbol at base url
-########################################################################################################################
-
-@indicate
-def count_at(base_url):
-    return min(base_url.count('@') / 5, 1)
-
-
-########################################################################################################################
-#               Having semicolumn (;) symbol at base url
-########################################################################################################################
-
-@indicate
-def count_semicolumn(url):
-    return min(url.count(';') / 15, 1)
-
-
-########################################################################################################################
-#               Count equal (=) symbol at base url
-########################################################################################################################
-
-@indicate
-def count_equal(base_url):
-    return min(base_url.count('=') / 17, 1)
-
-
-########################################################################################################################
-#               Count percentage (%) symbol at base url
-########################################################################################################################
-
-@indicate
-def count_percentage(base_url):
-    return min(base_url.count('%') / 202, 1)
-
-
-########################################################################################################################
-#               Count dash (-) symbol at base url
-########################################################################################################################
-
-@indicate
-def count_hyphens(base_url):
-    return min(base_url.count('-') / 37, 1)
-
-
-########################################################################################################################
-#              Count number of dots in hostname
-########################################################################################################################
-
-@indicate
-def count_dots(base_url):
-    return min(base_url.count('.') / 35, 1)
-
-
-########################################################################################################################
-#              Count number of colon (:) symbol
-########################################################################################################################
-
-@indicate
-def count_colon(url):
-    return min(url.count(':') / 8, 1)
-
-
-########################################################################################################################
-#               Uses https protocol
-########################################################################################################################
-
-@indicate
-def https_token(scheme):
-    if scheme == 'https':
-        return 0
-    return 1
-
-
-########################################################################################################################
-#               Check if TLD in bad position
-########################################################################################################################
-
-
-def tld_in_path(tld, path):
-    if path.lower().count(tld) > 0:
-        return 1
-    return 0
-
-
-def tld_in_subdomain(tld, subdomain):
-    if subdomain.count(tld) > 0:
-        return 1
-    return 0
-
-@indicate
-def tld_in_bad_position(tld, subdomain, path):
-    if tld_in_path(tld, path) == 1 or tld_in_subdomain(tld, subdomain) == 1:
-        return 1
-    return 0
-
-
-########################################################################################################################
-#               Number of redirection
-########################################################################################################################
-
-@indicate
-def count_redirection(page):
-    return min(len(page.history) / 7, 1)
-
-
-########################################################################################################################
-#               Number of redirection to different domains
-########################################################################################################################
+def segment(text):
+    return word_splitter.split(text)
 
 @indicate
 def count_external_redirection(page, domain):
-    count = 0
     if len(page.history) == 0:
         return 0
     else:
-        for i, response in enumerate(page.history, 1):
-            if domain.lower() not in response.url.lower():
+        count = 0
+        for i, response in enumerate(page.history):
+            if domain not in urlparse(response.url).netloc.lower():
                 count += 1
-        return min(count / 4, 1)
+        return count
 
+def random_word(word):
+    if word in words_filter:
+        return 0
+    return 1
 
-########################################################################################################################
-#               Is the registered domain created with random characters
-########################################################################################################################
+@indicate
+def random_words(url_words):
+    return sum([random_word(word) for word in url_words])
 
-
-def random_domain(second_level_domain):
-    for word in segment([second_level_domain]):
-        if word not in WORDS + brand_list:
-            return 1
-
+@indicate
+def sld_in_brand(sld):
+    if sld in brand_filter:
+        return 1
     return 0
-
-
-###############################tld_in_path#########################################################################################
-#               Presence of words with random characters
-########################################################################################################################
-
-@indicate
-def random_words(url_words, limit):
-    return min(len([word for str in [segment([word]) for word in url_words] for word in str if
-                word not in WORDS + brand_list]) / limit, 1)
-
-
-########################################################################################################################
-#               domain in brand list
-########################################################################################################################
-
-@indicate
-def domain_in_brand(second_level_domain):
-    word = second_level_domain.lower()
-
-    for idx, b in enumerate(brand_list):
-        dst = len(Lev_ops(word, b.lower()))
-        if dst == 0:
-            return 1 - idx / len(brand_list)
-        elif dst <= (len(word) - 2) / 3 + 1:
-            return 1 - idx / (len(brand_list) * 2)
-    return 0
-
-
-########################################################################################################################
-#               count www in url words
-########################################################################################################################
-
-@indicate
-def count_www(url_words):
-    count = 0
-    for word in url_words:
-        if not word.find('www') == -1:
-            count += 1
-    return min(count / 5, 1)
-
-
-########################################################################################################################
-#               length of raw word list
-########################################################################################################################
-
-@indicate
-def length_word_raw(url_words):
-    return min(len(url_words) / 208, 1)
-
-
-########################################################################################################################
-#               count average word length in raw word list
-########################################################################################################################
 
 @indicate
 def average_word_length(url_words):
     if len(url_words) == 0:
         return 0
-    return min((sum(len(word) for word in url_words) / len(url_words) / 23), 1)
-
-
-########################################################################################################################
-#               longest word length in raw word list
-########################################################################################################################
+    return sum(len(word) for word in url_words) / len(url_words)
 
 @indicate
 def longest_word_length(url_words):
     if len(url_words) == 0:
         return 0
-    return min(max(len(word) for word in url_words) / 24, 1)
-
-
-########################################################################################################################
-#               Domain recognized by WHOIS
-########################################################################################################################
-
-@indicate
-def whois_registered_domain(domain):
-    try:
-        hostname = whois.whois(domain).domain_name
-        if type(hostname) == list:
-            for host in hostname:
-                if search(host.lower(), domain):
-                    return 1
-            return 0.5
-        else:
-            if search(hostname.lower(), domain):
-                return 1
-            else:
-                return 0.5
-    except:
-        return 0
-
-
-########################################################################################################################
-#               Unable to get web traffic and page rank
-########################################################################################################################
-
+    return max([len(word) for word in url_words])
 
 session = session()
 
@@ -386,14 +163,11 @@ session = session()
 def web_traffic(short_url):
     try:
         rank = BeautifulSoup(session.get("http://data.alexa.com/data?cli=10&dat=s&url=" + short_url, timeout=3).text,
-                             "xml").find("REACH")['RANK']
+                         "xml").find("REACH")['RANK']
 
-        return min((int(rank) + 5e-07) / 10000000.0000005, 1)
+        return min(int(rank) / 10000000, 1)
     except:
         return 1
-
-
-OPR_key = open("OPR_key.txt").read()
 
 @indicate
 def page_rank(domain):
@@ -401,20 +175,15 @@ def page_rank(domain):
     try:
         request = session.get(url, headers={'API-OPR': OPR_key}, timeout=3)
         result = request.json()
-        result = result['response'][0]['page_rank_integer']
+        result = result['response'][0]['page_rank_decimal']
         if result:
-            return (result + 1) / 11
+            return result
         else:
             return 0
     except:
         return 0
 
-
-########################################################################################################################
-#               Certificate information
-########################################################################################################################
-
-
+@indicate
 def get_certificate(host, port=443, timeout=3):
     context = ssl.create_default_context()
     conn = socket.create_connection((host, port), timeout=timeout)
@@ -450,23 +219,11 @@ def get_cert(hostname):
     return result
 
 @indicate
-def count_alt_names(cert):
-    try:
-        return min((len(cert[b'subjectAltName'].split(',')) + 1) / 715, 1)
-    except:
-        return 0
-
-@indicate
 def valid_cert_period(cert):
     try:
-        return min(((cert['notAfter'] - cert['notBefore']).days + 1)/1186, 1)
+        return (cert['notAfter'] - cert['notBefore']).days
     except:
         return 0
-
-
-########################################################################################################################
-#               DNS record
-########################################################################################################################
 
 @indicate
 def good_netloc(netloc):
@@ -476,24 +233,12 @@ def good_netloc(netloc):
     except:
         return 0
 
-
-########################################################################################################################
-########################################################################################################################
-#                                               HTML
-########################################################################################################################
-########################################################################################################################
-
 @indicate
 def urls_ratio(urls, total_urls):
     if len(total_urls) == 0:
         return 0
     else:
         return len(urls) / len(total_urls)
-
-
-########################################################################################################################
-#               ratio url-list
-########################################################################################################################
 
 @indicate
 def ratio_List(Arr, key):
@@ -509,11 +254,6 @@ def ratio_List(Arr, key):
     else:
         return min(len(Arr[key]) / total, 1)
 
-
-########################################################################################################################
-#               ratio of anchor
-########################################################################################################################
-
 @indicate
 def ratio_anchor(Anchor, key):
     total = len(Anchor['safe']) + len(Anchor['unsafe'])
@@ -522,13 +262,6 @@ def ratio_anchor(Anchor, key):
         return 0
     else:
         return len(Anchor[key]) / total
-
-
-########################################################################################################################
-########################################################################################################################
-#                                               JAVASCRIPT
-########################################################################################################################
-########################################################################################################################
 
 @indicate
 def get_html_from_js(context):
@@ -548,34 +281,15 @@ def remove_JScomments(string):
 
     return regex.sub(_replacer, string)
 
-
-########################################################################################################################
-#              Ratio static/dynamic html content
-########################################################################################################################
-
-@indicate
-def ratio_dynamic_html(s_html, d_html):
-    return max(0, min(1, len(d_html) / len(s_html)))
-
-
-########################################################################################################################
-#              Ratio html content on js-code
-########################################################################################################################
-
 @indicate
 def ratio_js_on_html(html_context):
-    if len(html_context):
+    if html_context:
         return len(get_html_from_js(remove_JScomments(html_context))) / len(html_context)
     else:
         return 0
 
-
-########################################################################################################################
-#              Amount of http request operations (popular)
-########################################################################################################################
-
 @indicate
-def count_io_commands(string, limit):
+def count_io_commands(string):
     pattern = r"(\".*?\"|\'.*?\'|\`.*?\`)|" \
               r"((.(open|send)|$.(get|post|ajax|getJSON)|fetch|axios(|.(get|post|all))|getData)\s*\()"
     regex = compile(pattern, MULTILINE | DOTALL)
@@ -586,25 +300,20 @@ def count_io_commands(string, limit):
         if not m.group(2) and m.groups():
             count += 1
 
-    return min(count / limit, 1)
+    return count
 
-
-########################################################################################################################
-#                       OCR
-########################################################################################################################
-
-
+@indicate
 def translate_image(obj):
     try:
-        resp = session.get(obj[0], stream=True, timeout=3).raw
+        resp = session.get(obj[0], stream=True, timeout=1).raw
         image = asarray(bytearray(resp.read()), dtype="uint8")
         img = imdecode(image, IMREAD_COLOR)
         img = resize(img, None, fx=0.35, fy=0.35, interpolation=INTER_AREA)
         img = GaussianBlur(img, (5, 5), 0)
+
         return image_to_string(img, lang=obj[1])
     except:
         return ""
-
 
 @indicate
 def image_to_text(img, lang):
@@ -621,22 +330,14 @@ def image_to_text(img, lang):
 
         try:
             with ThreadPoolExecutor(25) as executor:
-                res = executor.map(translate_image, [(url, lang) for url in img], timeout=15)
-
-                for r in res:
+                for r in executor.map(translate_image, [(url, lang) for url in img], timeout=3):
                     if r:
                         docs.append(r)
-
             return "\n".join(docs)
         except TimeoutError:
             return "\n".join(docs)
     except:
         return ""
-
-
-########################################################################################################################
-#                   Relationship between image text and context
-########################################################################################################################
 
 @indicate
 def ratio_Txt(dynamic, static):
@@ -650,43 +351,17 @@ def ratio_Txt(dynamic, static):
 @indicate
 def count_phish_hints(word_raw, phish_hints, lang):
     if type(word_raw) == list:
-        word_raw = ' '.join(word_raw).lower()
+        word_raw = ' '.join(word_raw)
 
     try:
         exp = '|'.join(list(set([item for sublist in [phish_hints[lang], phish_hints['en']] for item in sublist])))
 
         if exp:
-            return min(len(findall(exp, word_raw)) / 9, 1)
+            return len(findall(exp, word_raw))
         else:
             return 0
     except:
         return 0
-
-
-def is_URL_accessible(url, time_out=3):
-    page = None
-
-    if not url.startswith('http'):
-        url = 'http://' + url
-
-    try:
-        page = session.get(url, timeout=time_out, headers=http_header)
-    except:
-        parsed = urlparse(url)
-        if not parsed.netloc.startswith('www'):
-            url = parsed.scheme + '://www.' + parsed.netloc
-            try:
-                page = session.get(url, timeout=time_out, headers=http_header)
-            except:
-                pass
-
-    if page and page.status_code == 200 and page.content not in ["b''", "b' '"]:
-        return True, page
-    else:
-        try:
-            return False, 'HTTP Status Code: {}'.format(page.status_code)
-        except:
-            return False, 'Invalid input'
 
 @indicate
 def check_Language(text):
@@ -726,7 +401,10 @@ def extract_all_context_data(hostname, content, domain, base_url):
     Img = {'internals': [], 'externals': [], 'null': []}
     Media = {'internals': [], 'externals': [], 'null': []}
     Form = {'internals': [], 'externals': [], 'null': []}
-    SCRIPT = {'internals': [], 'externals': [], 'null': [], 'embedded': 0}  # JavaScript
+    SCRIPT = []
+
+    CSS = {'internals': [], 'externals': [], 'null': [], 'embedded': 0}
+    Favicon = {'internals': [], 'externals': [], 'null': []}
 
     soup = BeautifulSoup(content, 'lxml')
 
@@ -737,26 +415,22 @@ def extract_all_context_data(hostname, content, domain, base_url):
 
             if url in Null_format:
                 url = 'http://' + hostname + '/' + url
-                SCRIPT['null'].append(url)
                 Link['null'].append(url)
                 continue
 
             url = urljoin(base_url, url)
 
             if domain in urlparse(url).netloc:
-                SCRIPT['internals'].append(url)
                 Link['internals'].append(url)
             else:
-                SCRIPT['externals'].append(url)
+                SCRIPT.append(url)
                 Link['externals'].append(url)
-
-
     @indicate
     def collector2():
         for href in soup.find_all('a', href=True):
             url = href['href']
 
-            if "#" in url or "javascript" in url.lower() or "mailto" in url.lower():
+            if "#" in url or "javascript" in url or "mailto" in url:
                 Anchor['unsafe'].append('http://' + hostname + '/' + url)
 
             if url in Null_format:
@@ -770,7 +444,6 @@ def extract_all_context_data(hostname, content, domain, base_url):
             else:
                 Href['externals'].append(url)
                 Anchor['safe'].append(url)
-
     @indicate
     def collector3():
         for img in soup.find_all('img', src=True):
@@ -790,7 +463,6 @@ def extract_all_context_data(hostname, content, domain, base_url):
             else:
                 Media['externals'].append(url)
                 Img['externals'].append(url)
-
     @indicate
     def collector4():
         for audio in soup.find_all('audio', src=True):
@@ -806,7 +478,6 @@ def extract_all_context_data(hostname, content, domain, base_url):
                 Media['internals'].append(url)
             else:
                 Media['externals'].append(url)
-
     @indicate
     def collector5():
         for embed in soup.find_all('embed', src=True):
@@ -822,7 +493,6 @@ def extract_all_context_data(hostname, content, domain, base_url):
                 Media['internals'].append(url)
             else:
                 Media['externals'].append(url)
-
     @indicate
     def collector6():
         for i_frame in soup.find_all('iframe', src=True):
@@ -838,7 +508,6 @@ def extract_all_context_data(hostname, content, domain, base_url):
                 Media['internals'].append(url)
             else:
                 Media['externals'].append(url)
-
     @indicate
     def collector7():
         for link in soup.findAll('link', href=True):
@@ -854,7 +523,6 @@ def extract_all_context_data(hostname, content, domain, base_url):
                 Link['internals'].append(url)
             else:
                 Link['externals'].append(url)
-
     @indicate
     def collector8():
         for form in soup.findAll('form', action=True):
@@ -870,20 +538,79 @@ def extract_all_context_data(hostname, content, domain, base_url):
                 Form['internals'].append(url)
             else:
                 Form['externals'].append(url)
+    @indicate
+    def collector9():
+        for link in soup.find_all('link', rel='stylesheet'):
+            url = link['href']
 
+            if url in Null_format:
+                CSS['null'].append('http://' + hostname + '/' + url)
+                continue
+
+            url = urljoin(base_url, url)
+
+            if domain in urlparse(url).netloc:
+                CSS['internals'].append(url)
+            else:
+                CSS['externals'].append(url)
+
+        CSS['embedded'] = len([css for css in soup.find_all('style', type='text/css') if len(css.contents) > 0])
+    @indicate
+    def collector10():
+        for head in soup.find_all('head'):
+            for head.link in soup.find_all('link', href=True):
+                url = head.link['href']
+
+                if url in Null_format:
+                    Favicon['null'].append('http://' + hostname + '/' + url)
+                    continue
+
+                url = urljoin(base_url, url)
+
+                if domain in urlparse(url).netloc:
+                    Favicon['internals'].append(url)
+                else:
+                    Favicon['externals'].append(url)
+
+            for head.link in soup.findAll('link', {'href': True, 'rel': True}):
+                isicon = False
+                if isinstance(head.link['rel'], list):
+                    for e_rel in head.link['rel']:
+                        if e_rel.endswith('icon'):
+                            isicon = True
+                            break
+                else:
+                    if head.link['rel'].endswith('icon'):
+                        isicon = True
+                        break
+
+                if isicon:
+                    url = head.link['href']
+
+                    if url in Null_format:
+                        Favicon['null'].append('http://' + hostname + '/' + url)
+                        continue
+
+                    url = urljoin(base_url, url)
+
+                    if domain in urlparse(url).netloc:
+                        Favicon['internals'].append(url)
+                    else:
+                        Favicon['externals'].append(url)
     @indicate
     def merge_scripts(script_lnks):
         docs = []
 
         def load_script(url):
-            state, request = is_URL_accessible(url)
+            state, request = is_URL_accessible(url, 1)
 
             if state:
-                docs.append(str(request.content))
+                request.encoding = 'utf-8'
+                docs.append(request.text)
 
         try:
             with ThreadPoolExecutor(25) as executor:
-                res = executor.map(load_script, script_lnks, timeout=15)
+                res = executor.map(load_script, script_lnks, timeout=3)
 
                 for r in res:
                     if r:
@@ -892,7 +619,7 @@ def extract_all_context_data(hostname, content, domain, base_url):
         except TimeoutError:
             return "\n".join(docs)
 
-    with ThreadPoolExecutor(11) as e:
+    with ThreadPoolExecutor(12) as e:
         e.submit(collector1)
         e.submit(collector2)
         e.submit(collector3)
@@ -901,26 +628,12 @@ def extract_all_context_data(hostname, content, domain, base_url):
         e.submit(collector6)
         e.submit(collector7)
         e.submit(collector8)
-        internals_script_doc = e.submit(merge_scripts, SCRIPT['internals']).result()
-        externals_script_doc = e.submit(merge_scripts, SCRIPT['externals']).result()
+        e.submit(collector9)
+        e.submit(collector10)
         Text = e.submit(soup.get_text).result().lower()
+        externals_script_doc = e.submit(merge_scripts, SCRIPT).result()
 
-    try:
-        internals_script_doc = ' '.join(
-            [internals_script_doc] + [script.contents[0] for script in soup.find_all('script', src=False) if
-                                      len(script.contents) > 0])
-
-        SCRIPT['embedded'] = len(
-            [script.contents[0] for script in soup.find_all('script', src=False) if len(script.contents) > 0])
-    except:
-        pass
-
-    return Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc, externals_script_doc
-
-@indicate
-def extract_text_context_data(content):
-    return BeautifulSoup(content, 'lxml').get_text().lower()
-
+    return Href, Link, Anchor, Media, Img, Form, CSS, Favicon, Text, externals_script_doc
 
 @indicate
 def word_ratio(Text_words):
@@ -930,119 +643,208 @@ def word_ratio(Text_words):
         return 0
 
 @indicate
-def count_links(len):
-    return min(len / 15585, 1)
+def having_ip_address(url):
+    match = search(
+        '(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.'
+        '([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\/)|'  # IPv4
+        '((0x[0-9a-fA-F]{1,2})\\.(0x[0-9a-fA-F]{1,2})\\.(0x[0-9a-fA-F]{1,2})\\.(0x[0-9a-fA-F]{1,2})\\/)|'  # IPv4 in hexadecimal
+        '(?:[a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}|'
+        '[0-9a-fA-F]{7}', url)  # Ipv6
+    if match:
+        return 1
+    else:
+        return 0
 
 @indicate
-def count_words(len):
-    return min(len / 990735, 1)
+def shortening_service(url):
+    match = search('bit\.ly|goo\.gl|shorte\.st|go2l\.ink|x\.co|ow\.ly|t\.co|tr\.im|is\.gd|cli\.gs|yfrog\.com|'
+                      'migre\.me|ff\.im|tiny\.cc|url4\.eu|twit\.ac|su\.pr|twurl\.nl|snipurl\.com|short\.to|BudURL\.com|'
+                      'ping\.fm|post\.ly|Just\.as|bkite\.com|snipr\.com|fic\.kr|loopt\.us|doiop\.com|short\.ie|kl\.am|'
+                      'wp\.me|rubyurl\.com|om\.ly|to\.ly|bit\.do|lnkd\.in|db\.tt|qr\.ae|adf\.ly|bitly\.com|cur\.lv|'
+                      'tinyurl\.com|ity\.im|q\.gs|po\.st|bc\.vc|twitthis\.com|u\.to|j\.mp|buzurl\.com|cutt\.us|u\.bb|'
+                      'yourls\.org|prettylinkpro\.com|scrnch\.me|filoops\.info|vzturl\.com|qr\.net|1url\.com|tweez\.me|'
+                      'v\.gd|link\.zip\.net|sh\.st|doma\.in|urlhum\.com|flipmsg\.com|dik\.si|cutt\.ly|1t\.ie|inlnk\.ru|'
+                      'link\.ly|nlsn\.cf|neya\.link|chl\.li|tinu\.be|Tiky\.cc|sho\.pw|LNKS\.ES|bulkurlshortener\.com|'
+                      'btfy\.io|cmpct\.io|zee\.gl|rb\.gy|short\.io|smarturl\.it|hyperurl\.co|soo\.gd|t\.ly|tinycc.com|'
+                      'shorturl\.at|polr\.me|hypr\.ink|zpr\.io|goo-gl\.ru|clc\.am|bitly\.is|lnnk\.in|vk\.cc|clck\.ru|'
+                      't.co|gestyy\.com|rb\.gy',
+                      url)
+    if match:
+        return 1
+    else:
+        return 0
 
+@indicate
+def char_repeat(words_raw):
+    if words_raw:
+        count = 0
 
-def extract_features(url):
+        for word in words_raw:
+            if word:
+                for i in range(len(word)-1):
+                    if word[i] == word[i+1]:
+                        count += 1/len(word)
+        return count / len(words_raw)
+    else:
+        return 0
+
+@indicate
+def brand_in_path(words_raw_path):
+    for word in words_raw_path:
+        if word in brand_filter:
+            return 1
+    return 0
+
+@indicate
+def shortest_word_length(words_raw):
+    if len(words_raw) == 0:
+        return 0
+    return min(len(word) for word in words_raw)
+
+@indicate
+def count_subdomain(netloc):
+    return len(findall("\.", netloc))
+
+@indicate
+def compression_ratio(request):
     try:
-        @indicate
-        def words_raw_extraction(domain, subdomain, path):
-            w_domain = split("[-./?=@&%:_]", domain.lower())
-            w_subdomain = split("[-./?=@&%:_]", subdomain.lower())
-            w_path = split("[-./?=@&%:_]", path.lower())
-            raw_words = w_domain + w_path + w_subdomain
-            w_host = w_domain + w_subdomain
-            return segment(list(filter(None, raw_words))), \
-                   segment(list(filter(None, w_host))), \
-                   segment(list(filter(None, w_path)))
+        compressed_length = int(request.headers['content-length'])
+        decompressed_length = len(request.content)
+        return compressed_length / decompressed_length
+    except:
+        return 1
 
-        (state, request) = is_URL_accessible(url)
+@indicate
+def domain_expiration(whois_domain):
+    try:
+        expiration_date = whois_domain.expiration_date
+        today = time.strftime('%Y-%m-%d')
+        today = datetime.strptime(today, '%Y-%m-%d')
+
+        if expiration_date:
+            if type(expiration_date) == list:
+                expiration_date = min(expiration_date)
+            return abs((expiration_date - today).days)
+        else:
+            return 0
+    except:
+        return 0
+
+@indicate
+def extract_features(url):
+    global p_v
+
+    try:
+        (state, request) = is_URL_accessible(url, 3)
 
         if state:
+            p_v += 1
+            progress['value'] = p_v
+
+            request.encoding = 'utf-8'
             r_url = request.url
-            content = str(request.text)
+            content = request.text.lower()
             hostname, second_level_domain, path, netloc = get_domain(r_url)
             extracted_domain = tld_extract(r_url)
             domain = extracted_domain.domain + '.' + extracted_domain.suffix
             subdomain = extracted_domain.subdomain
             tmp = r_url[r_url.find(extracted_domain.suffix):len(r_url)]
             pth = tmp.partition("/")
-            url_words, words_raw_host, words_raw_path = words_raw_extraction(extracted_domain.domain, subdomain, pth[2])
-            parsed = urlparse(r_url)
-            scheme = parsed.scheme
+            words_raw_path = segment(pth[2])
+            cutted_url = extracted_domain.domain + subdomain
+            words_raw_host = segment(cutted_url)
+            cutted_url += pth[2]
+            url_words = segment(cutted_url)
 
             with ThreadPoolExecutor(2) as e:
                 cert = e.submit(get_cert, domain).result()
-                (Href, Link, Anchor, Media, Img, Form, SCRIPT, Text, internals_script_doc, externals_script_doc) = e.submit(
+                (Href, Link, Anchor, Media, Img, Form, CSS, Favicon, Text, externals_script_doc) = e.submit(
                     extract_all_context_data, hostname, content, domain, r_url).result()
 
-            content_di = get_html_from_js(remove_JScomments(internals_script_doc))
-            content_de = get_html_from_js(remove_JScomments(externals_script_doc))
+            with ThreadPoolExecutor(3) as e:
+                lang = e.submit(check_Language, Text)
+                iImgTxt_words = e.submit(image_to_text, Img['internals'], lang).result().lower()
+                eImgTxt_words = e.submit(image_to_text, Img['externals'], lang).result().lower()
 
-            Text_di = extract_text_context_data(content_di)
-            Text_de = extract_text_context_data(content_de)
+            with ThreadPoolExecutor(3) as e:
+                iImgTxt_words = e.submit(reg.findall, iImgTxt_words).result()
+                eImgTxt_words = e.submit(reg.findall, eImgTxt_words).result()
+                sContent_words = e.submit(reg.findall, Text).result()
 
-            lang = check_Language(Text)
-
-            with ThreadPoolExecutor(2) as e:
-                internals_img_txt = e.submit(image_to_text, Img['internals'], lang).result()
-                externals_img_txt = e.submit(image_to_text, Img['externals'], lang).result()
-
-            iImgTxt_words = clear_text(tokenize(internals_img_txt.lower()))
-            eImgTxt_words = clear_text(tokenize(externals_img_txt.lower()))
-
-            sContent_words = clear_text(tokenize(Text.lower()))
-            diContent_words = clear_text(tokenize(Text_di.lower()))
-            deContent_words = clear_text(tokenize(Text_de.lower()))
-
-            Text_words = iImgTxt_words + eImgTxt_words + sContent_words + diContent_words + deContent_words
+            Text_words = iImgTxt_words + eImgTxt_words + sContent_words
 
             iUrl_s = Href['internals'] + Link['internals'] + Media['internals'] + Form['internals']
             eUrl_s = Href['externals'] + Link['externals'] + Media['externals'] + Form['externals']
             nUrl_s = Href['null'] + Link['null'] + Media['null'] + Form['null']
 
-            result = []
+            whois_domain = whois.whois(domain)
 
-            with ThreadPoolExecutor(35) as e:
-                result.append(e.submit(word_ratio, Text_words).result())
-                result.append(e.submit(url_length, r_url).result())
-                result.append(e.submit(count_semicolumn, r_url).result())
-                result.append(e.submit(count_hyphens, r_url).result())
-                result.append(e.submit(count_dots, r_url).result())
-                result.append(e.submit(https_token, scheme).result())
-                result.append(e.submit(count_phish_hints, url_words, phish_hints, lang).result())
-                result.append(e.submit(count_redirection, request).result())
-                result.append(e.submit(count_external_redirection, request, domain).result())
-                result.append(e.submit(random_domain, second_level_domain).result())
-                result.append(e.submit(random_words, url_words, 86).result())
-                result.append(e.submit(random_words, words_raw_host, 8).result())
-                result.append(e.submit(domain_in_brand, second_level_domain).result())
-                result.append(e.submit(count_www, url_words).result())
-                result.append(e.submit(length_word_raw, url_words).result())
-                result.append(e.submit(average_word_length, url_words).result())
-                result.append(e.submit(longest_word_length, url_words).result())
-                result.append(e.submit(count_links, len(iUrl_s) + len(eUrl_s)).result())
-                result.append(e.submit(urls_ratio, iUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
-                result.append(e.submit(urls_ratio, nUrl_s, iUrl_s + eUrl_s + nUrl_s).result())
-                result.append(e.submit(ratio_List, SCRIPT, 'internals').result())
-                result.append(e.submit(ratio_List, Img, 'internals').result())
-                result.append(e.submit(ratio_List, Media, 'externals').result())
-                result.append(e.submit(ratio_anchor, Anchor, 'unsafe').result())
-                result.append(e.submit(ratio_anchor, Anchor, 'safe').result())
-                result.append(e.submit(count_words, len(sContent_words)).result())
-                result.append(e.submit(ratio_Txt, iImgTxt_words + eImgTxt_words, sContent_words).result())
-                result.append(e.submit(ratio_Txt, iImgTxt_words, sContent_words).result())
-                result.append(e.submit(count_io_commands, internals_script_doc, 487490).result())
-                result.append(e.submit(count_io_commands, externals_script_doc, 713513).result())
-                result.append(e.submit(whois_registered_domain, domain).result())
-                result.append(e.submit(web_traffic, r_url).result())
-                result.append(e.submit(page_rank, domain).result())
+            result = []
+            with ThreadPoolExecutor(50) as e:
+                result.append(e.submit(word_ratio, Text_words).result()),
+                result.append(e.submit(having_ip_address, url).result()),
+                result.append(e.submit(good_netloc, netloc).result()),
+                result.append(e.submit(len, r_url).result()),
+                result.append(e.submit(r_url.count, '@').result()),
+                result.append(e.submit(r_url.count, ';').result()),
+                result.append(e.submit(r_url.count, '&').result()),
+                result.append(e.submit(r_url.count, '/', 2).result()),
+                result.append(e.submit(r_url.count, '%').result()),
+                result.append(e.submit(r_url.count, '-').result()),
+                result.append(e.submit(r_url.count, '.').result()),
+                result.append(e.submit(count_phish_hints, url_words, phish_hints, lang).result()),
+                result.append(e.submit(len, url_words).result()),
+                result.append(e.submit(len, request.history).result()),
+                result.append(e.submit(count_external_redirection, request, domain).result()),
+                result.append(e.submit(random_words, url_words).result()),
+                result.append(e.submit(random_words, words_raw_host).result()),
+                result.append(e.submit(char_repeat, url_words).result()),
+                result.append(e.submit(char_repeat, words_raw_host).result()),
+                result.append(e.submit(sld_in_brand, second_level_domain).result()),
+                result.append(e.submit(brand_in_path, words_raw_path).result()),
+                result.append(e.submit(cutted_url.count, 'www').result()),
+                result.append(e.submit(cutted_url.count, 'com').result()),
+                result.append(e.submit(average_word_length, url_words).result()),
+                result.append(e.submit(longest_word_length, url_words).result()),
+                result.append(e.submit(shortest_word_length, url_words).result()),
+                result.append(e.submit(count_subdomain, netloc).result()),
+                result.append(e.submit(compression_ratio, request).result()),
+                result.append(e.submit(len, iUrl_s + eUrl_s).result()),
+                result.append(e.submit(urls_ratio, iUrl_s, iUrl_s + eUrl_s + nUrl_s).result()),
+                result.append(e.submit(urls_ratio, eUrl_s, iUrl_s + eUrl_s + nUrl_s).result()),
+                result.append(e.submit(urls_ratio, nUrl_s, iUrl_s + eUrl_s + nUrl_s).result()),
+                result.append(e.submit(ratio_List, CSS, 'internals').result()),
+                result.append(e.submit(ratio_List, Img, 'externals').result()),
+                result.append(e.submit(ratio_List, Img, 'internals').result()),
+                result.append(e.submit(ratio_List, Favicon, 'internals').result()),
+                result.append(e.submit(ratio_List, Media, 'internals').result()),
+                result.append(e.submit(ratio_List, Media, 'externals').result()),
+                result.append(e.submit(ratio_anchor, Anchor, 'unsafe').result()),
+                result.append(e.submit(ratio_anchor, Anchor, 'safe').result()),
+                result.append(e.submit(ratio_List, Link, 'externals').result()),
+                result.append(e.submit(count_phish_hints, Text, phish_hints, lang).result()),
+                result.append(e.submit(len, sContent_words).result()),
+                result.append(e.submit(ratio_Txt, iImgTxt_words + eImgTxt_words, sContent_words).result()),
+                result.append(e.submit(ratio_Txt, iImgTxt_words, sContent_words).result()),
+                result.append(e.submit(count_io_commands, externals_script_doc).result()),
+                result.append(e.submit(domain_expiration, whois_domain).result()),
+                result.append(e.submit(web_traffic, r_url).result()),
+                result.append(e.submit(page_rank, domain).result()),
                 result.append(e.submit(valid_cert_period, cert).result())
-                result.append(e.submit(count_alt_names, cert).result())
 
             return result
         return request
     except Exception as ex:
+        print(ex)
         return ex
 
+d = [
+    1.0, 1.0, 1.0, 1384.0, 4.0, 12.0, 17.0, 21.0, 152.0, 30.0, 27.0, 30.0, 1071.0, 8.0, 6.0, 640.0, 17.0, 0.5555555555555555, 0.6666666666666666, 1.0, 1.0, 3.0, 6.0, 23.0, 36.0, 23.0, 11.0, 4.28868961950903, 16394.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 3978.0, 998427.0, 1.0, 1.0, 136276.0, 31908.0, 0.9999999, 10.0, 825.0
+]
 
 if __name__ == "__main__":
     @run_in_thread
+    @indicate
     def check_site():
         result.configure(background='white')
         result.configure(state='normal')
@@ -1056,8 +858,7 @@ if __name__ == "__main__":
         data = extract_features(url.get().strip())
 
         if type(data) is list:
-            data = array(data).reshape((1, -1)) * 0.998 + 0.001
-
+            data = array([max(min(data[i]/d[i], 1), 0) for i in range(50)]).reshape((1, -1)) * 0.998 + 0.001
             res = classifier.predict_proba(data).tolist()[0][-1]
 
             result.configure(state='normal')
@@ -1073,7 +874,7 @@ if __name__ == "__main__":
             result.configure(state='normal')
             result.insert(END, "ERROR: {}".format(data))
             result.configure(state='disabled')
-        progress['value'] = 69
+        progress['value'] = 60
 
     window = Tk()
     window.title("phishDetect")
@@ -1094,7 +895,7 @@ if __name__ == "__main__":
     progress = Progressbar(
         window,
         orient=HORIZONTAL,
-        maximum=69,
+        maximum=60,
         length=100,
         mode='determinate',
         style="TProgressbar"
