@@ -14,26 +14,26 @@ import ssl
 import socket
 from OpenSSL.crypto import load_certificate, FILETYPE_PEM
 from datetime import datetime
-import whois
+from whois import whois
 from collections import Counter
 from requests import session
 from iso639 import languages
 from threading import Thread
 from pickle import load
-import pickle
 from datetime import time
 from wordninja import LanguageModel
 import requests
 from tkinter import END, Tk, StringVar, Entry, Button, N, S, W, E, Text, HORIZONTAL
 from tkinter.ttk import Progressbar, Style
+from bloomfpy import BloomFilter
 
 pytesseract.tesseract_cmd = r'C:/Program Files (x86)/Tesseract-OCR/tesseract.exe'
 
 translator = Translator()
 word_splitter = LanguageModel('data/wordlist.txt.gz')
-brand_filter = pickle.load(open('data/brands.pkl', 'rb'))
-words_filter = pickle.load(open('data/words.pkl', 'rb'))
-phish_hints = pickle.load(open('data/phish_hints.pkl', 'rb'))
+brand_filter = load(open('data/brands.pkl', 'rb'))
+words_filter = load(open('data/words.pkl', 'rb'))
+phish_hints = load(open('data/phish_hints.pkl', 'rb'))
 classifier = load(open('data/classifier.pkl', 'rb'))
 OPR_key = open("data/OPR_key.txt").read()
 
@@ -777,7 +777,7 @@ def extract_features(url):
             eUrl_s = Href['externals'] + Link['externals'] + Media['externals'] + Form['externals']
             nUrl_s = Href['null'] + Link['null'] + Media['null'] + Form['null']
 
-            whois_domain = whois.whois(domain)
+            whois_domain = whois(domain)
 
             result = []
             with ThreadPoolExecutor(50) as e:
@@ -835,7 +835,6 @@ def extract_features(url):
             return result
         return request
     except Exception as ex:
-        print(ex)
         return ex
 
 d = [
