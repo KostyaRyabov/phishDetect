@@ -59,26 +59,30 @@ import feature_extractor as fe
 import data.collector as dc
 
 if state in range(2, 6):
-    seed_l = 13023
-    seed_p = 1000
+    seed_l = 20594+413+25+563
+    seed_p = 9671   # 15989 - (10119 - 9671 - {1288}) + 1 -> 16830
+
+    # import pandas as pd
+    # df = pd.read_csv('data/datasets/RAW/1.csv', header=None)
+    # print('f:{} l:{}'.format(len(df[df[len(df.columns) - 1] == 1]), len(df[df[len(df.columns) - 1] == 0])))
 
 
 if __name__ == "__main__":
     if state == 0:
         dc.download_phishURLS()  # use VPN!!!
     elif state == 1:
-        fe.generate_legitimate_urls(20000)
+        fe.generate_legitimate_urls(2000, 40000)
     elif state == 2:
-        legitimate_url_list = dc.load_legitimateURLS('30-01-2021')
+        legitimate_url_list = dc.load_legitimateURLS('18-05-2021')
         url_list = dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
         fe.generate_dataset(url_list)
     elif state == 3:
-        phish_url_list = dc.load_phishURLS('15-02-2021')
+        phish_url_list = dc.load_phishURLS('24-05-2021')
         url_list = dc.set_lable_to_list(phish_url_list[seed_p:], 1)
         fe.generate_dataset(url_list)
     elif state == 4:
-        legitimate_url_list = dc.load_legitimateURLS('30-01-2021')
-        phish_url_list = dc.load_phishURLS('15-02-2021')
+        legitimate_url_list = dc.load_legitimateURLS('18-05-2021')
+        phish_url_list = dc.load_phishURLS('24-05-2021')
         url_list = []
         url_list += dc.set_lable_to_list(phish_url_list[seed_p:], 1)
         url_list += dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
@@ -90,7 +94,7 @@ if __name__ == "__main__":
     elif state == 7:
         fe.combine_datasets()
     elif state == 8:
-        fe.select_features(35)
+        fe.select_features()
     elif state == 9:
         from ml_algs import neural_networks_kfold
         neural_networks_kfold()
@@ -216,7 +220,7 @@ if __name__ == "__main__":
         # KNN_cv()
         # RF_cv()
         # XGB_cv()
-        #
+
         # Bernoulli_NB()
         # Complement_NB()
         # Gaussian_NB()
@@ -234,14 +238,14 @@ if __name__ == "__main__":
         # XGB()
         # neural_networks()
         # SVM()
-        #
-        # Stacking("ET, B, LR")  # worst all with NB
-        #
-        # Stacking("AB, GB, XGB, HGB, RF, B, ET")    # all ansambles
-        # Stacking("AB, GB, XGB, HGB")  # best ansambles
-        # Stacking("B, ET")  # worst ansambles
-        #
-        # Stacking("GNB, CNB, MNB, BNB")  # only naive Bayesan
+
+        Stacking("ET, B, LR")  # worst all with NB
+
+        Stacking("AB, GB, XGB, HGB, RF, B, ET")    # all ansambles
+        Stacking("AB, GB, XGB, HGB")  # best ansambles
+        Stacking("B, ET")  # worst ansambles
+
+        Stacking("GNB, CNB, MNB, BNB")  # only naive Bayesan
 
         Stacking("DT, ANN, KNN")  # best models without NB
         Stacking("SVM, LR")  # worst models without NB

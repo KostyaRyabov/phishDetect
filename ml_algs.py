@@ -259,9 +259,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, recall_score, precision_score, matthews_corrcoef
 from math import ceil
 
-frame = pandas.read_csv('data/datasets/OUTPUT2/dataset.csv')
-cols = list(frame)[:-1]
-X = frame[cols].to_numpy()
+frame = pandas.read_csv('data/datasets/OUTPUT/dataset.csv')
+X = frame.loc[:, frame.columns != 'status'].to_numpy()
 Y = frame['status'].to_numpy()
 
 
@@ -375,8 +374,6 @@ def get_rating():
 
 
 def neural_networks_kfold():
-    global X
-    X = X * 0.9998 + 0.0001
 
     import tensorflow as tf
     from tensorflow.keras import layers, models, optimizers, losses
@@ -644,9 +641,9 @@ def neural_networks_kfold():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=500,
+        max_evals=100,
         trials=trials,
-        timeout=60 * 60 * 6
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -662,8 +659,6 @@ def neural_networks_kfold():
 
 
 def neural_networks():
-    global X
-    X = X * 0.9998 + 0.0001
 
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     os.environ['TF_XLA_FLAGS'] = '--tf_xla_enable_xla_devices --tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
@@ -793,8 +788,6 @@ def neural_networks():
 
 
 def XGB_cv():
-    global X
-    X = X * 0.9998 + 0.0001
 
     import xgboost as xgb
     from sklearn.model_selection import KFold
@@ -880,9 +873,9 @@ def XGB_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=250,
+        max_evals=100,
         trials=trials,
-        timeout=60 * 60 * 2
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -897,8 +890,6 @@ def XGB_cv():
 
 
 def DT_cv():
-    global X
-    X = X * 0.9998 + 0.0001
 
     from sklearn.tree import DecisionTreeClassifier
     from sklearn.model_selection import KFold
@@ -977,9 +968,9 @@ def DT_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=1500,
+        max_evals=100,
         trials=trials,
-        timeout=60 * 60
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -994,11 +985,9 @@ def DT_cv():
 
 
 def SVM_cv():
-    global X
-    X = X * 0.9998 + 0.0001
 
     from sklearn.svm import SVC
-    from sklearn.model_selection import KFold
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     try:
         with open("data/trials/SVM/results.pkl", 'rb') as file:
@@ -1009,6 +998,7 @@ def SVM_cv():
     space = {
         'C': hp.randint('C', 1000000)/10,
         'random_state': 42,
+        'probability': True,
         'kernel': {
             'type': 'rbf',
             'gamma': hp.choice('gamma_rbf', ['scale', 'auto'])
@@ -1016,50 +1006,34 @@ def SVM_cv():
     }
 
     def objective(space):
-        stats = {'acc': [], 'auc': [], 'pre': [], 'recall': [], 'fscore': [], 'mcc': []}
+        clf = SVC(
+            C=space['C'],
+            random_state=space['random_state'],
+            kernel=space['kernel']['type'],
+            max_iter=1e+5,
+            probability=space['probability'],
+            tol=1e-3,
+            verbose=True
+        )
 
-        def task(obj):
-            train_index, test_index = obj
-            x_train, x_test = X[train_index], X[test_index]
-            y_train, y_test = Y[train_index], Y[test_index]
+        if 'coef0' in space['kernel']:
+            clf.coef0 = space['kernel']['coef0']
+        if 'degree' in space['kernel']:
+            clf.degree = space['kernel']['degree']
+        if 'gamma' in space['kernel']:
+            clf.gamma = space['kernel']['gamma']
 
-            clf = SVC(
-                C=space['C'],
-                random_state=space['random_state'],
-                kernel=space['kernel']['type'],
-                max_iter=1e+5,
-                # tol=1e-1,
-                # verbose=True
-            )
+        clf.fit(x_train, y_train)
 
-            if 'coef0' in space['kernel']:
-                clf.coef0 = space['kernel']['coef0']
-            if 'degree' in space['kernel']:
-                clf.degree = space['kernel']['degree']
-            if 'gamma' in space['kernel']:
-                clf.gamma = space['kernel']['gamma']
-
-            clf.fit(x_train, y_train)
-
-            y_pred = clf.predict(x_test)
-
-            stats['acc'].append(accuracy_score(y_test, y_pred))
-            stats['auc'].append(roc_auc_score(y_test, y_pred))
-            stats['pre'].append(precision_score(y_test, y_pred))
-            stats['recall'].append(recall_score(y_test, y_pred))
-            stats['fscore'].append(f1_score(y_test, y_pred))
-            stats['mcc'].append(matthews_corrcoef(y_test, y_pred))
-
-        with concurrent.futures.ThreadPoolExecutor(5) as executor:
-            executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
+        y_pred = clf.predict(x_test)
 
         m = {
-            "accuracy": np.average(stats['acc']),
-            "Precision": np.average(stats['pre']),
-            "Recall": np.average(stats['recall']),
-            "AUC": np.average(stats['auc']),
-            "f_score": np.average(stats['fscore']),
-            "mcc": np.average(stats['mcc'])
+            "accuracy": accuracy_score(y_test, y_pred),
+            "Precision": precision_score(y_test, y_pred),
+            "Recall": recall_score(y_test, y_pred),
+            "AUC": roc_auc_score(y_test, y_pred),
+            "f_score": f1_score(y_test, y_pred),
+            "mcc": matthews_corrcoef(y_test, y_pred)
         }
 
         try:
@@ -1085,9 +1059,9 @@ def SVM_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=100000,
+        max_evals=100,
         trials=trials,
-        timeout=60 * 60 * 8
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1102,8 +1076,6 @@ def SVM_cv():
 
 
 def KNN_cv():
-    global X
-    X = X * 0.9998 + 0.0001
 
     from sklearn.neighbors import KNeighborsClassifier
     from sklearn.model_selection import KFold
@@ -1177,9 +1149,9 @@ def KNN_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=25,
+        max_evals=15,
         trials=trials,
-        timeout=60 * 60
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1197,8 +1169,6 @@ def KNN_cv():
 
 
 def ET_cv():
-    global X
-    X = X * 0.9998 + 0.0001
 
     from sklearn.ensemble import ExtraTreesClassifier
     from sklearn.model_selection import KFold
@@ -1286,9 +1256,9 @@ def ET_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=400,
+        max_evals=100,
         trials=trials,
-        timeout=60 * 60 * 2
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1303,8 +1273,6 @@ def ET_cv():
 
 
 def RF_cv():
-    global X
-    X = X * 0.9998 + 0.0001
 
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.model_selection import KFold
@@ -1392,9 +1360,9 @@ def RF_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=250,
+        max_evals=100,
         trials=trials,
-        timeout=60 * 60 * 2
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1409,8 +1377,6 @@ def RF_cv():
 
 
 def AdaBoost_DT_cv():
-    global X
-    X = X * 0.9998 + 0.0001
 
     from sklearn.ensemble import AdaBoostClassifier
     from sklearn.tree import DecisionTreeClassifier
@@ -1502,9 +1468,9 @@ def AdaBoost_DT_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=250,
+        max_evals=100,
         trials=trials,
-        timeout=60 * 60
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1519,8 +1485,6 @@ def AdaBoost_DT_cv():
 
 
 def Bagging_DT_cv():
-    global X
-    X = X * 0.9998 + 0.0001
 
     from sklearn.ensemble import BaggingClassifier
     from sklearn.tree import DecisionTreeClassifier
@@ -1612,9 +1576,9 @@ def Bagging_DT_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=250,
+        max_evals=100,
         trials=trials,
-        timeout=60 * 60
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1629,8 +1593,6 @@ def Bagging_DT_cv():
 
 
 def GradientBoost_cv():
-    global X
-    X = X * 0.9998 + 0.0001
 
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn.model_selection import KFold
@@ -1715,9 +1677,9 @@ def GradientBoost_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=250,
+        max_evals=100,
         trials=trials,
-        timeout=60 * 60
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1732,8 +1694,6 @@ def GradientBoost_cv():
 
 
 def HistGradientBoost_cv():
-    global X
-    X = X * 0.9998 + 0.0001
 
     from sklearn.experimental import enable_hist_gradient_boosting
     from sklearn.ensemble import HistGradientBoostingClassifier
@@ -1813,9 +1773,9 @@ def HistGradientBoost_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=150,
+        max_evals=100,
         trials=trials,
-        timeout=60 * 60
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1830,8 +1790,6 @@ def HistGradientBoost_cv():
 
 
 def logistic_regression_cv():
-    global X
-    X = X * 0.9998 + 0.0001
 
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import KFold
@@ -1914,9 +1872,9 @@ def logistic_regression_cv():
         objective,
         space,
         algo=tpe.suggest,
-        max_evals=250,
+        max_evals=100,
         trials=trials,
-        timeout=60 * 60
+        timeout=60 * 30
     )
 
     def typer(o):
@@ -1934,8 +1892,6 @@ def logistic_regression_cv():
 
 
 def XGB():
-    global X
-    X = X * 0.9998 + 0.0001
 
     import xgboost as xgb
 
@@ -1984,8 +1940,6 @@ def XGB():
 
 
 def DT():
-    global X
-    X = X * 0.9998 + 0.0001
 
     from sklearn.tree import DecisionTreeClassifier
 
@@ -2025,8 +1979,6 @@ def DT():
 
 
 def SVM():
-    global X
-    X = X * 0.9998 + 0.0001
 
     from sklearn.svm import SVC
     # with open("data/trials/SVM/space.json", 'r') as f:
@@ -2036,6 +1988,7 @@ def SVM():
     space = {
         'C': 100,
         'random_state': 42,
+        'probability': True,
         'kernel': {
             'type': 'rbf',
             'gamma': 'auto'
@@ -2048,8 +2001,8 @@ def SVM():
         C=space['C'],
         random_state=space['random_state'],
         kernel=space['kernel']['type'],
-        max_iter=10000000,
-        probability=True,
+        max_iter=100000,
+        probability=space['probability'],
         verbose=True
     )
 
@@ -2075,8 +2028,6 @@ def SVM():
 
 
 def KNN():
-    global X
-    X = X * 0.9998 + 0.0001
 
     from sklearn.neighbors import KNeighborsClassifier
 
@@ -2214,10 +2165,6 @@ def ET():
 
     with open("data/trials/ET/space.json", 'r') as f:
         space = json.loads(
-            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
-
-    with open("data/trials/DT/space.json", 'r') as f:
-        space_DT = json.loads(
             f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
 
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
@@ -2579,8 +2526,6 @@ ann._estimator_type = "classifier"
 
 def Stacking(estimators='All'):
     global X
-
-    X = X * 0.998 + 0.001
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     import xgboost as xgb
@@ -2658,8 +2603,6 @@ def Stacking(estimators='All'):
 
 def DoubleStacking():
     global X
-
-    X = X * 0.998 + 0.001
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.3, random_state=5)
 
     import xgboost as xgb
@@ -2730,111 +2673,8 @@ def DoubleStacking():
         "mcc": matthews_corrcoef(y_test, y_pred)
     }
 
-    pickle.dump(l2, open('data/models/DoubleStacking/StackingClassifier2.pkl', 'wb'))
-    with open("data/trials/DoubleStacking/stats2.json", "w") as f:
+    pickle.dump(l2, open('data/models/DoubleStacking/StackingClassifier.pkl', 'wb'))
+    with open("data/trials/DoubleStacking/stats.json", "w") as f:
         json.dump(stats, f)
 
     print('\t\t[FINISH - DoubleStacking]')
-
-
-def search_data_size():
-    import feature_extractor as fe
-    # from sklearn.tree import DecisionTreeClassifier
-    # from sklearn.naive_bayes import GaussianNB
-    from sklearn.model_selection import KFold
-
-    import xgboost as xgb
-
-    with open("data/trials/XGB/space.json", 'r') as f:
-        space = json.loads(
-            f.read().replace("'", '"').replace("False", "false").replace("True", 'true').replace("None", "null"))
-
-    sizes = list(range(2, 41, 1))
-    values = []
-
-    frame = pandas.read_csv('data/datasets/OUTPUT/dataset.csv')
-    cols = list(frame)[:-1]
-
-    for size in sizes:
-        print(size)
-
-        X = frame[cols]
-        Y = frame['status'].to_numpy()
-
-        X = fe.RFE(X, Y, size, 5)
-
-        X = X.to_numpy() * 0.9998 + 0.0001
-
-        # trials = Trials()
-
-        # space = {
-        #     'criterion': hp.choice('criterion', ['gini', 'entropy']),
-        #     'splitter': hp.choice('splitter', ['best', 'random']),
-        #     'max_features': hp.choice('max_features', ['sqrt', 'log2', None]),
-        #     'max_depth': hp.randint('max_depth', 1, 100),
-        #     'min_samples_split': hp.uniform('min_samples_split', 0, 0.5),
-        #     'min_samples_leaf': hp.uniform('min_samples_leaf', 0, 0.5)
-        # }
-
-        def objective(space):
-            stats = []
-
-            def task(obj):
-                train_index, test_index = obj
-                x_train, x_test = X[train_index], X[test_index]
-                y_train, y_test = Y[train_index], Y[test_index]
-
-                # clf = DecisionTreeClassifier(
-                #     criterion=space['criterion'],
-                #     splitter=space['splitter'],
-                #     max_features=space['max_features'],
-                #     min_samples_leaf=space['min_samples_leaf'],
-                #     min_samples_split=space['min_samples_split']
-                # )
-
-                clf = xgb.XGBClassifier(
-                    use_label_encoder=False,
-                    n_estimators=space['n_estimators'],
-                    max_depth=int(space['max_depth']),
-                    learning_rate=space['learning_rate'],
-                    gamma=space['gamma'],
-                    min_child_weight=space['min_child_weight'],
-                    subsample=space['subsample'],
-                    colsample_bytree=space['colsample_bytree']
-                )
-
-                # clf = GaussianNB()
-
-                clf.fit(x_train, y_train)
-
-                y_pred = clf.predict(x_test)
-
-                stats.append(roc_auc_score(y_test, y_pred))
-
-            with concurrent.futures.ThreadPoolExecutor(5) as executor:
-                executor.map(task, KFold(5, shuffle=True, random_state=5).split(X, Y))
-
-            return {'loss': -np.average(stats), 'status': STATUS_OK, 'space': space}
-
-        values.append(-objective(space)['loss'])
-
-        # fmin(
-        #     objective,
-        #     space,
-        #     algo=tpe.suggest,
-        #     max_evals=1000,
-        #     trials=trials,
-        #     timeout=60 * 2
-        # )
-
-        # values.append(-trials.best_trial['result']['loss'])
-
-    plt.plot(sizes, values)
-    plt.title("поиск размерности")
-    plt.xlabel = 'кол-во признаков'
-    plt.ylabel = 'точность'
-    plt.show()
-    plt.clf()
-    plt.close()
-
-    print(values)

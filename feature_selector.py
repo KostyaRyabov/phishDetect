@@ -432,20 +432,36 @@ class FeatureSelector():
 
         # Set the yticks and labels
         ax.set_yticks(list(reversed(list(self.feature_importances.index[:plot_n]))))
-        ax.set_yticklabels(self.feature_importances['feature'][:plot_n], size=12)
+
+        fi = []
+        l = list(range(8, 60, 8))
+        l.reverse()
+
+        for str in self.feature_importances['feature'][:plot_n]:
+            for i in range(60, 0, -8):
+                if len(str) > i:
+                    idx = str.find(' ', i)
+                    if idx > 0:
+                        str = str[:idx] + '\n' + str[idx + 1:]
+
+            fi.append(str)
+
+        ax.set_yticklabels(fi,
+                           size=10,
+                           verticalalignment='center')
 
         # Plot labeling
-        plt.xlabel('Normalized Importance', size=16)
-        plt.title('Feature Importances', size=18)
+        plt.xlabel('Нормализованная значимость', size=16)
+        plt.title('Значимость признаков', size=18)
         plt.show()
 
         # Cumulative importance plot
-        plt.figure(figsize=(6, 4))
+        plt.figure(figsize=(8, 4))
         plt.plot(list(range(1, len(self.feature_importances) + 1)), self.feature_importances['cumulative_importance'],
                  'r-')
-        plt.xlabel('Number of Features', size=14)
-        plt.ylabel('Cumulative Importance', size=14)
-        plt.title('Cumulative Feature Importance', size=16)
+        plt.xlabel('Число признаков', size=14)
+        plt.ylabel('Кумулятивная важность', size=14)
+        plt.title('Кумулятивная важность признаков', size=16)
 
         if threshold:
             # Index of minimum number of features needed for cumulative importance threshold

@@ -1,4 +1,9 @@
 from main import state
+import pandas
+import requests
+import io
+from datetime import date
+import os
 
 if state == 0:
     def download_phishURLS():
@@ -22,24 +27,11 @@ if state in range(1, 7):
     import os
 
 
-    def get_dir_path():
-        lst = os.listdir(os.getcwd() + '/data/datasets/RAW')
-        if lst:
-            n = int(max(list(map(int, lst)))) + 1
-            dir_path = "data/datasets/RAW/{}/".format(n)
-            os.mkdir(os.getcwd() + '/' + dir_path)
-        else:
-            dir_path = "data/datasets/RAW/1/"
-            os.mkdir(os.getcwd() + '/' + dir_path)
-
-        return dir_path
-
-
-    dir_path = get_dir_path()
+    dir_path = '/data/datasets/PROCESS/'
 
 
     brand_list = [brand.split('.')[0] for brand in
-                      pandas.read_csv("data/ranked_domains/14-1-2021.csv", header=None)[1].tolist()][:100000]
+                      pandas.read_csv("data/ranked_domains/14-1-2021.csv", header=None)[1].tolist()]
 
 
     def set_lable_to_list(lst, lable):
