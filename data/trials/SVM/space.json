@@ -1,0 +1,1 @@
+{'C': 741.0, 'kernel': {'gamma': 'scale', 'type': 'rbf'}, 'probability': True, 'random_state': 42}

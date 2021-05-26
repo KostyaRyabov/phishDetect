@@ -38,19 +38,19 @@ from feature_selector import FeatureSelector
 from bloomfpy import BloomFilter
 import wordninja
 
-word_splitter = wordninja.LanguageModel('wordlist.txt.gz')
-brand_filter = pickle.load(open('Trie_brands.pkl', 'rb'))
-words_filter = pickle.load(open('Trie_words_Pro.pkl', 'rb'))
+word_splitter = wordninja.LanguageModel('data/wordlist.txt.gz')
+brand_filter = pickle.load(open('data/brands.pkl', 'rb'))
+words_filter = pickle.load(open('data/words.pkl', 'rb'))
 
 key = open("OPR_key.txt").read()
 translator = Translator()
-phish_hints = pickle.load(open('phish_hints.pkl', 'rb'))
+phish_hints = pickle.load(open('data/phish_hints.pkl', 'rb'))
 
 pytesseract.tesseract_cmd = r'C:/Program Files (x86)/Tesseract-OCR/tesseract.exe'
 
 reg = compile(r'\w{3,}')
 
-classifier = load(open('classifier.pkl', 'rb'))
+classifier = load(open('data/classifier.pkl', 'rb'))
 
 http_header = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36',
