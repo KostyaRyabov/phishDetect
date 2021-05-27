@@ -42,7 +42,7 @@ word_splitter = wordninja.LanguageModel('data/wordlist.txt.gz')
 brand_filter = pickle.load(open('data/brands.pkl', 'rb'))
 words_filter = pickle.load(open('data/words.pkl', 'rb'))
 
-key = open("OPR_key.txt").read()
+OPR_key = open("data/OPR_key.txt").read()
 translator = Translator()
 phish_hints = pickle.load(open('data/phish_hints.pkl', 'rb'))
 
@@ -311,7 +311,7 @@ def generate_legitimate_urls(N, seed=0):
                 "data/urls/legitimate/{0}.csv".format(date.today().strftime("%d-%m-%Y")), index=False, header=False,
                 mode='a')
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
         fut = [executor.submit(url_search, domain) for domain in domain_list]
         for _ in tqdm(concurrent.futures.as_completed(fut), total=len(domain_list)):
             pass
@@ -327,7 +327,7 @@ def search_for_vulnerable_URLs(domain):
 
         if Href:
             url = Href[randint(0, len(Href))-1]
-            state, request = is_URL_accessible(url)
+            state, request = is_URL_accessible(url, 1)
             if state:
                 return request.url
 
@@ -692,9 +692,6 @@ def web_traffic(short_url):
         return min(int(rank) / 10000000, 1)
     except:
         return 1
-
-
-OPR_key = open("OPR_key.txt").read()
 
 
 def page_rank(domain):
@@ -1619,7 +1616,7 @@ def extract_features(url):
                 (Href_de, Link_de, Anchor_de, Media_de, Img_de, Form_de, CSS_de, Favicon_de, IFrame_de, SCRIPT_de,
                  Title_de,
                  Text_de, _, _, count_textareas_de) = e.submit(
-                    extract_all_context_data, hostname, content_di, domain, r_url).result()
+                    extract_all_context_data, hostname, content_de, domain, r_url).result()     # todo: main error (was content_di)
 
             # Text_di, count_textareas_di = extract_text_context_data(content_di)
             # Text_de, count_textareas_de = extract_text_context_data(content_de)

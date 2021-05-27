@@ -19,7 +19,7 @@ if state == 0:
         return phish_url_list
 
 
-if state in range(1, 7):
+if state in range(1, 7) or state == -1:
     import pandas
     import requests
     import io

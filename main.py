@@ -1,5 +1,6 @@
-state = 49
+state = -1
 
+#-1 - run all sites (cutted)
 # 0 - download phish_urls
 # 1 - search leg urls from popular domains
 # 2 - run only leg sites
@@ -59,8 +60,8 @@ import feature_extractor as fe
 import data.collector as dc
 
 if state in range(2, 6):
-    seed_l = 20594+413+25+563
-    seed_p = 9671   # 15989 - (10119 - 9671 - {1288}) + 1 -> 16830
+    seed_l = 21596
+    seed_p = 0
 
     # import pandas as pd
     # df = pd.read_csv('data/datasets/RAW/1.csv', header=None)
@@ -68,10 +69,22 @@ if state in range(2, 6):
 
 
 if __name__ == "__main__":
-    if state == 0:
+    if state == -1:
+        seed_l = 21940+480
+        seed_p = 9741
+
+        import extractor
+
+        legitimate_url_list = dc.load_legitimateURLS('18-05-2021')
+        # phish_url_list = dc.load_phishURLS('27-05-2021')
+        url_list = []
+        # url_list += dc.set_lable_to_list(phish_url_list[seed_p:], 1)
+        url_list += dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
+        extractor.generate_dataset(url_list)
+    elif state == 0:
         dc.download_phishURLS()  # use VPN!!!
     elif state == 1:
-        fe.generate_legitimate_urls(2000, 40000)
+        fe.generate_legitimate_urls(7000, 53600)
     elif state == 2:
         legitimate_url_list = dc.load_legitimateURLS('18-05-2021')
         url_list = dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
