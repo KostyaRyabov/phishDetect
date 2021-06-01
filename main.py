@@ -1,4 +1,4 @@
-state = -1
+state = 47
 
 #-1 - run all sites (cutted)
 # 0 - download phish_urls
@@ -60,8 +60,8 @@ import feature_extractor as fe
 import data.collector as dc
 
 if state in range(2, 6):
-    seed_l = 21596
-    seed_p = 0
+    seed_l = 18559+660+1103+2502
+    seed_p = 396+787+1192+879+1100
 
     # import pandas as pd
     # df = pd.read_csv('data/datasets/RAW/1.csv', header=None)
@@ -70,8 +70,8 @@ if state in range(2, 6):
 
 if __name__ == "__main__":
     if state == -1:
-        seed_l = 21940+480
-        seed_p = 9741
+        seed_l = 0
+        seed_p = 0
 
         import extractor
 
@@ -84,26 +84,28 @@ if __name__ == "__main__":
     elif state == 0:
         dc.download_phishURLS()  # use VPN!!!
     elif state == 1:
-        fe.generate_legitimate_urls(7000, 53600)
+        fe.generate_legitimate_urls(100000, 78627)
     elif state == 2:
-        legitimate_url_list = dc.load_legitimateURLS('18-05-2021')
+        legitimate_url_list = dc.load_legitimateURLS('31-05-2021')
         url_list = dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
         fe.generate_dataset(url_list)
     elif state == 3:
-        phish_url_list = dc.load_phishURLS('24-05-2021')
+        phish_url_list = dc.load_phishURLS('01-06-2021')
         url_list = dc.set_lable_to_list(phish_url_list[seed_p:], 1)
         fe.generate_dataset(url_list)
     elif state == 4:
-        legitimate_url_list = dc.load_legitimateURLS('18-05-2021')
-        phish_url_list = dc.load_phishURLS('24-05-2021')
+        legitimate_url_list = dc.load_legitimateURLS('30-05-2021')
+        legitimate_url_list2 = dc.load_legitimateURLS('31-05-2021')
+        phish_url_list = dc.load_phishURLS('31-05-2021')
         url_list = []
         url_list += dc.set_lable_to_list(phish_url_list[seed_p:], 1)
         url_list += dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
+        url_list += dc.set_lable_to_list(legitimate_url_list2, 0)
         fe.generate_dataset(url_list)
     elif state == 5:
         fe.generate_dataset([('http://mail.ru', 0)])
     elif state == 6:
-        fe.extract_features('http://mail.ru', 0)
+        fe.extract_features('http://mail.ru')
     elif state == 7:
         fe.combine_datasets()
     elif state == 8:
@@ -234,10 +236,10 @@ if __name__ == "__main__":
         # RF_cv()
         # XGB_cv()
 
-        # Bernoulli_NB()
         # Complement_NB()
         # Gaussian_NB()
         # Multinomial_NB()
+        # Bernoulli_NB()
         #
         # DT()
         # AdaBoost_DT()

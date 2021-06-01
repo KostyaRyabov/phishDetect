@@ -1,77 +1,1043 @@
-0.9530026109660574
-0.9530026109660574
-0.9530026109660574
-0.9530026109660574
-0.9532201914708442
-0.9532201914708442
-0.9530026109660574
-0.9530026109660574
-0.9532201914708442
-0.9527850304612707
-0.9521322889469104
-0.9532201914708442
-0.9516971279373369
-0.9516971279373369
-0.9525674499564839
-0.9525674499564839
-0.95147954743255
-0.9516971279373369
-0.95147954743255
-0.9516971279373369
-0.9516971279373369
-0.95147954743255
-0.95147954743255
-0.953437771975631
-0.9532201914708442
-0.9543080939947781
-0.9549608355091384
-0.9553959965187119
-0.9551784160139252
-0.95147954743255
-0.9525674499564839
-0.9545256744995648
-0.9538729329852045
-0.9530026109660574
-0.9523498694516971
-0.9523498694516971
-0.950609225413403
-0.9501740644038295
-0.950609225413403
-0.9501740644038295
-0.9486510008703221
-0.9488685813751088
-0.9482158398607484
-0.9493037423846823
-0.9490861618798956
-0.9527850304612707
-0.9523498694516971
-0.9482158398607484
-0.9423411662315057
-0.9425587467362925
-0.9425587467362925
-0.9425587467362925
-0.9338555265448216
-0.9340731070496083
-0.9332027850304613
-0.9332027850304613
-0.9340731070496083
-0.9360313315926893
-0.9358137510879025
-0.9360313315926893
-0.9360313315926893
-0.8644473455178416
-0.8640121845082681
-0.8640121845082681
-0.8657528285465622
-0.8635770234986945
-0.8596605744125326
-0.8587902523933856
-0.8559617058311575
-0.8446475195822454
-0.824194952132289
-0.8135335073977371
-0.8083115752828547
-0.8159268929503917
-0.7169277632724108
-0.675805047867711
-0.6601392515230635
+73,0.944732987082168,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True]"
+72,0.944732987082168,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True]"
+71,0.944732987082168,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True False  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True]"
+70,0.9445998135570649,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True False  True  True  True  True  True  True  True
+  True False  True  True  True  True  True  True  True  True  True  True
+  True]"
+69,0.9444666400319617,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True False  True  True  True  True  True  True  True
+  True False  True  True  True  True  True  True  True  True  True  True
+  True]"
+68,0.9444666400319617,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True False  True  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True  True  True
+  True]"
+67,0.944732987082168,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True False  True  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True  True  True
+  True]"
+66,0.9443334665068585,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True False False  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True  True  True
+  True]"
+65,0.9442002929817552,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True False False  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True  True  True
+  True]"
+64,0.9449993341323745,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True False  True False
+  True  True  True  True False False  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True  True  True
+  True]"
+63,0.9456652017578905,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False False
+  True  True  True  True  True  True  True  True  True False  True False
+  True  True  True  True False False  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True  True  True
+  True]"
+62,0.9452656811825809,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False False
+  True  True  True  True  True  True  True  True  True False  True False
+  True False  True  True False False  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True  True  True
+  True]"
+61,0.9453988547076841,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False False
+  True  True  True  True  True  True  True  True  True False  True False
+  True False  True  True False False  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True  True  True
+  True]"
+60,0.9448661606072712,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False False
+  True  True  True  True  True  True  True  True  True False  True False
+  True False  True  True False False  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True False  True
+  True]"
+59,0.9449993341323745,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False False
+  True  True  True  True  True  True  True  True  True False  True False
+  True False  True False False False  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True False  True
+  True]"
+58,0.9448661606072712,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False  True False
+  True False  True False False False  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True False  True
+  True]"
+57,0.9451325076574777,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False False False
+  True False  True False False False  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True False  True
+  True]"
+56,0.9449993341323745,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True False False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False False False
+  True False  True False False False  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True False  True
+  True]"
+55,0.9452656811825809,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True False False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False False False
+  True False  True False False False  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True False False
+  True]"
+54,0.9455320282327874,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True False False  True  True  True False  True
+  True False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False False False
+  True False  True False False False  True  True  True  True  True  True
+  True False  True  True  True  True False  True  True  True False False
+  True]"
+53,0.9442002929817552,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True False False  True  True  True False  True
+  True False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False False False
+  True False  True False False False  True  True  True  True  True  True
+ False False  True  True  True  True False  True  True  True False False
+  True]"
+52,0.9438007724064456,"[ True False  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True False False  True  True  True False  True
+  True False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False False False
+  True False  True False False False  True  True  True  True  True  True
+ False False  True  True  True  True False  True  True  True False False
+  True]"
+51,0.9439339459315488,"[ True False  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True False False  True  True  True False  True
+  True False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False False False
+  True False  True False False False  True  True  True  True  True  True
+ False False  True  True False  True False  True  True  True False False
+  True]"
+50,0.9423358636303103,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True  True  True False False  True  True  True False  True
+  True False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False False False
+  True False  True False False False  True  True  True  True  True  True
+ False False  True  True False  True False  True  True  True False False
+  True]"
+49,0.94273538420562,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True  True  True False False  True  True  True False  True
+  True False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False False False
+  True False False False False False  True  True  True  True  True  True
+ False False  True  True False  True False  True  True  True False False
+  True]"
+48,0.9431349047809295,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+  True False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False False False
+  True False False False False False  True  True  True  True  True  True
+ False False  True  True False  True False  True  True  True False False
+  True]"
+47,0.9428685577307231,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False False False
+  True False False False False False  True  True  True  True  True  True
+ False False  True  True False  True False  True  True  True False False
+  True]"
+46,0.9436675988813424,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False False False
+  True False False False False False  True  True  True  True  True  True
+ False False  True  True False  True False  True  True False False False
+  True]"
+45,0.9416699960047943,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False False False
+  True False False False False False  True  True  True  True  True  True
+ False False  True  True False  True False  True  True False False False
+  True]"
+44,0.9415368224796911,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False False False
+  True False False False False False  True  True  True  True  True  True
+ False False  True  True False  True False  True  True False False False
+  True]"
+43,0.9403382607537621,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False False False
+  True False False False False False  True  True  True  True  True  True
+ False False  True  True False  True False  True  True False False False
+  True]"
+42,0.9406046078039686,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False False False
+ False False False False False False  True  True  True  True  True  True
+ False False  True  True False  True False  True  True False False False
+  True]"
+41,0.9404714342788654,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False False False
+ False False False False False False  True  True False  True  True  True
+ False False  True  True False  True False  True  True False False False
+  True]"
+40,0.9379411373019044,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True  True  True  True False False False False
+ False False False False False False  True  True False  True  True  True
+ False False  True  True False  True False  True  True False False False
+  True]"
+39,0.9371420961512851,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False  True  True False  True  True  True
+ False False  True  True False  True False  True  True False False False
+  True]"
+38,0.9328805433479824,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False  True  True False  True  True  True
+ False False  True  True False  True False False  True False False False
+  True]"
+37,0.9310161139965375,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False  True  True False  True  True False
+ False False  True  True False  True False False  True False False False
+  True]"
+36,0.929418031695299,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False  True  True False  True False False
+ False False  True  True False  True False False  True False False False
+  True]"
+35,0.9274204288187509,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False  True  True False False False False
+ False False  True  True False  True False False  True False False False
+  True]"
+34,0.9278199493940604,"[False False False  True  True  True  True  True False  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False  True  True False False False False
+ False False  True  True False  True False False  True False False False
+  True]"
+33,0.9254228259422027,"[False False False  True  True  True  True  True False  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True False False False False False
+ False False False False False False  True  True False False False False
+ False False  True  True False  True False False  True False False False
+  True]"
+32,0.9263550406179252,"[False False False  True  True  True  True  True False  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True False False False  True  True  True  True False False
+  True False  True  True  True False  True False False False False False
+ False False False False False False  True  True False False False False
+ False False  True  True False  True False False  True False False False
+  True]"
+31,0.9258223465175123,"[False False False  True  True  True  True  True False  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True False False False  True  True  True  True False False
+  True False False  True  True False  True False False False False False
+ False False False False False False  True  True False False False False
+ False False  True  True False  True False False  True False False False
+  True]"
+30,0.9215607937142096,"[False False False  True  True  True  True  True False  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True False False False  True  True  True  True False False
+  True False False  True  True False  True False False False False False
+ False False False False False False False  True False False False False
+ False False  True  True False  True False False  True False False False
+  True]"
+29,0.9172992409109069,"[False False False  True  True  True  True  True False  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True False False False  True  True  True  True False False
+  True False False  True  True False  True False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False  True False False  True False False False
+  True]"
+28,0.9111732587561593,"[False False False  True  True  True  True  True False  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True False False False  True  True  True  True False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False  True False False  True False False False
+  True]"
+27,0.9111732587561593,"[False False False  True  True  True  True  True False  True  True False
+  True  True  True False  True False False  True  True  True False False
+ False False  True False False False  True  True  True  True False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False  True False False  True False False False
+  True]"
+26,0.9111732587561593,"[False False False  True  True  True  True  True False  True  True False
+  True  True  True False  True False False  True  True  True False False
+ False False  True False False False  True  True  True  True False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False False False False  True False False False
+  True]"
+25,0.9111732587561593,"[False False False  True  True  True  True  True False  True  True False
+  True  True  True False  True False False  True  True  True False False
+ False False False False False False  True  True  True  True False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False False False False  True False False False
+  True]"
+24,0.9111732587561593,"[False False False  True  True  True  True  True False False  True False
+  True  True  True False  True False False  True  True  True False False
+ False False False False False False  True  True  True  True False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False False False False  True False False False
+  True]"
+23,0.9110400852310561,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False False
+ False False False False False False  True  True  True  True False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False False False False  True False False False
+  True]"
+22,0.9106405646557464,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False False
+ False False False False False False  True  True  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False False False False  True False False False
+  True]"
+21,0.91037421760554,"[False False False False  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False False
+ False False False False False False  True  True  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False False False False  True False False False
+  True]"
+20,0.8460514049806899,"[False False False False  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False False
+ False False False False False False  True  True  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False False False False False False False False
+  True]"
+19,0.8460514049806899,"[False False False False  True  True  True False False False  True False
+  True  True  True False  True False False False  True  True False False
+ False False False False False False  True  True  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False False False False False False False False
+  True]"
+18,0.8463177520308962,"[False False False False  True  True  True False False False  True False
+  True  True False False  True False False False  True  True False False
+ False False False False False False  True  True  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False False False False False False False False
+  True]"
+17,0.8424557198029032,"[False False False False  True  True  True False False False  True False
+  True  True False False False False False False  True  True False False
+ False False False False False False  True  True  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False False False False False False False False
+  True]"
+16,0.843654281528832,"[False False False False  True  True  True False False False  True False
+  True  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False False False False False False False False
+  True]"
+15,0.8407244639765614,"[False False False False  True  True  True False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True  True False False False False False False False False
+  True]"
+14,0.8404581169263551,"[False False False False  True  True  True False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True False False False False False False False False False
+  True]"
+13,0.8411239845518711,"[False False False False  True False  True False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True False False False False False False False False False
+  True]"
+12,0.8420561992275936,"[False False False False  True False  True False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True False False False False False False False False False
+  True]"
+11,0.8445864962045545,"[False False False False False False  True False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True False False False False False False False False False
+  True]"
+10,0.8441869756292449,"[False False False False False False False False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True False False False False False False False False False
+  True]"
+9,0.8383273405247037,"[False False False False False False False False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False  True False False False False False False False False False
+ False]"
+8,0.8275402849913437,"[False False False False False False False False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False]"
+7,0.8267412438407244,"[False False False False False False False False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False False False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False]"
+6,0.8283393261419629,"[False False False False False False False False False False False False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False False False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False]"
+5,0.829005193767479,"[False False False False False False False False False False False False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False False False False False
+ False False False False  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False]"
+4,0.6781195898255427,"[False False False False False False False False False False False False
+ False  True False False False False False False  True  True False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False]"
+3,0.6706618724197629,"[False False False False False False False False False False False False
+ False  True False False False False False False False  True False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False]"
+2,0.6468238114262884,"[False False False False False False False False False False False False
+ False  True False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False]"
+1,0.5076574776934345,"[False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False]"
+76,0.9449993341323745,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True]"
+75,0.9449993341323745,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True False  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True]"
+74,0.9452656811825809,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True False False  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True]"
+73,0.9448661606072712,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True False False  True  True  True  True  True
+  True  True  True False  True  True  True  True  True  True  True  True
+  True  True  True  True]"
+72,0.9444666400319617,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True False False  True  True  True  True  True
+  True  True  True False  True  True  True  True  True  True  True  True
+  True  True  True  True]"
+71,0.9443334665068585,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True False False  True  True  True  True  True
+  True  True  True False  True  True  True  True  True  True  True  True
+  True  True  True  True]"
+70,0.9444666400319617,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True False False  True  True  True  True  True
+  True  True  True False  True  True  True  True  True  True  True  True
+  True  True  True  True]"
+69,0.9444666400319617,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True False False  True  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True  True  True  True]"
+68,0.9448661606072712,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False  True
+  True  True  True  True  True  True  True  True  True False  True  True
+  True  True  True  True  True False False  True  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True  True  True  True]"
+67,0.9449993341323745,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True False  True  True  True False  True
+  True  True  True  True  True  True  True  True  True  True False False
+  True  True  True  True  True  True  True  True  True False  True  True
+  True  True  True  True  True False False  True  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True  True  True  True]"
+66,0.9453988547076841,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True False  True  True  True False  True
+ False  True  True  True  True  True  True  True  True  True False False
+  True  True  True  True  True  True  True  True  True False  True  True
+  True  True  True  True  True False False  True  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True  True  True  True]"
+65,0.9448661606072712,"[ True  True  True  True  True  True  True  True  True  True  True  True
+  True  True  True  True  True  True False  True  True  True False  True
+ False  True  True  True  True  True  True  True  True  True False False
+  True  True  True  True  True  True  True  True  True False  True  True
+  True  True  True  True False False False  True  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True  True  True  True]"
+64,0.9448661606072712,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False  True  True  True  True  True  True  True  True  True False False
+  True  True  True  True  True  True  True  True  True False  True  True
+  True  True  True  True False False False  True  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True  True  True  True]"
+63,0.944732987082168,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False  True  True  True  True  True  True  True  True  True False False
+  True  True  True  True  True  True  True  True  True False  True  True
+  True  True  True  True False False False  True  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True False  True  True]"
+62,0.9449993341323745,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False  True  True  True  True  True  True  True  True  True False False
+  True  True  True  True  True  True  True  True  True False  True  True
+  True  True False  True False False False  True  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True False  True  True]"
+61,0.9451325076574777,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False  True  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False  True  True
+  True  True False  True False False False  True  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True False  True  True]"
+60,0.9448661606072712,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False  True  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True  True False  True  True
+  True  True False  True False False False False  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True False  True  True]"
+59,0.9444666400319617,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False  True  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False  True  True
+  True  True False  True False False False False  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True False  True  True]"
+58,0.9444666400319617,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False  True  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False  True  True
+  True  True False  True False False False False  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True False False  True]"
+57,0.9445998135570649,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False  True  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False  True False
+  True  True False  True False False False False  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True False False  True]"
+56,0.944732987082168,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False  True  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False  True False
+  True False False  True False False False False  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True False False  True]"
+55,0.9451325076574777,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False  True  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False  True False
+ False False False  True False False False False  True  True  True  True
+  True  True  True False  True  True  True  True  True False  True  True
+  True False False  True]"
+54,0.9445998135570649,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False  True  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False  True False
+ False False False  True False False False False  True  True  True  True
+  True  True False False  True  True  True  True  True False  True  True
+  True False False  True]"
+53,0.944732987082168,"[ True  True  True  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False  True False
+ False False False  True False False False False  True  True  True  True
+  True  True False False  True  True  True  True  True False  True  True
+  True False False  True]"
+52,0.944067119456652,"[ True  True False  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False  True False
+ False False False  True False False False False  True  True  True  True
+  True  True False False  True  True  True  True  True False  True  True
+  True False False  True]"
+51,0.9438007724064456,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True  True  True  True False  True  True  True False  True
+ False False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False  True False
+ False False False  True False False False False  True  True  True  True
+  True  True False False  True  True  True  True  True False  True  True
+  True False False  True]"
+50,0.9438007724064456,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True  True  True False False  True  True  True False  True
+ False False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False  True False
+ False False False  True False False False False  True  True  True  True
+  True  True False False  True  True  True  True  True False  True  True
+  True False False  True]"
+49,0.9438007724064456,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False  True False
+ False False False  True False False False False  True  True  True  True
+  True  True False False  True  True  True  True  True False  True  True
+  True False False  True]"
+48,0.9438007724064456,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False  True False
+ False False False  True False False False False  True  True  True  True
+  True  True False False  True  True  True False  True False  True  True
+  True False False  True]"
+47,0.9431349047809295,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False  True False
+ False False False False False False False False  True  True  True  True
+  True  True False False  True  True  True False  True False  True  True
+  True False False  True]"
+46,0.9411373019043814,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False False False
+ False False False False False False False False  True  True  True  True
+  True  True False False  True  True  True False  True False  True  True
+  True False False  True]"
+45,0.9414036489545878,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False False False
+ False False False False False False False False  True  True  True  True
+ False  True False False  True  True  True False  True False  True  True
+  True False False  True]"
+44,0.9410041283792782,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True  True  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False False False
+ False False False False False False False False  True  True  True  True
+ False  True False False  True  True  True False  True False  True  True
+ False False False  True]"
+43,0.9416699960047943,"[ True False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False False False
+ False False False False False False False False  True  True  True  True
+ False  True False False  True  True  True False  True False  True  True
+ False False False  True]"
+42,0.9418031695298975,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False  True  True  True  True  True False False
+  True False  True  True  True  True  True  True False False False False
+ False False False False False False False False  True  True  True  True
+ False  True False False  True  True  True False  True False  True  True
+ False False False  True]"
+41,0.9415368224796911,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False  True  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False False False  True  True  True  True
+ False  True False False  True  True  True False  True False  True  True
+ False False False  True]"
+40,0.9400719137035557,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False  True  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False False False  True False  True  True
+ False  True False False  True  True  True False  True False  True  True
+ False False False  True]"
+39,0.9382074843521108,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False False False  True False  True  True
+ False  True False False  True  True  True False  True False  True  True
+ False False False  True]"
+38,0.9342122785990146,"[False False False  True  True  True  True  True  True  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False False False  True False  True  True
+ False  True False False  True  True  True False  True False False  True
+ False False False  True]"
+37,0.9335464109734984,"[False False False  True  True  True  True  True False  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False False False  True False  True  True
+ False  True False False  True  True  True False  True False False  True
+ False False False  True]"
+36,0.9306165934212278,"[False False False  True  True  True  True  True False  True  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False False False False False  True  True
+ False  True False False  True  True  True False  True False False  True
+ False False False  True]"
+35,0.9308829404714343,"[False False False  True  True  True  True  True False False  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False False False False False  True  True
+ False  True False False  True  True  True False  True False False  True
+ False False False  True]"
+34,0.930749766946331,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False False False False False  True  True
+ False  True False False  True  True  True False  True False False  True
+ False False False  True]"
+33,0.9258223465175123,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False False False False False  True  True
+ False False False False  True  True  True False  True False False  True
+ False False False  True]"
+32,0.9247569583166867,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False False False False False  True False
+ False False False False  True  True  True False  True False False  True
+ False False False  True]"
+31,0.9247569583166867,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False  True  True False False False False
+ False False False False False False False False False False  True False
+ False False False False  True  True False False  True False False  True
+ False False False  True]"
+30,0.9172992409109069,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False False  True False False False False
+ False False False False False False False False False False  True False
+ False False False False  True  True False False  True False False  True
+ False False False  True]"
+29,0.9172992409109069,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False  True
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False False  True False False False False
+ False False False False False False False False False False  True False
+ False False False False  True  True False False False False False  True
+ False False False  True]"
+28,0.9172992409109069,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False False
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False False  True False False False False
+ False False False False False False False False False False  True False
+ False False False False  True  True False False False False False  True
+ False False False  True]"
+27,0.9125049940071913,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False False
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False False  True False False False False
+ False False False False False False False False False False False False
+ False False False False  True  True False False False False False  True
+ False False False  True]"
+26,0.9119722999067785,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False False
+ False False  True  True False False  True  True  True  True False False
+  True False  True  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True  True False False False False False  True
+ False False False  True]"
+25,0.912238646956985,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False False
+ False False  True False False False  True  True  True  True False False
+  True False  True  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True  True False False False False False  True
+ False False False  True]"
+24,0.9115727793314689,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False False
+ False False False False False False  True  True  True  True False False
+  True False  True  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True  True False False False False False  True
+ False False False  True]"
+23,0.9107737381808496,"[False False False  True  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False False
+ False False False False False False  True  True  True False False False
+  True False  True  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True  True False False False False False  True
+ False False False  True]"
+22,0.9109069117059528,"[False False False False  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False False
+ False False False False False False  True  True  True False False False
+  True False  True  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True  True False False False False False  True
+ False False False  True]"
+21,0.8491143960580636,"[False False False False  True  True  True False False False  True False
+  True  True  True False  True False False  True  True  True False False
+ False False False False False False  True  True  True False False False
+  True False  True  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True  True False False False False False False
+ False False False  True]"
+20,0.8491143960580636,"[False False False False  True  True  True False False False  True False
+  True  True  True False  True False False False  True  True False False
+ False False False False False False  True  True  True False False False
+  True False  True  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True  True False False False False False False
+ False False False  True]"
+19,0.84938074310827,"[False False False False  True  True  True False False False  True False
+  True  True False False  True False False False  True  True False False
+ False False False False False False  True  True  True False False False
+  True False  True  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True  True False False False False False False
+ False False False  True]"
+18,0.8463177520308962,"[False False False False  True  True  True False False False  True False
+  True  True False False  True False False False  True  True False False
+ False False False False False False  True  True  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True  True False False False False False False
+ False False False  True]"
+17,0.8424557198029032,"[False False False False  True  True  True False False False  True False
+  True  True False False False False False False  True  True False False
+ False False False False False False  True  True  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True  True False False False False False False
+ False False False  True]"
+16,0.843654281528832,"[False False False False  True  True  True False False False  True False
+  True  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True  True False False False False False False
+ False False False  True]"
+15,0.8407244639765614,"[False False False False  True  True  True False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True  True False False False False False False
+ False False False  True]"
+14,0.8404581169263551,"[False False False False  True  True  True False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False  True]"
+13,0.8411239845518711,"[False False False False  True False  True False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+  True False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False  True]"
+12,0.8420561992275936,"[False False False False  True False  True False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False  True]"
+11,0.8445864962045545,"[False False False False False False  True False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False  True]"
+10,0.8441869756292449,"[False False False False False False False False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False  True]"
+9,0.8383273405247037,"[False False False False False False False False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False False]"
+8,0.8275402849913437,"[False False False False False False False False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False  True False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False]"
+7,0.8267412438407244,"[False False False False False False False False False False  True False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False False False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False]"
+6,0.8283393261419629,"[False False False False False False False False False False False False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False False False False False
+ False False False  True  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False]"
+5,0.829005193767479,"[False False False False False False False False False False False False
+ False  True False False False False False False  True  True False False
+ False False False False False False  True False False False False False
+ False False False False  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False]"
+4,0.6781195898255427,"[False False False False False False False False False False False False
+ False  True False False False False False False  True  True False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False]"
+3,0.6706618724197629,"[False False False False False False False False False False False False
+ False  True False False False False False False False  True False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False]"
+2,0.6468238114262884,"[False False False False False False False False False False False False
+ False  True False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False]"
+1,0.5076574776934345,"[False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False  True False False False False False False False
+ False False False False False False False False False False False False
+ False False False False False False False False False False False False
+ False False False False]"
