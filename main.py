@@ -89,7 +89,7 @@ def run_in_thread(fn):
         progress_task.start()
     return run
 
-def is_URL_accessible(url, time_out=3):
+def is_URL_accessible(url, time_out=5):
     page = None
 
     if not url.startswith('http'):
@@ -100,8 +100,8 @@ def is_URL_accessible(url, time_out=3):
 
     try:
         page = get(url, timeout=time_out, headers=http_header)
-    except:
-        pass
+    except Exception as err:
+        return False, err
 
     if page:
         if page.status_code == 200 and page.content not in ["b''", "b' '"]:
@@ -371,8 +371,6 @@ def get_domain(url):
     return o.hostname, tld_extract(url).domain, o.path, o.netloc
 
 def extract_all_context_data(hostname, content, domain, base_url):
-    global p_v
-
     Null_format = ["", "#", "#nothing", "#doesnotexist", "#null", "#void", "#whatever",
                    "#content", "javascript::void(0)", "javascript::void(0);", "javascript::;", "javascript"]
 
@@ -386,10 +384,8 @@ def extract_all_context_data(hostname, content, domain, base_url):
 
     CSS = {'internals': [], 'externals': [], 'null': [], 'embedded': 0}
     Favicon = {'internals': [], 'externals': [], 'null': []}
-    IFrame = {'visible': [], 'invisible': [], 'null': []}
 
     Text = ''
-    Title = ''
 
     soup = BeautifulSoup(content, 'lxml')
 
@@ -575,23 +571,6 @@ def extract_all_context_data(hostname, content, domain, base_url):
                         Favicon['internals'].append(url)
                     else:
                         Favicon['externals'].append(url)
-    def collector11():
-        for i_frame in soup.find_all('iframe', width=True, height=True, frameborder=True):
-            if i_frame['width'] == "0" and i_frame['height'] == "0" and i_frame['frameborder'] == "0":
-                IFrame['invisible'].append(i_frame)
-            else:
-                IFrame['visible'].append(i_frame)
-        for i_frame in soup.find_all('iframe', width=True, height=True, border=True):
-            if i_frame['width'] == "0" and i_frame['height'] == "0" and i_frame['border'] == "0":
-                IFrame['invisible'].append(i_frame)
-            else:
-                IFrame['visible'].append(i_frame)
-        for i_frame in soup.find_all('iframe', width=True, height=True, style=True):
-            if i_frame['width'] == "0" and i_frame['height'] == "0" and i_frame['style'] == "border:none;":
-                IFrame['invisible'].append(i_frame)
-            else:
-                IFrame['visible'].append(i_frame)
-
     def merge_scripts(script_lnks):
         docs = []
 
@@ -613,7 +592,7 @@ def extract_all_context_data(hostname, content, domain, base_url):
         except TimeoutError:
             return "\n".join(docs)
 
-    with ThreadPoolExecutor(14) as e:
+    with ThreadPoolExecutor(13) as e:
         e.submit(collector1)
         e.submit(collector2)
         e.submit(collector3)
@@ -624,15 +603,9 @@ def extract_all_context_data(hostname, content, domain, base_url):
         e.submit(collector8)
         e.submit(collector9)
         e.submit(collector10)
-        e.submit(collector11)
         internals_script_doc = e.submit(merge_scripts, SCRIPT['internals']).result()
         externals_script_doc = e.submit(merge_scripts, SCRIPT['externals']).result()
         Text = e.submit(soup.get_text).result().lower()
-
-    try:
-        Title = soup.title.string.lower()
-    except:
-        pass
 
     try:
         internals_script_doc = ' '.join(
@@ -649,7 +622,7 @@ def extract_all_context_data(hostname, content, domain, base_url):
         if io['type'] == 'text' or io['type'] == 'password' or io['type'] == 'search':
             io_count += 1
 
-    return Href, Link, Anchor, Media, Img, Form, CSS, Favicon, IFrame, SCRIPT, Title, Text, internals_script_doc.lower(), externals_script_doc.lower(), io_count
+    return Href, Link, Anchor, Media, Img, Form, CSS, Favicon, Text, internals_script_doc.lower(), externals_script_doc.lower(), io_count
 
 def extract_onlyText(content):
     return BeautifulSoup(content, 'lxml').get_text().lower()
@@ -754,82 +727,81 @@ class Manager:
     def url_stats(self, url, r_url, request):
         self.result[1] = having_ip_address(url)
         self.result[2] = shortening_service(url)
-        self.result[4] = len(r_url) #
-        self.result[5] = r_url.count('@') #
-        self.result[6] = r_url.count(';') #
-        self.result[7] = r_url.count('&') #
-        self.result[8] = r_url.count('/') - 2 #
-        self.result[9] = r_url.count('=') #
-        self.result[10] = r_url.count('%') #
-        self.result[11] = r_url.count('-') #
-        self.result[12] = r_url.count('.') #
-        self.result[13] = r_url.count('~') #
-        self.result[15] = ratio_digits(r_url) #
-        self.result[16] = count_digits(r_url) #
-        self.result[18] = len(request.history) #
-        self.result[30] = compression_ratio(request) #
+        self.result[4] = len(r_url)
+        self.result[5] = r_url.count('@')
+        self.result[6] = r_url.count(';')
+        self.result[7] = r_url.count('&')
+        self.result[8] = r_url.count('/') - 2
+        self.result[9] = r_url.count('=')
+        self.result[10] = r_url.count('%')
+        self.result[11] = r_url.count('-')
+        self.result[12] = r_url.count('.')
+        self.result[13] = r_url.count('~')
+        self.result[15] = ratio_digits(r_url)
+        self.result[16] = count_digits(r_url)
+        self.result[18] = len(request.history)
+        self.result[30] = compression_ratio(request)
     def domain_info(self, r_url):
         hostname, second_level_domain, path, netloc = get_domain(r_url)
 
-        self.set('hostname', hostname) ##
-        self.set('second_level_domain', second_level_domain) ##
-        self.set('netloc', netloc) ##
+        self.set('hostname', hostname)
+        self.set('second_level_domain', second_level_domain)
+        self.set('netloc', netloc)
     def get_url_parts(self, extracted_domain, r_url):
-        self.set('domain', extracted_domain.domain + '.' + extracted_domain.suffix) ##
+        self.set('domain', extracted_domain.domain + '.' + extracted_domain.suffix)
 
         tmp = r_url[r_url.find(extracted_domain.suffix):len(r_url)]
 
         pth = tmp.partition("/")[2]
-        self.set('pth', pth) ##
+        self.set('pth', pth)
 
         cutted_url = extracted_domain.domain + extracted_domain.subdomain
-        self.set('cutted_url', cutted_url) ##
-        self.set('cutted_url2', cutted_url + pth) ##
+        self.set('cutted_url', cutted_url)
+        self.set('cutted_url2', cutted_url + pth)
     def update_url_parts(self, url_words, parsed):
-        self.result[17] = len(url_words) #
-        self.set('scheme', parsed.scheme) ##
+        self.result[17] = len(url_words)
+        self.set('scheme', parsed.scheme)
     def url_stats2(self, scheme, cutted_url2):
-        self.result[14] = https_token(scheme) #
-        self.result[25] = cutted_url2.count('www') #
-        self.result[26] = cutted_url2.count('com') #
+        self.result[14] = https_token(scheme)
+        self.result[25] = cutted_url2.count('www')
+        self.result[26] = cutted_url2.count('com')
     def url_lens(self, url_words):
-        self.result[27] = average_word_length(url_words) #
-        self.result[28] = longest_word_length(url_words) #
+        self.result[27] = average_word_length(url_words)
+        self.result[28] = longest_word_length(url_words)
     def sContext_grabber(self, hostname, content, domain, r_url):
-        (Href, Link, Anchor, Media, Img, Form, CSS, Favicon, IFrame, SCRIPT, Title, Text, internals_script_doc,
-         externals_script_doc,
+        (Href, Link, Anchor, Media, Img, Form, CSS, Favicon, Text, internals_script_doc, externals_script_doc,
          io_count) = extract_all_context_data(hostname, content, domain, r_url)
 
         iUrl_s = Href['internals'] + Link['internals'] + Media['internals'] + Form['internals']
         eUrl_s = Href['externals'] + Link['externals'] + Media['externals'] + Form['externals']
         nUrl_s = Href['null'] + Link['null'] + Media['null'] + Form['null']
 
-        self.set('Text', Text) ##
+        self.set('Text', Text)
 
-        self.set('internals_script_doc', internals_script_doc) ##
-        self.set('externals_script_doc', externals_script_doc) ##
+        self.set('internals_script_doc', internals_script_doc)
+        self.set('externals_script_doc', externals_script_doc)
 
-        self.set('Img_internals', Img['internals']) ##
-        self.set('Img_externals', Img['externals']) ##
+        self.set('Img_internals', Img['internals'])
+        self.set('Img_externals', Img['externals'])
 
-        self.result[31] = io_count #
-        self.result[32] = len(iUrl_s) + len(eUrl_s) #
-        self.result[33] = urls_ratio(iUrl_s, iUrl_s + eUrl_s + nUrl_s) #
-        self.result[34] = urls_ratio(eUrl_s, iUrl_s + eUrl_s + nUrl_s) #
-        self.result[35] = urls_ratio(nUrl_s, iUrl_s + eUrl_s + nUrl_s) #
-        self.result[36] = ratio_List(CSS, 'embedded') #
-        self.result[37] = ratio_List(Img, 'internals') #
-        self.result[38] = ratio_List(Favicon, 'internals') #
-        self.result[39] = ratio_List(Media, 'externals') #
-        self.result[40] = ratio_anchor(Anchor, 'unsafe') #
-        self.result[41] = ratio_anchor(Anchor, 'safe') #
-        self.result[42] = ratio_List(Link, 'internals') #
-        self.result[43] = ratio_List(Link, 'externals') #
+        self.result[31] = io_count
+        self.result[32] = len(iUrl_s) + len(eUrl_s)
+        self.result[33] = urls_ratio(iUrl_s, iUrl_s + eUrl_s + nUrl_s)
+        self.result[34] = urls_ratio(eUrl_s, iUrl_s + eUrl_s + nUrl_s)
+        self.result[35] = urls_ratio(nUrl_s, iUrl_s + eUrl_s + nUrl_s)
+        self.result[36] = ratio_List(CSS, 'embedded')
+        self.result[37] = ratio_List(Img, 'internals')
+        self.result[38] = ratio_List(Favicon, 'internals')
+        self.result[39] = ratio_List(Media, 'externals')
+        self.result[40] = ratio_anchor(Anchor, 'unsafe')
+        self.result[41] = ratio_anchor(Anchor, 'safe')
+        self.result[42] = ratio_List(Link, 'internals')
+        self.result[43] = ratio_List(Link, 'externals')
     def cert_stats(self, whois_domain, domain, cert):
-        self.result[49] = whois_registered_domain(whois_domain, domain) #
-        self.result[52] = count_alt_names(cert) #
+        self.result[49] = whois_registered_domain(whois_domain, domain)
+        self.result[52] = count_alt_names(cert)
     def Text_stats(self, iImgTxt_words, eImgTxt_words, sContent_words):
-        self.result[46] = ratio_Txt(iImgTxt_words + eImgTxt_words, sContent_words) #
+        self.result[46] = ratio_Txt(iImgTxt_words + eImgTxt_words, sContent_words)
 
     def __init__(self):
         self.event = threading.Event()
@@ -839,54 +811,54 @@ class Manager:
         self.index = defaultdict(set)
         self.tasks = []
 
-        self.tasks.append([self.url_stats, ['url', 'r_url', 'request'], -1]) ##
-        self.tasks.append([self.domain_info, ['r_url'], -1]) ##
-        self.tasks.append([self.get_url_parts, ['extracted_domain', 'r_url'], -1]) ##
-        self.tasks.append([tld_extract, ['r_url'], 'extracted_domain']) ##
-        self.tasks.append([good_netloc, ['netloc'], 3]) ##
-        self.tasks.append([count_external_redirection, ['request', 'domain'], 19]) ##
-        self.tasks.append([sld_in_brand, ['second_level_domain'], 23]) ##
-        self.tasks.append([count_subdomain, ['netloc'], 29]) ##
-        self.tasks.append([page_rank, ['domain'], 51]) ##
-        self.tasks.append([segment, ['pth'], 'words_raw_path']) ##
-        self.tasks.append([segment, ['cutted_url'], 'words_raw_host']) ##
-        self.tasks.append([segment, ['cutted_url', 'pth'], 'url_words']) ##
-        self.tasks.append([urlparse, ['domain'], 'parsed']) ##
-        self.tasks.append([self.update_url_parts, ['url_words', 'parsed'], -1]) ##
-        self.tasks.append([random_words, ['url_words'], 20]) ##
-        self.tasks.append([char_repeat, ['words_raw_host'], 21]) ##
-        self.tasks.append([char_repeat, ['words_raw_path'], 22]) ##
-        self.tasks.append([brand_in_path, ['words_raw_path'], 24]) ##
-        self.tasks.append([self.url_stats2, ['scheme', 'cutted_url2'], -1]) ##
-        self.tasks.append([self.url_lens, ['url_words'], -1]) ##
-        self.tasks.append([web_traffic, ['r_url'], 50]) ##
-        self.tasks.append([whois, ['domain'], 'whois_domain']) ##
-        self.tasks.append([get_cert, ['domain'], 'cert']) ##
-        self.tasks.append([self.sContext_grabber, ['hostname', 'content', 'domain', 'r_url'], -1]) ##
-        self.tasks.append([count_io_commands, ['internals_script_doc'], 47]) ##
-        self.tasks.append([count_io_commands, ['externals_script_doc'], 48]) ##
-        self.tasks.append([self.cert_stats, ['whois_domain', 'domain', 'cert'], -1]) ##
-        self.tasks.append([reg.findall, ['Text'], 'sContent_words']) ##
-        self.tasks.append([check_Language, ['Text'], 'lang']) ##
-        self.tasks.append([remove_JScomments, ['internals_script_doc'], 'js_di']) ##
-        self.tasks.append([remove_JScomments, ['externals_script_doc'], 'js_de']) ##
-        self.tasks.append([len, ['sContent_words'], 45]) ##
-        self.tasks.append([count_phish_hints, ['Text', 'lang'], 44]) ##
-        self.tasks.append([image_to_text, ['Img_internals', 'lang'], 'internals_img_txt']) ##
-        self.tasks.append([image_to_text, ['Img_externals', 'lang'], 'externals_img_txt']) ##
+        self.tasks.append([self.url_stats, ['url', 'r_url', 'request'], -1])
+        self.tasks.append([self.domain_info, ['r_url'], -1])
+        self.tasks.append([self.get_url_parts, ['extracted_domain', 'r_url'], -1])
+        self.tasks.append([tld_extract, ['r_url'], 'extracted_domain'])
+        self.tasks.append([good_netloc, ['netloc'], 3])
+        self.tasks.append([count_external_redirection, ['request', 'domain'], 19])
+        self.tasks.append([sld_in_brand, ['second_level_domain'], 23])
+        self.tasks.append([count_subdomain, ['netloc'], 29])
+        self.tasks.append([page_rank, ['domain'], 51])
+        self.tasks.append([segment, ['pth'], 'words_raw_path'])
+        self.tasks.append([segment, ['cutted_url'], 'words_raw_host'])
+        self.tasks.append([segment, ['cutted_url', 'pth'], 'url_words'])
+        self.tasks.append([urlparse, ['domain'], 'parsed'])
+        self.tasks.append([self.update_url_parts, ['url_words', 'parsed'], -1])
+        self.tasks.append([random_words, ['url_words'], 20])
+        self.tasks.append([char_repeat, ['words_raw_host'], 21])
+        self.tasks.append([char_repeat, ['words_raw_path'], 22])
+        self.tasks.append([brand_in_path, ['words_raw_path'], 24])
+        self.tasks.append([self.url_stats2, ['scheme', 'cutted_url2'], -1])
+        self.tasks.append([self.url_lens, ['url_words'], -1])
+        self.tasks.append([web_traffic, ['r_url'], 50])
+        self.tasks.append([whois, ['domain'], 'whois_domain'])
+        self.tasks.append([get_cert, ['domain'], 'cert'])
+        self.tasks.append([self.sContext_grabber, ['hostname', 'content', 'domain', 'r_url'], -1])
+        self.tasks.append([count_io_commands, ['internals_script_doc'], 47])
+        self.tasks.append([count_io_commands, ['externals_script_doc'], 48])
+        self.tasks.append([self.cert_stats, ['whois_domain', 'domain', 'cert'], -1])
+        self.tasks.append([reg.findall, ['Text'], 'sContent_words'])
+        self.tasks.append([check_Language, ['Text'], 'lang'])
+        self.tasks.append([remove_JScomments, ['internals_script_doc'], 'js_di'])
+        self.tasks.append([remove_JScomments, ['externals_script_doc'], 'js_de'])
+        self.tasks.append([len, ['sContent_words'], 45])
+        self.tasks.append([count_phish_hints, ['Text', 'lang'], 44])
+        self.tasks.append([image_to_text, ['Img_internals', 'lang'], 'internals_img_txt'])
+        self.tasks.append([image_to_text, ['Img_externals', 'lang'], 'externals_img_txt'])
 
-        self.tasks.append([get_html_from_js, ['js_di'], 'content_di']) ##
-        self.tasks.append([get_html_from_js, ['js_de'], 'content_de']) ##
+        self.tasks.append([get_html_from_js, ['js_di'], 'content_di'])
+        self.tasks.append([get_html_from_js, ['js_de'], 'content_de'])
 
         self.tasks.append([extract_onlyText, ['content_di'], 'Text_di'])
         self.tasks.append([extract_onlyText, ['content_de'], 'Text_de'])
-        self.tasks.append([reg.findall, ['Text_di'], 'diContent_words']) ##
-        self.tasks.append([self.Text_stats, ['iImgTxt_words', 'eImgTxt_words', 'sContent_words'], -1]) ##
-        self.tasks.append([reg.findall, ['Text_de'], 'deContent_words']) ##
+        self.tasks.append([reg.findall, ['Text_di'], 'diContent_words'])
+        self.tasks.append([self.Text_stats, ['iImgTxt_words', 'eImgTxt_words', 'sContent_words'], -1])
+        self.tasks.append([reg.findall, ['Text_de'], 'deContent_words'])
         self.tasks.append(
-            [word_ratio, ['iImgTxt_words', 'eImgTxt_words', 'sContent_words', 'diContent_words', 'deContent_words'], 0]) ##
-        self.tasks.append([reg.findall, ['internals_img_txt'], 'iImgTxt_words']) ##
-        self.tasks.append([reg.findall, ['externals_img_txt'], 'eImgTxt_words']) ##
+            [word_ratio, ['iImgTxt_words', 'eImgTxt_words', 'sContent_words', 'diContent_words', 'deContent_words'], 0])
+        self.tasks.append([reg.findall, ['internals_img_txt'], 'iImgTxt_words'])
+        self.tasks.append([reg.findall, ['externals_img_txt'], 'eImgTxt_words'])
 
         for task_idx, options in enumerate(self.tasks):
             for requires in options[1]:
@@ -932,10 +904,10 @@ def extract_features(url):
             request.encoding = 'utf-8'
 
             manager = Manager()
-            manager.set('request', request) ##
-            manager.set('url', url) ##
-            manager.set('r_url', request.url) ##
-            manager.set('content', request.text.lower()) ##
+            manager.set('request', request)
+            manager.set('url', url)
+            manager.set('r_url', request.url)
+            manager.set('content', request.text.lower())
 
             return manager.get_result()
         return request
