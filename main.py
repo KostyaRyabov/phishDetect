@@ -1,4 +1,4 @@
-state = 47
+state = 46
 
 #-1 - run all sites (cutted)
 # 0 - download phish_urls
@@ -60,8 +60,8 @@ import feature_extractor as fe
 import data.collector as dc
 
 if state in range(2, 6):
-    seed_l = 18559+660+1103+2502
-    seed_p = 396+787+1192+879+1100
+    seed_l = 22824
+    seed_p = 4354
 
     # import pandas as pd
     # df = pd.read_csv('data/datasets/RAW/1.csv', header=None)
@@ -70,16 +70,69 @@ if state in range(2, 6):
 
 if __name__ == "__main__":
     if state == -1:
-        seed_l = 0
+        seed_l = 43695
         seed_p = 0
 
-        import extractor
+        urls = '''http://google.com
+http://youtube.com
+http://facebook.com
+http://firevis.ru
+http://pipeservice.ru
+http://cleanpipes.ru
+http://baidu.com
+http://yahoo.com
+http://instagram.com
+http://twitter.com
+http://xnxx.com
+http://vk.com
+http://wikipedia.org
+http://xvideos.com
+http://yandex.ru
+http://pornhub.com
+http://amazon.com
+http://google.com.br
+http://live.com
+http://google.com.in
+http://google.com.uk
+http://xhamster.com
+http://ok.ru
+http://mail.ru
+http://google.com.jp
+http://yahoo.co.jp
+http://reddit.com
+http://google.de
+http://netflix.com
+http://qq.com
+http://google.fr
+http://google.ru
+http://ampproject.org
+http://ozon.ru
+https://www.svyaznoy.ru
+https://www.mvideo.ru
+https://www.nvidia.com/ru-ru/
+https://top-igruha.ru/page/2/
+https://habr.com/ru/post/78728/
+https://vulkan-tutorial.com/Introduction
+https://dyakonov.org/2017/03/10/cтекинг-stacking-и-блендинг-blending/
+https://neerc.ifmo.ru/wiki/index.php?title=Бустинг,_AdaBoost
+https://www.machinelearningmastery.ru/metrics-evaluate-machine-learning-algorithms-python/
+https://python-school.ru/top7-libraries-for-data-visualization/
+https://stackoverflow.com/questions/13448064/how-to-find-the-intersection-of-two-stdset-in-c
+https://neerc.ifmo.ru/wiki/index.php?title=Список_с_пропусками'''.split('\n')
 
-        legitimate_url_list = dc.load_legitimateURLS('18-05-2021')
-        # phish_url_list = dc.load_phishURLS('27-05-2021')
+        import extractor
+        import pandas as pd
+
+        domains = pd.read_csv('data/ranked_domains/14-1-2021.csv', header=None)[1].tolist()
+
+        legitimate_url_list = dc.load_legitimateURLS('31-05-2021')
+        phish_url_list = dc.load_phishURLS('05-06-2021')
         url_list = []
-        # url_list += dc.set_lable_to_list(phish_url_list[seed_p:], 1)
+        # url_list += [(u, 0) for u in urls]
+        url_list += dc.set_lable_to_list(phish_url_list[seed_p:], 1)
+        url_list += [(d, 0) for d in domains][1330:]
         url_list += dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
+
         extractor.generate_dataset(url_list)
     elif state == 0:
         dc.download_phishURLS()  # use VPN!!!
@@ -254,20 +307,20 @@ if __name__ == "__main__":
         # neural_networks()
         # SVM()
 
-        Stacking("ET, B, LR")  # worst all with NB
+        # Stacking("ET, B, LR")  # worst all with NB
 
         Stacking("AB, GB, XGB, HGB, RF, B, ET")    # all ansambles
-        Stacking("AB, GB, XGB, HGB")  # best ansambles
-        Stacking("B, ET")  # worst ansambles
+        # Stacking("AB, GB, XGB, HGB")  # best ansambles
+        # Stacking("B, ET")  # worst ansambles
 
-        Stacking("GNB, CNB, MNB, BNB")  # only naive Bayesan
+        # Stacking("GNB, CNB, MNB, BNB")  # only naive Bayesan
 
-        Stacking("DT, ANN, KNN")  # best models without NB
-        Stacking("SVM, LR")  # worst models without NB
-        Stacking("DT, ANN, KNN, SVM, LR, GNB, CNB, MNB, BNB")  # all models with NB
-        Stacking("DT, ANN, KNN, SVM, LR")  # all models without NB
+        # Stacking("DT, ANN, KNN")  # best models without NB
+        # Stacking("SVM, LR")  # worst models without NB
+        # Stacking("DT, ANN, KNN, SVM, LR, GNB, CNB, MNB, BNB")  # all models with NB
+        # Stacking("DT, ANN, KNN, SVM, LR")  # all models without NB
 
-        Stacking("All")
+        # Stacking("All")
     elif state == 47:
         from ml_algs import get_rating
         get_rating()
