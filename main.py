@@ -10,7 +10,7 @@ from re import compile, finditer, MULTILINE, DOTALL, search, findall
 import socket
 from OpenSSL.crypto import load_certificate, FILETYPE_PEM
 from whois import whois
-from requests import session
+from requests import session, exceptions
 from iso639 import languages
 from threading import Thread
 from pickle import load
@@ -100,6 +100,8 @@ def is_URL_accessible(url, time_out=5):
 
     try:
         page = get(url, timeout=time_out, headers=http_header)
+    except exceptions.RequestException as err:
+        return False, err
     except Exception as err:
         return False, err
 
@@ -898,7 +900,7 @@ class Manager:
 
 def extract_features(url):
     try:
-        (state, request) = is_URL_accessible(url, 2)
+        (state, request) = is_URL_accessible(url, 3)
 
         if state:
             request.encoding = 'utf-8'
