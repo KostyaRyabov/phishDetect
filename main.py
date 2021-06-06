@@ -70,8 +70,8 @@ if state in range(2, 6):
 
 if __name__ == "__main__":
     if state == -1:
-        seed_l = 43695+448+2200
-        seed_p = 0
+        seed_l = 52196
+        seed_p = 2495
 
         urls = '''ozon.ru
 mvideo.ru
@@ -86,13 +86,13 @@ lamoda.ru'''.split('\n')
 
         domains = pd.read_csv('data/ranked_domains/14-1-2021.csv', header=None)[1].tolist()
 
-        legitimate_url_list = dc.load_legitimateURLS('31-05-2021')
-        phish_url_list = dc.load_phishURLS('05-06-2021')
+        # legitimate_url_list = dc.load_legitimateURLS('31-05-2021')
+        phish_url_list = dc.load_phishURLS('06-06-2021')
         url_list = []
         # url_list += [(u, 0) for u in urls]
-        # url_list += dc.set_lable_to_list(phish_url_list[seed_p:], 1)
+        url_list += dc.set_lable_to_list(phish_url_list[seed_p:], 1)
         # url_list += [(d, 0) for d in domains][2595:]
-        url_list += dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
+        # url_list += dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
 
         extractor.generate_dataset(url_list)
     elif state == 0:
