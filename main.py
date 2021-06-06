@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from sys import settrace
 from colour import Color
 from tldextract import extract as tld_extract
@@ -12,10 +14,10 @@ from OpenSSL.crypto import load_certificate, FILETYPE_PEM
 from whois import whois
 from requests import session, exceptions
 from iso639 import languages
-from threading import Thread
+from threading import Thread, Lock, Event
 from pickle import load
 from wordninja import LanguageModel
-from tkinter import END, Tk, StringVar, Entry, Button, N, S, W, E, Text, HORIZONTAL
+from tkinter import END, Tk, StringVar, Entry, Button, N, S, W, E, Y, Text, RIGHT, Scrollbar, HORIZONTAL
 from tkinter.ttk import Progressbar, Style
 
 import re
@@ -47,6 +49,22 @@ http_header = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36',
     'Content-Type': "text/html; charset=utf-8"}
 progress_task = None
+
+headers = [
+    'коэффициент уникальности слов', 'наличие ip-адреса в url', 'сокращение url', 'хороший netloc', 'длина url',
+    'кол-во @ в url', 'кол-во ; в url', 'кол-во & в url', 'кол-во / в url', 'кол-во = в url', 'кол-во % в url',
+    'кол-во - в url', 'кол-во . в url', 'кол-во ~ в url', 'https', 'соотношение цифр в url', 'кол-во цифр в url',
+    'кол-во слов в url', 'внутренние перенаправления', 'внешние перенаправления', 'случайные слова в url',
+    'повторяющиеся символы в хосте url', 'повторяющиеся символы в пути url', 'домен в брендах', 'бренд в пути url',
+    'кол-во www в url', 'кол-во com в url', 'средняя длина слова в url', 'максимальная длина слова в url',
+    'кол-во поддоменов', 'сжатие страницы', 'ввод/вывод в основном контексте', 'кол-во ссылок в контексте',
+    'кол-во внутренних ссылок', 'кол-во внешних ссылок', 'кол-во пустых ссылок', 'кол-во встроенных CSS',
+    'кол-во внутренних изображений', 'внутренний Favicon', 'внешние медиа', 'кол-во небезопасных якорей',
+    'кол-во безопасных якорей', 'кол-во внутренних ресурсов', 'кол-во внешних ресурсов', 'фишинговые слова в тексте',
+    'кол-во слов в тексте', 'объем текста изображений', 'ввод/вывод во внутренне добавляемом коде',
+    'ввод/вывод во внешне добавляемом коде', 'домен зарегистрирован', 'рейтинг по Alexa', 'рейтинг по openpagerank',
+    'кол-во альтернативных имен'
+]
 
 class KThread(Thread):
     def __init__(self, *args, **keywords):
@@ -297,8 +315,7 @@ def translate_image(obj):
         resp = session.get(obj[0], stream=True, timeout=3).raw
         image = asarray(bytearray(resp.read()), dtype="uint8")
         img = imdecode(image, IMREAD_COLOR)
-        img = resize(img, None, fx=0.5, fy=0.5, interpolation=INTER_AREA)
-        img = GaussianBlur(img, (5, 5), 0)
+        # img = resize(img, None, fx=0.75, fy=0.75, interpolation=INTER_AREA)
 
         return image_to_string(img, lang=obj[1])
     except:
@@ -310,7 +327,8 @@ def image_to_text(img, lang):
 
     try:
         lang = languages.get(alpha2=lang).bibliographic
-    except:
+    except Exception as ex:
+        print(ex)
         return ""
 
     if 'eng' not in lang:
@@ -319,8 +337,8 @@ def image_to_text(img, lang):
     docs = []
 
     try:
-        with ThreadPoolExecutor(25) as executor:
-            for r in executor.map(translate_image, [(url, lang) for url in img], timeout=3):
+        with ThreadPoolExecutor(10) as executor:
+            for r in executor.map(translate_image, [(url, lang) for url in img], timeout=10):
                 if r:
                     docs.append(r)
         return "\n".join(docs)
@@ -350,14 +368,13 @@ def count_phish_hints(word_raw, lang):
         return 0
 
 def check_Language(text):
-    global phish_hints
-
     size = len(text)
-    if size > 10000:
-        size = 10000
+
+    if size > 1000:
+        size = 1000
 
     try:
-        language = translator.detect(str(text)[:size]).lang
+        language = translator.detect(text[:size]).lang
 
         if type(language) is list:
             if 'en' in language:
@@ -712,7 +729,6 @@ def get_reqs_data(url_list):
     return return_value
 
 from collections import defaultdict
-import threading
 
 def segment(*text):
     return word_splitter.split(''.join(text).lower())
@@ -726,6 +742,8 @@ def word_ratio(*Text_words):
         return 0
 
 class Manager:
+    print_lock = Lock()
+
     def url_stats(self, url, r_url, request):
         self.result[1] = having_ip_address(url)
         self.result[2] = shortening_service(url)
@@ -806,7 +824,7 @@ class Manager:
         self.result[46] = ratio_Txt(iImgTxt_words + eImgTxt_words, sContent_words)
 
     def __init__(self):
-        self.event = threading.Event()
+        self.event = Event()
 
         self.result = [None] * 53
         self.values = {}
@@ -876,21 +894,35 @@ class Manager:
             required.remove(key)
             if not required:
                 def t_fun(f, prob, d):
+                    global progress, p_v
+
                     f_res = f(*d)
 
-                    if type(prob) == str:
-                        self.set(prob, f_res)
-                    elif prob >= 0:
-                        self.result[prob] = f_res
+                    with self.print_lock:
+                        output.configure(state='normal')
+                        output.insert(END, "="*100 + "\n")
 
-                    global progress, p_v
-                    p_v += 1
-                    progress['value'] = p_v
+                        if type(prob) == str:
+                            if len(str(f_res)) > 1000:
+                                output.insert(END, "\t{}: {} = {}..;\n".format(p_v, prob, str(f_res)[:1000]))
+                            else:
+                                output.insert(END, "\t{}: {} = {};\n".format(p_v, prob, str(f_res)))
+                            self.set(prob, f_res)
+                        elif prob >= 0:
+                            output.insert(END, "\t{}: Параметр['{}'] = {};\n".format(p_v, headers[prob], f_res))
+                            self.result[prob] = f_res
+                        else:
+                            output.insert(END, "\t{}: <<{}>>\n".format(p_v, f.__name__))
 
-                    if None not in self.result:
-                        self.event.set()
+                        output.configure(state='disabled')
 
-                thread = threading.Thread(target=t_fun, args=(fun, prob, [self.values[d] for d in dependencies]))
+                        p_v += 1
+                        progress['value'] = p_v
+
+                        if None not in self.result:
+                            self.event.set()
+
+                thread = Thread(target=t_fun, args=(fun, prob, [self.values[d] for d in dependencies]))
                 thread.start()
 
     def get_result(self):
@@ -899,23 +931,19 @@ class Manager:
 
 
 def extract_features(url):
-    try:
-        (state, request) = is_URL_accessible(url, 3)
+    (state, request) = is_URL_accessible(url, 3)
 
-        if state:
-            request.encoding = 'utf-8'
+    if state:
+        request.encoding = 'utf-8'
 
-            manager = Manager()
-            manager.set('request', request)
-            manager.set('url', url)
-            manager.set('r_url', request.url)
-            manager.set('content', request.text.lower())
+        manager = Manager()
+        manager.set('request', request)
+        manager.set('url', url)
+        manager.set('r_url', request.url)
+        manager.set('content', request.text.lower())
 
-            return manager.get_result()
-        return request
-    except Exception as ex:
-        print(ex)
-        return ex
+        return manager.get_result()
+    return request
 
 d = [
     1.0,1.0,1.0,1.0,1648.0,5.0,12.0,17.0,21.0,18.0,174.0,30.0,47.0,4.0,1.0,0.9680722891566264,1607.0,1072.0,9.0,6.0,640.0,0.6666666666666666,0.6666666666666666,1.0,1.0,4.0,6.0,30.0,30.0,11.0,7.634838196231642,969.0,50791.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.2,1385905.0,1.0,422645.0,285064.0,1.0,0.9999999,10.0,804.0
@@ -925,6 +953,9 @@ if __name__ == "__main__":
     @run_in_thread
     def check_site():
         result.configure(background='white')
+        output.configure(state='normal')
+        output.delete(1.0, END)
+        output.configure(state='disabled')
         result.configure(state='normal')
         result.delete(1.0, END)
         result.configure(state='disabled')
@@ -936,24 +967,32 @@ if __name__ == "__main__":
         data = extract_features(url.get().strip())
 
         if type(data) is list:
-            print('1:[{}]'.format(len(data)))
             data = array([max(min(data[i]/d[i], 1), 0) for i in range(53)]).reshape((1, -1)) * 0.9998 + 0.0001
-            print('1:[{}]'.format(data))
+
+            output.configure(state='normal')
+            output.insert(END, "=" * 100 + "\n")
+            output.insert(END, "\t{}: Нормализация признаков -> {};\n".format(p_v, ', '.join(list(map(lambda x :str(x), data.round(2))))))
+            output.configure(state='disabled')
+
             res = classifier.predict_proba(data).tolist()[0][-1]
 
             result.configure(state='normal')
             result.configure(background=Color(hsl=(0.2778*(1-res), 1, 0.5)).get_hex_l())
 
             if res < 0.5:
-                result.insert(END, "\nЭто легитимный сайт!".format((1-res)*100), 'tag-center')
+                result.insert(END, "С вероятностью {:.3f}% это легитимный сайт!".format((1-res)*100), 'tag-center')
             else:
-                result.insert(END, "\nЭто фишинговый сайт!".format(res * 100), 'tag-center')
+                result.insert(END, "С вероятностью {:.3f}% это фишинговый сайт!".format(res * 100), 'tag-center')
 
             result.configure(state='disabled')
         else:
             result.configure(state='normal')
-            result.insert(END, "ERROR: {}".format(data))
+            result.insert(END, "ERROR")
             result.configure(state='disabled')
+
+            output.configure(state='normal')
+            output.insert(END, "ERROR: {}".format(data))
+            output.configure(state='disabled')
         progress['value'] = 47
 
     window = Tk()
@@ -962,10 +1001,10 @@ if __name__ == "__main__":
 
     url = StringVar()
 
-    textArea = Entry(textvariable=url, width=80, exportselection=0)
+    textArea = Entry(textvariable=url, width=100, exportselection=0)
     textArea.grid(column=0, row=0, sticky=N+S+W+E)
 
-    btn = Button(window, text="check", command=check_site)
+    btn = Button(window, text="проверить", command=check_site)
     btn.grid(column=1, row=0, sticky=N+S+W+E)
 
     s = Style()
@@ -980,17 +1019,30 @@ if __name__ == "__main__":
         mode='determinate',
         style="TProgressbar"
     )
+
     progress.grid(column=0, row=1, columnspan=2,  sticky=N + S + W + E)
+
+    output = Text(
+        window,
+        height=20,
+        width=100,
+        state='disabled'
+    )
+
+    output.grid(column=0, row=2, columnspan=2)
+
+    vsb = Scrollbar(window, orient="vertical", command=output.yview)
+    vsb.grid(row=2, column=2, sticky='ns')
+    output.configure(yscrollcommand=vsb.set)
 
     result = Text(
         window,
-        height=3,
-        width=80,
+        height=1,
+        width=100,
         state='disabled'
     )
-    result.tag_configure('tag-center', justify='center')
 
-    result.grid(column=0, row=2, columnspan=2)
+    result.grid(column=0, row=3, columnspan=2)
 
     window.mainloop()
 
