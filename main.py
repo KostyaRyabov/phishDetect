@@ -744,6 +744,23 @@ def word_ratio(*Text_words):
 class Manager:
     print_lock = Lock()
 
+    def log_result(self, data_idx, fun_name):
+        global p_v, progress
+
+        with self.print_lock:
+            output.configure(state='normal')
+            output.insert(END, "=" * 100 + "\n")
+            output.insert(END, "\t{}: <<{}>>\n".format(p_v, fun_name))
+            output.insert(END, "-" * 100 + "\n")
+
+            for i in data_idx:
+                output.insert(END, "\t\tПараметр['{}'] = {};\n".format(headers[i], self.result[i]))
+
+            output.configure(state='disabled')
+
+            p_v += 1
+            progress['value'] = p_v
+
     def url_stats(self, url, r_url, request):
         self.result[1] = having_ip_address(url)
         self.result[2] = shortening_service(url)
@@ -761,6 +778,8 @@ class Manager:
         self.result[16] = count_digits(r_url)
         self.result[18] = len(request.history)
         self.result[30] = compression_ratio(request)
+
+        self.log_result([1,2,4,5,6,7,8,9,10,11,12,13,15,16,18,30], 'статистика по URL-адресу')
     def domain_info(self, r_url):
         hostname, second_level_domain, path, netloc = get_domain(r_url)
 
@@ -780,14 +799,19 @@ class Manager:
         self.set('cutted_url2', cutted_url + pth)
     def update_url_parts(self, url_words, parsed):
         self.result[17] = len(url_words)
+        self.log_result([17], 'части URL')
         self.set('scheme', parsed.scheme)
     def url_stats2(self, scheme, cutted_url2):
         self.result[14] = https_token(scheme)
         self.result[25] = cutted_url2.count('www')
         self.result[26] = cutted_url2.count('com')
+
+        self.log_result([14,25,26], 'статистика по URL-адресу')
     def url_lens(self, url_words):
         self.result[27] = average_word_length(url_words)
         self.result[28] = longest_word_length(url_words)
+
+        self.log_result([27, 28], 'статистика по словам в URL-адресе')
     def sContext_grabber(self, hostname, content, domain, r_url):
         (Href, Link, Anchor, Media, Img, Form, CSS, Favicon, Text, internals_script_doc, externals_script_doc,
          io_count) = extract_all_context_data(hostname, content, domain, r_url)
@@ -817,12 +841,17 @@ class Manager:
         self.result[41] = ratio_anchor(Anchor, 'safe')
         self.result[42] = ratio_List(Link, 'internals')
         self.result[43] = ratio_List(Link, 'externals')
+
+        self.log_result([31,32,33,34,35,36,37,38,39,40,41,42,43], 'анализ содержимого страницы')
     def cert_stats(self, whois_domain, domain, cert):
         self.result[49] = whois_registered_domain(whois_domain, domain)
         self.result[52] = count_alt_names(cert)
+
+        self.log_result([49, 52], 'данные сертификата сервера')
     def Text_stats(self, iImgTxt_words, eImgTxt_words, sContent_words):
         self.result[46] = ratio_Txt(iImgTxt_words + eImgTxt_words, sContent_words)
 
+        self.log_result([46], 'статистика по тексту страницы')
     def __init__(self):
         self.event = Event()
 
@@ -898,29 +927,28 @@ class Manager:
 
                     f_res = f(*d)
 
-                    with self.print_lock:
-                        output.configure(state='normal')
-                        output.insert(END, "="*100 + "\n")
+                    if prob != -1:
+                        with self.print_lock:
+                            output.configure(state='normal')
+                            output.insert(END, "="*100 + "\n")
 
-                        if type(prob) == str:
-                            if len(str(f_res)) > 1000:
-                                output.insert(END, "\t{}: {} = {}..;\n".format(p_v, prob, str(f_res)[:1000]))
-                            else:
-                                output.insert(END, "\t{}: {} = {};\n".format(p_v, prob, str(f_res)))
-                            self.set(prob, f_res)
-                        elif prob >= 0:
-                            output.insert(END, "\t{}: Параметр['{}'] = {};\n".format(p_v, headers[prob], f_res))
-                            self.result[prob] = f_res
-                        else:
-                            output.insert(END, "\t{}: <<{}>>\n".format(p_v, f.__name__))
+                            if type(prob) == str:
+                                if len(str(f_res)) > 1000:
+                                    output.insert(END, "\t{}: {} = {}..;\n".format(p_v, prob, str(f_res)[:1000]))
+                                else:
+                                    output.insert(END, "\t{}: {} = {};\n".format(p_v, prob, str(f_res)))
+                                self.set(prob, f_res)
+                            elif prob >= 0:
+                                output.insert(END, "\t{}: Параметр['{}'] = {};\n".format(p_v, headers[prob], f_res))
+                                self.result[prob] = f_res
 
-                        output.configure(state='disabled')
+                            output.configure(state='disabled')
 
-                        p_v += 1
-                        progress['value'] = p_v
+                            p_v += 1
+                            progress['value'] = p_v
 
-                        if None not in self.result:
-                            self.event.set()
+                    if None not in self.result:
+                        self.event.set()
 
                 thread = Thread(target=t_fun, args=(fun, prob, [self.values[d] for d in dependencies]))
                 thread.start()
@@ -952,7 +980,7 @@ d = [
 if __name__ == "__main__":
     @run_in_thread
     def check_site():
-        result.configure(background='white')
+        result.configure(background='gray')
         output.configure(state='normal')
         output.delete(1.0, END)
         output.configure(state='disabled')
@@ -980,20 +1008,20 @@ if __name__ == "__main__":
             result.configure(background=Color(hsl=(0.2778*(1-res), 1, 0.5)).get_hex_l())
 
             if res < 0.5:
-                result.insert(END, "С вероятностью {:.3f}% это легитимный сайт!".format((1-res)*100), 'tag-center')
+                result.insert(END, "\nС вероятностью {:.3f}% это легитимный сайт!".format((1-res)*100), 'tag-center')
             else:
-                result.insert(END, "С вероятностью {:.3f}% это фишинговый сайт!".format(res * 100), 'tag-center')
+                result.insert(END, "\nС вероятностью {:.3f}% это фишинговый сайт!".format(res * 100), 'tag-center')
 
             result.configure(state='disabled')
         else:
             result.configure(state='normal')
-            result.insert(END, "ERROR")
+            result.insert(END, "\nERROR")
             result.configure(state='disabled')
 
             output.configure(state='normal')
             output.insert(END, "ERROR: {}".format(data))
             output.configure(state='disabled')
-        progress['value'] = 47
+        progress['value'] = 45
 
     window = Tk()
     window.title("phishDetect")
@@ -1014,7 +1042,7 @@ if __name__ == "__main__":
     progress = Progressbar(
         window,
         orient=HORIZONTAL,
-        maximum=47,
+        maximum=45,
         length=100,
         mode='determinate',
         style="TProgressbar"
@@ -1037,10 +1065,13 @@ if __name__ == "__main__":
 
     result = Text(
         window,
-        height=1,
+        height=3,
         width=100,
         state='disabled'
     )
+
+    result.configure(background='gray')
+    result.tag_configure('tag-center', justify='center')
 
     result.grid(column=0, row=3, columnspan=2)
 
