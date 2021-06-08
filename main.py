@@ -317,7 +317,7 @@ def translate_image(obj):
         img = imdecode(image, IMREAD_COLOR)
         # img = resize(img, None, fx=0.75, fy=0.75, interpolation=INTER_AREA)
 
-        return image_to_string(img, lang=obj[1])
+        return image_to_string(img, lang=obj[1]).lower()
     except:
         return ""
 
@@ -594,7 +594,7 @@ def extract_all_context_data(hostname, content, domain, base_url):
         docs = []
 
         def load_script(url):
-            state, request = is_URL_accessible(url, 2)
+            state, request = is_URL_accessible(url, 3)
 
             if state:
                 request.encoding = 'utf-8'
@@ -602,7 +602,7 @@ def extract_all_context_data(hostname, content, domain, base_url):
 
         try:
             with ThreadPoolExecutor(25) as executor:
-                res = executor.map(load_script, script_lnks, timeout=3)
+                res = executor.map(load_script, script_lnks, timeout=5)
 
                 for r in res:
                     if r:
@@ -794,9 +794,14 @@ class Manager:
         pth = tmp.partition("/")[2]
         self.set('pth', pth)
 
-        cutted_url = extracted_domain.domain + extracted_domain.subdomain
+        cutted_url = ''
+
+        if extracted_domain.subdomain:
+            cutted_url += extracted_domain.subdomain + '.'
+        cutted_url += extracted_domain.domain + '.' + extracted_domain.suffix
+
         self.set('cutted_url', cutted_url)
-        self.set('cutted_url2', cutted_url + pth)
+        self.set('cutted_url2', cutted_url + '/' + pth)
     def update_url_parts(self, url_words, parsed):
         self.result[17] = len(url_words)
         self.log_result([17], 'части URL')
@@ -915,7 +920,23 @@ class Manager:
             options += [options[1].copy()]
 
     def set(self, key, val):
-        self.values[key] = val
+        global p_v, progress
+
+        with self.print_lock:
+            output.configure(state='normal')
+            output.insert(END, "=" * 100 + "\n")
+
+            if len(str(val)) > 1000:
+                output.insert(END, "\t{}: {} = {}..;\n".format(p_v, key, str(val)[:1000]))
+            else:
+                output.insert(END, "\t{}: {} = {};\n".format(p_v, key, str(val)))
+
+            self.values[key] = val
+
+            output.configure(state='disabled')
+
+            p_v += 1
+            progress['value'] = p_v
 
         for t in self.index[key]:
             (fun, dependencies, prob, required) = self.tasks[t]
@@ -927,25 +948,20 @@ class Manager:
 
                     f_res = f(*d)
 
-                    if prob != -1:
+                    if type(prob) == str:
+                        self.set(prob, f_res)
+                    elif prob >= 0:
                         with self.print_lock:
                             output.configure(state='normal')
                             output.insert(END, "="*100 + "\n")
 
-                            if type(prob) == str:
-                                if len(str(f_res)) > 1000:
-                                    output.insert(END, "\t{}: {} = {}..;\n".format(p_v, prob, str(f_res)[:1000]))
-                                else:
-                                    output.insert(END, "\t{}: {} = {};\n".format(p_v, prob, str(f_res)))
-                                self.set(prob, f_res)
-                            elif prob >= 0:
-                                output.insert(END, "\t{}: Параметр['{}'] = {};\n".format(p_v, headers[prob], f_res))
-                                self.result[prob] = f_res
-
-                            output.configure(state='disabled')
+                            output.insert(END, "\t{}: Параметр['{}'] = {};\n".format(p_v, headers[prob], f_res))
+                            self.result[prob] = f_res
 
                             p_v += 1
                             progress['value'] = p_v
+
+                            output.configure(state='disabled')
 
                     if None not in self.result:
                         self.event.set()
@@ -959,7 +975,7 @@ class Manager:
 
 
 def extract_features(url):
-    (state, request) = is_URL_accessible(url, 3)
+    (state, request) = is_URL_accessible(url)
 
     if state:
         request.encoding = 'utf-8'
@@ -979,7 +995,7 @@ d = [
 
 if __name__ == "__main__":
     @run_in_thread
-    def check_site():
+    def check_site(event):
         result.configure(background='gray')
         output.configure(state='normal')
         output.delete(1.0, END)
@@ -1021,7 +1037,7 @@ if __name__ == "__main__":
             output.configure(state='normal')
             output.insert(END, "ERROR: {}".format(data))
             output.configure(state='disabled')
-        progress['value'] = 45
+        progress['value'] = 62
 
     window = Tk()
     window.title("phishDetect")
@@ -1031,6 +1047,8 @@ if __name__ == "__main__":
 
     textArea = Entry(textvariable=url, width=100, exportselection=0)
     textArea.grid(column=0, row=0, sticky=N+S+W+E)
+
+    textArea.bind('<Return>', check_site)
 
     btn = Button(window, text="проверить", command=check_site)
     btn.grid(column=1, row=0, sticky=N+S+W+E)
@@ -1042,7 +1060,7 @@ if __name__ == "__main__":
     progress = Progressbar(
         window,
         orient=HORIZONTAL,
-        maximum=45,
+        maximum=62,
         length=100,
         mode='determinate',
         style="TProgressbar"
