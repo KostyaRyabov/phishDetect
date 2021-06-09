@@ -132,17 +132,45 @@ if __name__ == "__main__":
         import extractor
         import pandas as pd
 
-        # domains = pd.read_csv('data/ranked_domains/14-1-2021.csv', header=None)[1].tolist()
+        domains = pd.read_csv('data/ranked_domains/14-1-2021.csv', header=None)[1].tolist()
 
         # legitimate_url_list = dc.load_legitimateURLS('31-05-2021')
-        phish_url_list = dc.load_phishURLS('09-06-2021')
+        phish_url_list = dc.load_phishURLS('10-06-2021')
         url_list = []
         # url_list += [(u, 0) for u in urls]
-        url_list += dc.set_lable_to_list(phish_url_list[seed_p:], 1)
-        # url_list += [(d, 0) for d in domains][2595:]
+        url_list += reversed(dc.set_lable_to_list(phish_url_list[seed_p:], 1))
+        url_list += [(d, 0) for d in reversed(domains)][500:]
         # url_list += dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
 
         extractor.generate_dataset(url_list)
+
+        df_old = pd.read_csv('data/datasets/OUTPUT/dataset.csv')
+        df = pd.read_csv('data/datasets/OUTPUT/dataset3.csv')
+
+        df.columns = [
+    'коэффициент уникальности слов', 'наличие ip-адреса в url', 'сокращение url', 'хороший netloc', 'длина url',
+    'кол-во @ в url', 'кол-во ; в url', 'кол-во & в url', 'кол-во / в url', 'кол-во = в url', 'кол-во % в url',
+    'кол-во - в url', 'кол-во . в url', 'кол-во ~ в url', 'https', 'соотношение цифр в url', 'кол-во цифр в url',
+    'кол-во слов в url', 'внутренние перенаправления', 'внешние перенаправления', 'случайные слова в url',
+    'повторяющиеся символы в хосте url', 'повторяющиеся символы в пути url', 'домен в брендах', 'бренд в пути url',
+    'кол-во www в url', 'кол-во com в url', 'средняя длина слова в url', 'максимальная длина слова в url',
+    'кол-во поддоменов', 'сжатие страницы', 'ввод/вывод в основном контексте', 'кол-во ссылок в контексте',
+    'кол-во внутренних ссылок', 'кол-во внешних ссылок', 'кол-во пустых ссылок', 'кол-во встроенных CSS',
+    'кол-во внутренних изображений', 'внутренний Favicon', 'внешние медиа', 'кол-во небезопасных якорей',
+    'кол-во безопасных якорей', 'кол-во внутренних ресурсов', 'кол-во внешних ресурсов', 'фишинговые слова в тексте',
+    'кол-во слов в тексте', 'объем текста изображений', 'ввод/вывод во внутренне добавляемом коде',
+    'ввод/вывод во внешне добавляемом коде', 'домен зарегистрирован', 'рейтинг по Alexa', 'рейтинг по openpagerank',
+    'кол-во альтернативных имен'
+]+['status']
+
+        df_new = pd.concat([df, df_old])
+
+        df0 = df_new[df_new['status'] == 0][:25030]
+        df1 = df_new[df_new['status'] == 1][:25030]
+
+        df_new = pd.concat([df0, df1])
+        df_new.to_csv('data/datasets/OUTPUT/dataset4.csv', index=False)
+
     elif state == 0:
         dc.download_phishURLS()  # use VPN!!!
     elif state == 1:
