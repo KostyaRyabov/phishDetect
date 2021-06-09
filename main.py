@@ -994,8 +994,11 @@ d = [
 ]
 
 if __name__ == "__main__":
+    def enter_button(event):
+        check_site()
+
     @run_in_thread
-    def check_site(event):
+    def check_site():
         result.configure(background='gray')
         output.configure(state='normal')
         output.delete(1.0, END)
@@ -1048,7 +1051,7 @@ if __name__ == "__main__":
     textArea = Entry(textvariable=url, width=100, exportselection=0)
     textArea.grid(column=0, row=0, sticky=N+S+W+E)
 
-    textArea.bind('<Return>', check_site)
+    textArea.bind('<Return>', enter_button)
 
     btn = Button(window, text="проверить", command=check_site)
     btn.grid(column=1, row=0, sticky=N+S+W+E)
