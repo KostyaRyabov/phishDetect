@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from sys import settrace
 from colour import Color
 from tldextract import extract as tld_extract
@@ -10,12 +12,12 @@ from re import compile, finditer, MULTILINE, DOTALL, search, findall
 import socket
 from OpenSSL.crypto import load_certificate, FILETYPE_PEM
 from whois import whois
-from requests import session
+from requests import session, exceptions
 from iso639 import languages
-from threading import Thread
+from threading import Thread, Lock, Event
 from pickle import load
 from wordninja import LanguageModel
-from tkinter import END, Tk, StringVar, Entry, Button, N, S, W, E, Text, HORIZONTAL
+from tkinter import END, Tk, StringVar, Entry, Button, N, S, W, E, Y, Text, RIGHT, Scrollbar, HORIZONTAL
 from tkinter.ttk import Progressbar, Style
 
 import re
@@ -47,6 +49,25 @@ http_header = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36',
     'Content-Type': "text/html; charset=utf-8"}
 progress_task = None
+
+headers = [
+    'коэффициент уникальности слов', 'наличие ip-адреса в url', 'сокращение url', 'хороший netloc', 'длина url',
+    'кол-во @ в url', 'кол-во ; в url', 'кол-во & в url', 'кол-во / в url', 'кол-во = в url', 'кол-во % в url',
+    'кол-во - в url', 'кол-во . в url', 'кол-во ~ в url', 'https', 'соотношение цифр в url', 'кол-во цифр в url',
+    'кол-во слов в url', 'внутренние перенаправления', 'внешние перенаправления', 'случайные слова в url',
+    'повторяющиеся символы в хосте url', 'повторяющиеся символы в пути url', 'домен в брендах', 'бренд в пути url',
+    'кол-во www в url', 'кол-во com в url', 'средняя длина слова в url', 'максимальная длина слова в url',
+    'кол-во поддоменов', 'сжатие страницы', 'ввод/вывод в основном контексте', 'кол-во ссылок в контексте',
+    'кол-во внутренних ссылок', 'кол-во внешних ссылок', 'кол-во пустых ссылок', 'кол-во встроенных CSS',
+    'кол-во внутренних изображений', 'внутренний Favicon', 'внешние медиа', 'кол-во небезопасных якорей',
+    'кол-во безопасных якорей', 'кол-во внутренних ресурсов', 'кол-во внешних ресурсов', 'фишинговые слова в тексте',
+    'кол-во слов в тексте', 'объем текста изображений', 'ввод/вывод во внутренне добавляемом коде',
+    'ввод/вывод во внешне добавляемом коде', 'домен зарегистрирован', 'рейтинг по Alexa', 'рейтинг по openpagerank',
+    'кол-во альтернативных имен'
+]
+
+reqs_lock = Lock()
+img_lock = Lock()
 
 class KThread(Thread):
     def __init__(self, *args, **keywords):
@@ -100,6 +121,8 @@ def is_URL_accessible(url, time_out=5):
 
     try:
         page = get(url, timeout=time_out, headers=http_header)
+    except exceptions.RequestException as err:
+        return False, err
     except Exception as err:
         return False, err
 
@@ -295,10 +318,9 @@ def translate_image(obj):
         resp = session.get(obj[0], stream=True, timeout=3).raw
         image = asarray(bytearray(resp.read()), dtype="uint8")
         img = imdecode(image, IMREAD_COLOR)
-        img = resize(img, None, fx=0.5, fy=0.5, interpolation=INTER_AREA)
-        img = GaussianBlur(img, (5, 5), 0)
+        # img = resize(img, None, fx=0.75, fy=0.75, interpolation=INTER_AREA)
 
-        return image_to_string(img, lang=obj[1])
+        return image_to_string(img, lang=obj[1]).lower()
     except:
         return ""
 
@@ -308,7 +330,8 @@ def image_to_text(img, lang):
 
     try:
         lang = languages.get(alpha2=lang).bibliographic
-    except:
+    except Exception as ex:
+        print(ex)
         return ""
 
     if 'eng' not in lang:
@@ -316,14 +339,15 @@ def image_to_text(img, lang):
 
     docs = []
 
-    try:
-        with ThreadPoolExecutor(25) as executor:
-            for r in executor.map(translate_image, [(url, lang) for url in img], timeout=3):
-                if r:
-                    docs.append(r)
-        return "\n".join(docs)
-    except TimeoutError:
-        return "\n".join(docs)
+    with img_lock:
+        try:
+            with ThreadPoolExecutor(10) as executor:
+                for r in executor.map(translate_image, [(url, lang) for url in img], timeout=10):
+                    if r:
+                        docs.append(r)
+            return "\n".join(docs)
+        except TimeoutError:
+            return "\n".join(docs)
 
 def ratio_Txt(dynamic, static):
     total = len(static)
@@ -348,14 +372,13 @@ def count_phish_hints(word_raw, lang):
         return 0
 
 def check_Language(text):
-    global phish_hints
-
     size = len(text)
-    if size > 10000:
-        size = 10000
+
+    if size > 1000:
+        size = 1000
 
     try:
-        language = translator.detect(str(text)[:size]).lang
+        language = translator.detect(text[:size]).lang
 
         if type(language) is list:
             if 'en' in language:
@@ -575,22 +598,23 @@ def extract_all_context_data(hostname, content, domain, base_url):
         docs = []
 
         def load_script(url):
-            state, request = is_URL_accessible(url, 2)
+            state, request = is_URL_accessible(url, 3)
 
             if state:
                 request.encoding = 'utf-8'
                 docs.append(request.text)
 
-        try:
-            with ThreadPoolExecutor(25) as executor:
-                res = executor.map(load_script, script_lnks, timeout=3)
+        with reqs_lock:
+            try:
+                with ThreadPoolExecutor(25) as executor:
+                    res = executor.map(load_script, script_lnks, timeout=5)
 
-                for r in res:
-                    if r:
-                        docs.append(r)
-            return "\n".join(docs)
-        except TimeoutError:
-            return "\n".join(docs)
+                    for r in res:
+                        if r:
+                            docs.append(r)
+                return "\n".join(docs)
+            except TimeoutError:
+                return "\n".join(docs)
 
     with ThreadPoolExecutor(13) as e:
         e.submit(collector1)
@@ -710,7 +734,6 @@ def get_reqs_data(url_list):
     return return_value
 
 from collections import defaultdict
-import threading
 
 def segment(*text):
     return word_splitter.split(''.join(text).lower())
@@ -723,7 +746,10 @@ def word_ratio(*Text_words):
     else:
         return 0
 
+
 class Manager:
+    print_lock = Lock()
+
     def url_stats(self, url, r_url, request):
         self.result[1] = having_ip_address(url)
         self.result[2] = shortening_service(url)
@@ -755,9 +781,14 @@ class Manager:
         pth = tmp.partition("/")[2]
         self.set('pth', pth)
 
-        cutted_url = extracted_domain.domain + extracted_domain.subdomain
+        cutted_url = ''
+
+        if extracted_domain.subdomain:
+            cutted_url += extracted_domain.subdomain + '.'
+        cutted_url += extracted_domain.domain + '.' + extracted_domain.suffix
+
         self.set('cutted_url', cutted_url)
-        self.set('cutted_url2', cutted_url + pth)
+        self.set('cutted_url2', cutted_url + '/' + pth)
     def update_url_parts(self, url_words, parsed):
         self.result[17] = len(url_words)
         self.set('scheme', parsed.scheme)
@@ -802,9 +833,8 @@ class Manager:
         self.result[52] = count_alt_names(cert)
     def Text_stats(self, iImgTxt_words, eImgTxt_words, sContent_words):
         self.result[46] = ratio_Txt(iImgTxt_words + eImgTxt_words, sContent_words)
-
     def __init__(self):
-        self.event = threading.Event()
+        self.event = Event()
 
         self.result = [None] * 53
         self.values = {}
@@ -823,7 +853,7 @@ class Manager:
         self.tasks.append([segment, ['pth'], 'words_raw_path'])
         self.tasks.append([segment, ['cutted_url'], 'words_raw_host'])
         self.tasks.append([segment, ['cutted_url', 'pth'], 'url_words'])
-        self.tasks.append([urlparse, ['domain'], 'parsed'])
+        self.tasks.append([urlparse, ['r_url'], 'parsed'])
         self.tasks.append([self.update_url_parts, ['url_words', 'parsed'], -1])
         self.tasks.append([random_words, ['url_words'], 20])
         self.tasks.append([char_repeat, ['words_raw_host'], 21])
@@ -866,7 +896,8 @@ class Manager:
             options += [options[1].copy()]
 
     def set(self, key, val):
-        self.values[key] = val
+        with self.print_lock:
+            self.values[key] = val
 
         for t in self.index[key]:
             (fun, dependencies, prob, required) = self.tasks[t]
@@ -879,13 +910,13 @@ class Manager:
                     if type(prob) == str:
                         self.set(prob, f_res)
                     elif prob >= 0:
-                        self.result[prob] = f_res
-
+                        with self.print_lock:
+                            self.result[prob] = f_res
 
                     if None not in self.result:
                         self.event.set()
 
-                thread = threading.Thread(target=t_fun, args=(fun, prob, [self.values[d] for d in dependencies]))
+                thread = Thread(target=t_fun, args=(fun, prob, [self.values[d] for d in dependencies]))
                 thread.start()
 
     def get_result(self):
@@ -894,28 +925,23 @@ class Manager:
 
 
 def extract_features(url):
-    try:
-        (state, request) = is_URL_accessible(url, 5)
+    (state, request) = is_URL_accessible(url)
 
-        if state:
-            request.encoding = 'utf-8'
+    if state:
+        request.encoding = 'utf-8'
 
-            manager = Manager()
-            manager.set('request', request)
-            manager.set('url', url)
-            manager.set('r_url', request.url)
-            manager.set('content', request.text.lower())
+        manager = Manager()
+        manager.set('request', request)
+        manager.set('url', url)
+        manager.set('r_url', request.url)
+        manager.set('content', request.text.lower())
 
-            return manager.get_result()
-        return request
-    except Exception as ex:
-        print(ex)
-        return ex
+        return manager.get_result()
+    return request
 
 d = [
     1.0,1.0,1.0,1.0,1648.0,5.0,12.0,17.0,21.0,18.0,174.0,30.0,47.0,4.0,1.0,0.9680722891566264,1607.0,1072.0,9.0,6.0,640.0,0.6666666666666666,0.6666666666666666,1.0,1.0,4.0,6.0,30.0,30.0,11.0,7.634838196231642,969.0,50791.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.2,1385905.0,1.0,422645.0,285064.0,1.0,0.9999999,10.0,804.0
 ]
-
 
 from tqdm import tqdm
 from concurrent.futures import as_completed
@@ -936,11 +962,11 @@ def generate_dataset(url_list):
                 data = array([max(min(data[i] / d[i], 1), 0) for i in range(53)]) * 0.9998 + 0.0001
 
                 with rec_locker:
-                    pd.DataFrame(data.tolist() + [obj[1]]).T.to_csv('data/datasets/OUTPUT/dataset.csv', mode='a', index=False, header=False)
+                    pd.DataFrame(data.tolist() + [obj[1]]).T.to_csv('data/datasets/OUTPUT/dataset3.csv', mode='a', index=False, header=False)
         except Exception as ex:
             print(traceback.format_exc())
 
-    with ThreadPoolExecutor(max_workers=25) as executor:
+    with ThreadPoolExecutor(max_workers=50) as executor:
         fut = [executor.submit(extraction_data, url) for url in url_list]
         for _ in tqdm(as_completed(fut), total=len(url_list)):
             pass
