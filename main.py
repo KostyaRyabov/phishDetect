@@ -877,7 +877,7 @@ class Manager:
         self.tasks.append([segment, ['pth'], 'words_raw_path'])
         self.tasks.append([segment, ['cutted_url'], 'words_raw_host'])
         self.tasks.append([segment, ['cutted_url', 'pth'], 'url_words'])
-        self.tasks.append([urlparse, ['domain'], 'parsed'])
+        self.tasks.append([urlparse, ['r_url'], 'parsed'])
         self.tasks.append([self.update_url_parts, ['url_words', 'parsed'], -1])
         self.tasks.append([random_words, ['url_words'], 20])
         self.tasks.append([char_repeat, ['words_raw_host'], 21])
