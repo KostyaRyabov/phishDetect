@@ -71,76 +71,23 @@ if state in range(2, 6):
 if __name__ == "__main__":
     if state == -1:
         seed_l = 0
-        seed_p = 0
+        seed_p = 200
 
-#         urls = '''http://google.com
-# http://youtube.com
-# http://facebook.com
-# http://baidu.com
-# http://yahoo.com
-# http://instagram.com
-# http://twitter.com
-# http://xnxx.com
-# http://vk.com
-# http://wikipedia.org
-# http://xvideos.com
-# http://yandex.ru
-# http://pornhub.com
-# http://amazon.com
-# http://google.com.br
-# http://live.com
-# http://google.com.in
-# http://google.com.uk
-# http://xhamster.com
-# http://ok.ru
-# http://mail.ru
-# http://google.com.jp
-# http://yahoo.co.jp
-# http://reddit.com
-# http://google.de
-# http://netflix.com
-# http://qq.com
-# http://google.fr
-# http://google.ru
-# http://ampproject.org
-# http://ozon.ru
-# https://www.svyaznoy.ru
-# https://www.mvideo.ru
-# https://www.nvidia.com/ru-ru/
-# https://top-igruha.ru/page/2/
-# https://habr.com/ru/post/78728/
-# https://vulkan-tutorial.com/Introduction
-# https://dyakonov.org/2017/03/10/cтекинг-stacking-и-блендинг-blending/
-# https://neerc.ifmo.ru/wiki/index.php?title=Бустинг,_AdaBoost
-# https://www.machinelearningmastery.ru/metrics-evaluate-machine-learning-algorithms-python/
-# https://python-school.ru/top7-libraries-for-data-visualization/
-# https://stackoverflow.com/questions/13448064/how-to-find-the-intersection-of-two-stdset-in-c
-# https://neerc.ifmo.ru/wiki/index.php?title=Список_с_пропусками
-# ozon.ru
-# mvideo.ru
-# nvidia.com
-# svyaznoy.ru
-# gmail.com
-# amazon.ru
-# amazon.com
-# ru.wikipedia
-# wikipedia
-# pokupki.market.yandex.ru
-# wildberries.ru
-# lamoda.ru'''.split('\n')
+        urls = '''https://www.nvidia.com
+https://translate.google.com'''.split('\n')
 
         import extractor
         import pandas as pd
 
         domains = pd.read_csv('data/ranked_domains/14-1-2021.csv', header=None)[1].tolist()
 
-        # legitimate_url_list = dc.load_legitimateURLS('31-05-2021')
+        legitimate_url_list = dc.load_legitimateURLS('31-05-2021')
         phish_url_list = dc.load_phishURLS('10-06-2021')
         url_list = []
-        # url_list += [(u, 0) for u in urls]
+        url_list += [(u, 0) for u in urls]
         url_list += reversed(dc.set_lable_to_list(phish_url_list[seed_p:], 1))
-        url_list += [(d, 0) for d in reversed(domains)][500:]
-        # url_list += dc.set_lable_to_list(legitimate_url_list[seed_l:], 0)
+        url_list += [(d, 0) for d in reversed(domains)][10000:12000]
+        url_list += reversed(dc.set_lable_to_list(legitimate_url_list[seed_l:], 0))
 
         extractor.generate_dataset(url_list)
 
@@ -165,8 +112,8 @@ if __name__ == "__main__":
 
         df_new = pd.concat([df, df_old])
 
-        df0 = df_new[df_new['status'] == 0][:25030]
-        df1 = df_new[df_new['status'] == 1][:25030]
+        df0 = df_new[df_new['status'] == 0][:35000]
+        df1 = df_new[df_new['status'] == 1][:35000]
 
         df_new = pd.concat([df0, df1])
         df_new.to_csv('data/datasets/OUTPUT/dataset4.csv', index=False)
